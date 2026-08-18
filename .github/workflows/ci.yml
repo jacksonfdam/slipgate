@@ -96,6 +96,8 @@ jobs:
       - uses: actions/checkout@v7
       - name: Verify the sources match SOURCES.lock
         run: ./tooling/engine-build/fetch-sources.sh
+      - name: Verify the wasm modules match their hashes and use no vector instructions
+        run: ./tooling/ci/verify-wasm-artifacts.sh
 
   unit-tests:
     name: Unit tests

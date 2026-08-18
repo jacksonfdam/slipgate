@@ -7,3 +7,10 @@
 repository = https://github.com/chocolate-doom/chocolate-doom.git
 tag = chocolate-doom-3.1.1
 commit = 410d96855b5df5410ff591a90efeafa889119224
+
+# Artifacts built from these sources, so a rebuild that changes a module is visible in review.
+[verification]
+artifact = host/backend/wasm/src/jvmTest/resources/longjmp_probe.wasm
+sha256 = be2f3207e03802ac53d134b307023f4d237231835326f72ca26e0bac4a47fef1
+emscripten = 6.0.7
+flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM --no-entry -Oz
