@@ -27,6 +27,8 @@ changed_files="$(git diff --name-only --diff-filter=ACMR "${BASE_REF}..${HEAD_RE
 while read -r file; do
     [ -z "${file}" ] && continue
     [ -f "${file}" ] || continue
+    # This script has to spell the forbidden strings out to search for them.
+    [ "${file}" = "tooling/ci/scan-attribution.sh" ] && continue
     if hit="$(grep -Ein "${PATTERN}" "${file}")"; then
         report "${file}" "${hit}"
     fi
