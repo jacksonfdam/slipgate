@@ -17,14 +17,21 @@ public enum class PixelFormat {
             }
 }
 
-/** Dimensions and pixel layout of a session's output. Never assumed by the host. */
+/**
+ * Dimensions and pixel layout of a session's output. Never assumed by the host.
+ *
+ * [pixelAspect] is the width-to-height ratio of one source pixel. Only the gate knows it: the
+ * id Tech 1 engines render 320x200 for a 4:3 display, so their pixels are not square.
+ */
 public data class DisplayFormat(
     val width: Int,
     val height: Int,
     val pixelFormat: PixelFormat,
+    val pixelAspect: Float = 1f,
 ) {
     init {
         require(width > 0 && height > 0) { "display must have a positive size" }
+        require(pixelAspect > 0f) { "pixel aspect must be positive" }
     }
 
     public val frameSizeBytes: Int

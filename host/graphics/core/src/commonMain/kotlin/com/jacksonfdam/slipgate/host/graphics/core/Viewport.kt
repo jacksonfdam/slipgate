@@ -48,14 +48,14 @@ public const val ID_TECH_1_PIXEL_ASPECT: Float = 5f / 6f
 /**
  * Geometry of a presented frame.
  *
- * [pixelAspect] is the width-to-height ratio of one source pixel: 1 for square pixels, and
- * [ID_TECH_1_PIXEL_ASPECT] for the Doom-family engines.
+ * [pixelAspect] defaults to the source format's own ratio and can be overridden for a
+ * correction the gate does not declare. [ID_TECH_1_PIXEL_ASPECT] is the Doom-family value.
  */
 public data class Viewport(
     val source: DisplayFormat,
     val surface: SurfaceSize,
     val mode: ScalingMode = ScalingMode.Fit,
-    val pixelAspect: Float = 1f,
+    val pixelAspect: Float = source.pixelAspect,
 ) {
     init {
         require(pixelAspect > 0f) { "pixel aspect must be positive" }
