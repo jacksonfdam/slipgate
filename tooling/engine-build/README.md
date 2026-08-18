@@ -34,6 +34,33 @@ around it. The engine's main loop therefore does not need splitting by hand: the
 initialisation path once and `D_RunFrame` per step, which is what makes a stepped session possible
 at all.
 
+## The toolchain
+
+Emscripten is pinned to **6.0.7** and installed into `.toolchain/`, which is gitignored:
+
+```
+git clone --depth 1 https://github.com/emscripten-core/emsdk.git .toolchain/emsdk
+cd .toolchain/emsdk && ./emsdk install 6.0.7 && ./emsdk activate 6.0.7
+```
+
+On macOS the SDK needs `EMSDK_PYTHON` pointed at Python 3.10 or newer, because the Python on the
+default path comes from the Xcode tools and is 3.9. The build scripts set it themselves.
+
+### The flag that is not optional
+
+```
+-fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0
+```
+
+The engines use `setjmp`/`longjmp` for their error paths, and Emscripten implements wasm longjmp on
+top of exception handling. Emscripten still emits the **legacy** exception opcodes by default, and
+Chasm implements the final proposal, so a module built without `-sWASM_LEGACY_EXCEPTIONS=0` fails to
+decode with `UnknownInstruction(byte=6)` — that is the legacy `try` — before a single instruction
+runs. `host/backend/wasm` carries the probe that proves the working combination.
+
+Never pass `-msimd128`. Chasm has no vector instruction support, and
+`tooling/ci/verify-wasm-artifacts.sh` fails any module containing the SIMD prefix.
+
 ## Licensing
 
 The engines are GPLv2 and so is everything built from them, including the platform layer here,
