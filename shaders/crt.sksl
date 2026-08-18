@@ -1,0 +1,90 @@
+// Cathode-ray presentation: barrel distortion, scanlines, an aperture grille, bloom and a
+// vignette, in the dialect Skia runtime effects and AGSL share.
+//
+// Child shaders:
+//   source   the palette-resolved frame, already scaled so that evaluating it at a destination
+//            pixel returns the right source pixel
+//
+// Every uniform is a plain float. SkSL packs runtime effect uniforms in declaration order with
+// alignment rules that differ from the obvious layout, and a vector in the wrong slot produces a
+// picture that looks almost right, which is the worst kind of wrong. Scalars remove the question.
+//
+// Each effect is scaled by its own strength and disappears at zero, so the host can turn any one
+// of them off without a second shader.
+
+uniform shader source;
+uniform float widthPixels;
+uniform float heightPixels;
+uniform float sourceLines;
+uniform float curvature;
+uniform float scanlineStrength;
+uniform float grilleStrength;
+uniform float bloomStrength;
+uniform float vignetteStrength;
+
+const float TAU = 6.2831853;
+const float BLOOM_RADIUS = 1.5;
+const float BLOOM_TAPS = 4.0;
+const float GRILLE_PERIOD = 3.0;
+const float EDGE_SOFTNESS = 0.002;
+
+/** Pulls coordinates toward the centre so the picture bulges the way a glass tube does. */
+float2 curve(float2 uv) {
+    float2 centred = uv * 2.0 - 1.0;
+    float radiusSquared = dot(centred, centred);
+    centred *= 1.0 + curvature * radiusSquared;
+    return centred * 0.5 + 0.5;
+}
+
+/** Four-tap ring around the sample, which is enough glow for a 320 by 200 picture. */
+half3 bloom(float2 pixel) {
+    half3 sum = half3(0.0);
+    sum += source.eval(pixel + float2(BLOOM_RADIUS, 0.0)).rgb;
+    sum += source.eval(pixel + float2(-BLOOM_RADIUS, 0.0)).rgb;
+    sum += source.eval(pixel + float2(0.0, BLOOM_RADIUS)).rgb;
+    sum += source.eval(pixel + float2(0.0, -BLOOM_RADIUS)).rgb;
+    return sum / half(BLOOM_TAPS);
+}
+
+/** Emphasises one channel per column, the way a shadow mask lets one phosphor through. */
+half3 grille(float2 pixel) {
+    float column = mod(pixel.x, GRILLE_PERIOD);
+    half3 mask = half3(0.0);
+    if (column < 1.0) {
+        mask = half3(1.0, 0.6, 0.6);
+    } else if (column < 2.0) {
+        mask = half3(0.6, 1.0, 0.6);
+    } else {
+        mask = half3(0.6, 0.6, 1.0);
+    }
+    return mix(half3(1.0), mask, half(grilleStrength));
+}
+
+half4 main(float2 coord) {
+    float2 size = float2(widthPixels, heightPixels);
+    float2 uv = curve(coord / size);
+
+    // Outside the tube there is no picture, with a soft edge so the corners do not alias.
+    float2 edge = min(uv, 1.0 - uv);
+    float inside = smoothstep(0.0, EDGE_SOFTNESS, min(edge.x, edge.y));
+    if (inside <= 0.0) {
+        return half4(0.0);
+    }
+
+    float2 pixel = uv * size;
+    half3 colour = source.eval(pixel).rgb;
+    colour += bloom(pixel) * half(bloomStrength);
+
+    // Scanlines track the source's own lines rather than the display's, so the spacing stays put
+    // when the window is resized.
+    float line = uv.y * sourceLines;
+    half scanline = half(1.0 - scanlineStrength * 0.5 * (1.0 - cos(line * TAU)));
+    colour *= scanline;
+    colour *= grille(pixel);
+
+    float2 centred = uv * 2.0 - 1.0;
+    half vignette = half(1.0 - vignetteStrength * dot(centred, centred) * 0.25);
+    colour *= vignette;
+
+    return half4(colour * half(inside), half(inside));
+}
