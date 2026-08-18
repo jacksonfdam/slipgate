@@ -21,3 +21,4 @@ rootProject.name = "slipgate"
 
 
 include(":ui")
+include(":android")
