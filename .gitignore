@@ -24,6 +24,11 @@ tooling/engine-build/.build/
 *.pk3
 *.deh
 
+# Xcode
+xcuserdata/
+*.xcuserstate
+*.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+
 # IDE
 .idea/
 *.iml
