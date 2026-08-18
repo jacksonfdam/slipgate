@@ -1,6 +1,7 @@
 package com.jacksonfdam.slipgate.ui
 
 import com.jacksonfdam.slipgate.host.graphics.backend.classic.ClassicBackend
+import com.jacksonfdam.slipgate.host.graphics.backend.skia.skiaBackend
 import com.jacksonfdam.slipgate.host.graphics.core.BackendSelector
 import com.jacksonfdam.slipgate.host.runtime.BackendId
 import com.jacksonfdam.slipgate.host.runtime.BackendResolver
@@ -17,7 +18,12 @@ internal val uiModule: Module =
         single { BackendResolver(supported = listOf(BackendId.Wasm)) }
         // Candidates are listed in preference order; the classic path always works and so
         // always comes last. The shader backends are appended as they land.
-        single { BackendSelector(candidates = listOf(ClassicBackend())) }
+        // Preference order: the shader path where it exists, the classic path everywhere else.
+        // skiaBackend() is null on Android below API 33, which is a platform fact rather than a
+        // failure, so the list simply gets shorter.
+        single {
+            BackendSelector(candidates = listOfNotNull(skiaBackend(), ClassicBackend()))
+        }
         single<GateHost> { PlaceholderGateHost() }
     }
 
