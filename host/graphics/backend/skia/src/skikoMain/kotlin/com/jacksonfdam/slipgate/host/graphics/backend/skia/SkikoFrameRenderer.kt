@@ -3,21 +3,26 @@ package com.jacksonfdam.slipgate.host.graphics.backend.skia
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.skiaCanvas
+import com.jacksonfdam.slipgate.host.graphics.core.CrtSettings
 import com.jacksonfdam.slipgate.host.graphics.core.GraphicsBackendId
 import com.jacksonfdam.slipgate.host.graphics.core.PresentedFrame
 import com.jacksonfdam.slipgate.host.graphics.core.Viewport
+import com.jacksonfdam.slipgate.host.graphics.core.ViewportRect
 import com.jacksonfdam.slipgate.host.runtime.DisplayFormat
 import com.jacksonfdam.slipgate.host.runtime.PixelFormat
 import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ColorType
+import org.jetbrains.skia.Data
 import org.jetbrains.skia.FilterMipmap
 import org.jetbrains.skia.FilterMode
 import org.jetbrains.skia.FilterTileMode
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.ImageInfo
+import org.jetbrains.skia.Matrix33
 import org.jetbrains.skia.MipmapMode
 import org.jetbrains.skia.Paint
+import org.jetbrains.skia.Rect
 import org.jetbrains.skia.RuntimeEffect
 import org.jetbrains.skia.Shader
 
@@ -34,10 +39,13 @@ private const val PALETTE_ALPHA_BYTE = 3
 /** Presents an indexed frame through a Skia runtime effect on iOS and web. */
 internal class SkikoFrameRenderer(
     private val format: DisplayFormat,
+    private val crt: CrtSettings,
 ) : ComposeFrameRenderer {
     override val backendId: GraphicsBackendId = GraphicsBackendId.Skia
 
-    private val effect = RuntimeEffect.makeForShader(paletteShaderSource())
+    private val paletteEffect = RuntimeEffect.makeForShader(paletteShaderSource())
+    private val crtEffect =
+        if (crt.enabled) RuntimeEffect.makeForShader(crtShaderSource()) else null
     private val indexedBitmap =
         Bitmap().apply {
             allocPixels(
@@ -57,6 +65,7 @@ internal class SkikoFrameRenderer(
         }
     private val paletteBytes = ByteArray(PALETTE_ENTRIES * BYTES_PER_PALETTE_ENTRY)
     private val paint = Paint()
+    private var paletteShader: Shader? = null
     private var uploadedPalette: IntArray? = null
     private var presented = false
 
@@ -75,8 +84,8 @@ internal class SkikoFrameRenderer(
         }
         indexedBitmap.installPixels(frame.pixels)
         uploadPaletteIfChanged(frame)
-        paint.shader =
-            effect.makeShader(
+        paletteShader =
+            paletteEffect.makeShader(
                 uniforms = null,
                 children = arrayOf(nearestShader(indexedBitmap), nearestShader(paletteBitmap)),
                 localMatrix = null,
@@ -88,9 +97,7 @@ internal class SkikoFrameRenderer(
         scope: DrawScope,
         viewport: Viewport,
     ) {
-        if (!presented) {
-            return
-        }
+        val frameShader = paletteShader?.takeIf { presented } ?: return
         val destination = viewport.destination()
         if (destination.width == 0 || destination.height == 0) {
             return
@@ -99,15 +106,31 @@ internal class SkikoFrameRenderer(
             val native = canvas.skiaCanvas
             native.save()
             native.translate(destination.x.toFloat(), destination.y.toFloat())
-            native.scale(
-                destination.width.toFloat() / format.width,
-                destination.height.toFloat() / format.height,
-            )
-            native.drawRect(
-                org.jetbrains.skia.Rect
-                    .makeWH(format.width.toFloat(), format.height.toFloat()),
-                paint,
-            )
+            val tube = crtEffect
+            if (tube == null) {
+                native.scale(
+                    destination.width.toFloat() / format.width,
+                    destination.height.toFloat() / format.height,
+                )
+                paint.shader = frameShader
+                native.drawRect(
+                    Rect.makeWH(format.width.toFloat(), format.height.toFloat()),
+                    paint,
+                )
+            } else {
+                // The tube pass works in destination pixels, so the frame is scaled by a local
+                // matrix on the child shader rather than by the canvas.
+                paint.shader =
+                    tube.makeShader(
+                        uniforms = crtUniforms(destination.width, destination.height),
+                        children = arrayOf(scaledToDestination(frameShader, destination)),
+                        localMatrix = null,
+                    )
+                native.drawRect(
+                    Rect.makeWH(destination.width.toFloat(), destination.height.toFloat()),
+                    paint,
+                )
+            }
             native.restore()
         }
     }
@@ -137,6 +160,38 @@ internal class SkikoFrameRenderer(
         uploadedPalette = palette.copyOf()
     }
 
+    private fun scaledToDestination(
+        frameShader: Shader,
+        destination: ViewportRect,
+    ): Shader =
+        // A local matrix maps shader space into the parent's space, so the child is sampled at
+        // the inverse: scaling by destination over source is what turns a destination pixel into
+        // the source pixel it shows.
+        frameShader.makeWithLocalMatrix(
+            Matrix33.makeScale(
+                destination.width.toFloat() / format.width,
+                destination.height.toFloat() / format.height,
+            ),
+        )
+
+    /** Uniform order must match the shader's declarations exactly; all of them are scalars. */
+    private fun crtUniforms(
+        width: Int,
+        height: Int,
+    ): Data =
+        Data.makeFromBytes(
+            floatBytes(
+                width.toFloat(),
+                height.toFloat(),
+                format.height.toFloat(),
+                crt.curvature,
+                crt.scanlines,
+                crt.grille,
+                crt.bloom,
+                crt.vignette,
+            ),
+        )
+
     /** Nearest sampling, clamped: pixels must stay pixels and the palette must not wrap. */
     private fun nearestShader(bitmap: Bitmap): Shader =
         Image.makeFromBitmap(bitmap).makeShader(
@@ -145,4 +200,18 @@ internal class SkikoFrameRenderer(
             FilterMipmap(FilterMode.NEAREST, MipmapMode.NONE),
             null,
         )
+}
+
+/** Little-endian float32 packing, which is what Skia expects for runtime effect uniforms. */
+private fun floatBytes(vararg values: Float): ByteArray {
+    val bytes = ByteArray(values.size * Float.SIZE_BYTES)
+    values.forEachIndexed { index, value ->
+        val bits = value.toRawBits()
+        val offset = index * Float.SIZE_BYTES
+        for (byteIndex in 0 until Float.SIZE_BYTES) {
+            bytes[offset + byteIndex] =
+                (bits shr (byteIndex * Byte.SIZE_BITS) and BYTE_MASK).toByte()
+        }
+    }
+    return bytes
 }
