@@ -19,6 +19,10 @@ kotlin {
         minSdk = slipgateAndroidMinSdk.toInt()
     }
 
+    // The JVM target is not shipped: it exists so gates can be instantiated and stepped headless
+    // on a build machine, which is what the demo determinism harness needs.
+    jvm()
+
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
         browser()
