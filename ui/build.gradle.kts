@@ -40,9 +40,5 @@ kotlin {
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
         }
-
-        wasmJsMain.dependencies {
-            implementation(libs.kotlinx.browser)
-        }
     }
 }
