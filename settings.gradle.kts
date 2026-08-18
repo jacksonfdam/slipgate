@@ -20,6 +20,7 @@ dependencyResolutionManagement {
 rootProject.name = "slipgate"
 
 include(":host:graphics:backend:classic")
+include(":host:graphics:backend:skia")
 include(":host:graphics:core")
 include(":host:runtime")
 include(":ui")
