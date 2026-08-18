@@ -83,6 +83,13 @@ kotlin {
             implementation(libs.androidx.annotation)
         }
 
+        // The golden image comparison needs both paths in one test binary, and a Skia surface can
+        // be created without Compose only where Skiko runs natively.
+        iosTest.dependencies {
+            implementation(project(":host:graphics:backend:classic"))
+            implementation(libs.kotlin.test)
+        }
+
         commonMain {
             kotlin.srcDir(generateShaderSources)
             dependencies {
