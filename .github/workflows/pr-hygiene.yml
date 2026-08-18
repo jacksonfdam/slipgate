@@ -22,3 +22,20 @@ jobs:
           ./tooling/ci/lint-commit-messages.sh \
             "${{ github.event.pull_request.base.sha }}" \
             "${{ github.event.pull_request.head.sha }}"
+
+  attribution-scan:
+    name: Attribution scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Write pull request body
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: printf '%s' "${PR_BODY}" > "${RUNNER_TEMP}/pr-body.txt"
+      - run: |
+          ./tooling/ci/scan-attribution.sh \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.event.pull_request.head.sha }}" \
+            "${RUNNER_TEMP}/pr-body.txt"
