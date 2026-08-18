@@ -66,9 +66,14 @@ viable.
 
 | Backend | Platforms | Shader language |
 |---|---|---|
-| WebGPU | Web (browser API), Android (Jetpack WebGPU) | WGSL |
-| Skia `RuntimeEffect` | iOS | SkSL |
-| Classic | Android `Bitmap`/`Canvas`, browser Canvas 2D | none |
+| Skia runtime effects | iOS and web through Skiko, Android 33+ through `RuntimeShader` | SkSL / AGSL |
+| Classic | Android below 33, and anywhere a runtime effect fails | none |
+
+WebGPU was implemented and then dropped: Compose for web clears its canvas to opaque white and so
+cannot draw over a WebGPU canvas, and Jetpack WebGPU only accepts a raw `ANativeWindow` pointer,
+which would drag the NDK into a phase that does not need it. One shader dialect drawn inside
+Compose's own canvas replaces it — the reasoning is in
+[docs/specification/03-addendum-02.md](docs/specification/03-addendum-02.md).
 
 The framebuffer is uploaded as an R8 texture with the palette as a 256-entry lookup
 texture, and colour is resolved in the fragment shader. Palette effects — damage flash,
