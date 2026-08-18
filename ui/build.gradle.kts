@@ -42,6 +42,8 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":host:runtime"))
+            api(project(":host:graphics:core"))
+            implementation(project(":host:graphics:backend:classic"))
             api(compose.runtime)
             api(compose.ui)
             implementation(compose.foundation)
