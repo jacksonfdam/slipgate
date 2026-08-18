@@ -2,6 +2,7 @@ package com.jacksonfdam.slipgate.ui.gate
 
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asComposeImageBitmap
+import com.jacksonfdam.slipgate.host.graphics.core.ArgbImage
 import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ImageInfo
@@ -20,13 +21,9 @@ private const val ALPHA_BYTE = 3
  * Skia's N32 layout is BGRA on every platform Slipgate targets, so the ARGB integers are
  * written out byte by byte rather than reinterpreted.
  */
-internal actual fun argbToImageBitmap(
-    pixels: IntArray,
-    width: Int,
-    height: Int,
-): ImageBitmap {
-    val bytes = ByteArray(pixels.size * BYTES_PER_PIXEL)
-    for (index in pixels.indices) {
+internal actual fun ArgbImage.toImageBitmap(): ImageBitmap {
+    val bytes = ByteArray(width * height * BYTES_PER_PIXEL)
+    for (index in 0 until width * height) {
         val colour = pixels[index]
         val offset = index * BYTES_PER_PIXEL
         bytes[offset + BLUE_BYTE] = (colour and BYTE_MASK).toByte()
