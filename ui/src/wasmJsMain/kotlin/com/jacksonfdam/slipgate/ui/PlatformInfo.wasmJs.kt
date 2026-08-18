@@ -1,11 +1,10 @@
 package com.jacksonfdam.slipgate.ui
 
-import kotlinx.browser.window
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
 private class WasmJsPlatformInfo : PlatformInfo {
-    override val name: String = "Web ${window.navigator.userAgent.substringBefore(' ')}"
+    override val name: String = "Web (wasmJs)"
 }
 
 public actual val platformModule: Module =
