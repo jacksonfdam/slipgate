@@ -93,44 +93,47 @@ internal class SkikoFrameRenderer(
         presented = true
     }
 
+    /**
+     * The paint that draws the last presented frame into [destination].
+     *
+     * Separated from [draw] so a test can render it into an offscreen Skia surface without a
+     * Compose canvas, which is what makes the golden image comparison possible at all.
+     */
+    internal fun paintFor(destination: ViewportRect): Paint? {
+        val frameShader = paletteShader?.takeIf { presented } ?: return null
+        val tube = crtEffect
+        paint.shader =
+            if (tube == null) {
+                scaledToDestination(frameShader, destination)
+            } else {
+                tube.makeShader(
+                    uniforms = crtUniforms(destination.width, destination.height),
+                    children = arrayOf(scaledToDestination(frameShader, destination)),
+                    localMatrix = null,
+                )
+            }
+        return paint
+    }
+
     override fun draw(
         scope: DrawScope,
         viewport: Viewport,
     ) {
-        val frameShader = paletteShader?.takeIf { presented } ?: return
         val destination = viewport.destination()
         if (destination.width == 0 || destination.height == 0) {
             return
         }
+        // Both paths work in destination pixels: the frame is scaled by a local matrix on the
+        // shader rather than by the canvas, so the tube pass sees real display pixels.
+        val framePaint = paintFor(destination) ?: return
         scope.drawIntoCanvas { canvas ->
             val native = canvas.skiaCanvas
             native.save()
             native.translate(destination.x.toFloat(), destination.y.toFloat())
-            val tube = crtEffect
-            if (tube == null) {
-                native.scale(
-                    destination.width.toFloat() / format.width,
-                    destination.height.toFloat() / format.height,
-                )
-                paint.shader = frameShader
-                native.drawRect(
-                    Rect.makeWH(format.width.toFloat(), format.height.toFloat()),
-                    paint,
-                )
-            } else {
-                // The tube pass works in destination pixels, so the frame is scaled by a local
-                // matrix on the child shader rather than by the canvas.
-                paint.shader =
-                    tube.makeShader(
-                        uniforms = crtUniforms(destination.width, destination.height),
-                        children = arrayOf(scaledToDestination(frameShader, destination)),
-                        localMatrix = null,
-                    )
-                native.drawRect(
-                    Rect.makeWH(destination.width.toFloat(), destination.height.toFloat()),
-                    paint,
-                )
-            }
+            native.drawRect(
+                Rect.makeWH(destination.width.toFloat(), destination.height.toFloat()),
+                framePaint,
+            )
             native.restore()
         }
     }
