@@ -1,0 +1,24 @@
+// Palette-indexed presentation, in the dialect Skia runtime effects and AGSL share.
+//
+// Child shaders:
+//   indexedFrame  A8 image, one texel per source pixel, the index carried in alpha
+//   palette       256 by 1 image, one texel per palette entry
+//
+// Coordinates arrive in source pixel space, so the caller scales the draw rather than the
+// shader. The palette lookup happens here rather than on the CPU, which is what makes the
+// engines' palette effects — damage flash, item pickup tint, the Tome of Power — cost nothing.
+//
+// A8 is used on every platform because it is the one 8-bit format Skia and Android agree on,
+// and agreeing matters more than the channel's name: one source, no per-dialect variants.
+
+uniform shader indexedFrame;
+uniform shader palette;
+
+const float PALETTE_MAX_INDEX = 255.0;
+const float PALETTE_TEXEL_CENTRE = 0.5;
+
+half4 main(float2 coord) {
+    half index = indexedFrame.eval(coord).a;
+    float entry = float(index) * PALETTE_MAX_INDEX + PALETTE_TEXEL_CENTRE;
+    return palette.eval(float2(entry, PALETTE_TEXEL_CENTRE));
+}
