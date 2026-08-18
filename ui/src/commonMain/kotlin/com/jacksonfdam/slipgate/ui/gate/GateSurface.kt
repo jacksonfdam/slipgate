@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -18,12 +19,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.jacksonfdam.slipgate.host.graphics.backend.skia.ComposeFrameRenderer
+import com.jacksonfdam.slipgate.host.graphics.core.BackendSelection
 import com.jacksonfdam.slipgate.host.graphics.core.BackendSelector
 import com.jacksonfdam.slipgate.host.graphics.core.CpuFrameRenderer
+import com.jacksonfdam.slipgate.host.graphics.core.FrameRenderer
 import com.jacksonfdam.slipgate.host.graphics.core.PresentedFrame
 import com.jacksonfdam.slipgate.host.graphics.core.SurfaceSize
 import com.jacksonfdam.slipgate.host.graphics.core.Viewport
@@ -38,6 +43,10 @@ private val EmptyRect = ViewportRect(x = 0, y = 0, width = 0, height = 0)
 /**
  * Draws a running session, stepping it once per display frame through the selected graphics
  * backend. Input is idle for now; the control layer feeds real frames once it exists.
+ *
+ * Two kinds of renderer are handled. A shader renderer draws into Compose's own canvas, so the
+ * frame counter is what invalidates the draw. A CPU renderer hands back pixels, so the uploaded
+ * image is what invalidates it.
  */
 @Composable
 public fun GateSurface(
@@ -46,16 +55,16 @@ public fun GateSurface(
     selector: BackendSelector = koinInject(),
 ) {
     val selection = remember(session, selector) { selector.select() }
-    val renderer = remember(session, selection) { selection.backend.createRenderer(session.display) }
-    var surface by remember(session) { mutableStateOf(SurfaceSize(width = 0, height = 0)) }
-    var destination by remember(session) { mutableStateOf(EmptyRect) }
-    var image by remember(session) { mutableStateOf<ImageBitmap?>(null) }
+    val presentation =
+        remember(session, selection) {
+            GatePresentation(session, selection.backend.createRenderer(session.display))
+        }
 
-    DisposableEffect(renderer) {
-        onDispose { renderer.close() }
+    DisposableEffect(presentation) {
+        onDispose { presentation.close() }
     }
 
-    LaunchedEffect(session, renderer) {
+    LaunchedEffect(presentation) {
         var previousFrameMillis = 0L
         var running = true
         while (running) {
@@ -63,21 +72,7 @@ public fun GateSurface(
                 val elapsed =
                     if (previousFrameMillis == 0L) 0L else frameTimeMillis - previousFrameMillis
                 previousFrameMillis = frameTimeMillis
-                val result = session.step(InputFrame.Idle, elapsed)
-                running = result.status == SessionStatus.Running
-                if (result.frameRendered && !surface.isEmpty) {
-                    val viewport = Viewport(source = session.display, surface = surface)
-                    renderer.present(
-                        PresentedFrame(
-                            format = session.display,
-                            pixels = session.framebuffer(),
-                            palette = session.palette(),
-                        ),
-                        viewport,
-                    )
-                    destination = viewport.destination()
-                    image = (renderer as? CpuFrameRenderer)?.image()?.toImageBitmap()
-                }
+                running = presentation.step(elapsed)
             }
         }
     }
@@ -87,24 +82,102 @@ public fun GateSurface(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .onSizeChanged { surface = SurfaceSize(it.width, it.height) },
+                    .onSizeChanged { presentation.resize(SurfaceSize(it.width, it.height)) },
         ) {
-            val frame = image ?: return@Canvas
-            drawImage(
-                image = frame,
-                srcOffset = IntOffset.Zero,
-                srcSize = IntSize(frame.width, frame.height),
-                dstOffset = IntOffset(destination.x, destination.y),
-                dstSize = IntSize(destination.width, destination.height),
-                filterQuality = FilterQuality.None,
-            )
+            presentation.draw(this, presentation.presentedFrames)
         }
         BackendLabel(
-            text = if (selection.fellBack) "${selection.backend.id} (fallback)" else "${selection.backend.id}",
+            text = selection.describe(),
             modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
         )
     }
 }
+
+/**
+ * Holds what one session needs to reach the screen: the surface it was measured against, the
+ * viewport it was fitted into, and whichever of the two renderer shapes the backend provides.
+ *
+ * A shader renderer draws into Compose's own canvas; a CPU renderer hands back pixels the host
+ * uploads. Both are driven the same way from here.
+ */
+private class GatePresentation(
+    private val session: GateSession,
+    private val renderer: FrameRenderer,
+) {
+    private val shaderRenderer = renderer as? ComposeFrameRenderer
+    private val cpuRenderer = renderer as? CpuFrameRenderer
+
+    private var surface by mutableStateOf(SurfaceSize(width = 0, height = 0))
+    private var viewport by mutableStateOf<Viewport?>(null)
+    private var destination by mutableStateOf(EmptyRect)
+    private var image by mutableStateOf<ImageBitmap?>(null)
+
+    /** Counts presented frames, so a draw that reads it repeats whenever a new frame lands. */
+    var presentedFrames: Int by mutableIntStateOf(0)
+        private set
+
+    fun resize(size: SurfaceSize) {
+        surface = size
+    }
+
+    /** Steps the session and presents what it drew. Returns whether the session is still running. */
+    fun step(elapsedMillis: Long): Boolean {
+        val result = session.step(InputFrame.Idle, elapsedMillis)
+        if (result.frameRendered && !surface.isEmpty) {
+            val current = Viewport(source = session.display, surface = surface)
+            renderer.present(
+                PresentedFrame(
+                    format = session.display,
+                    pixels = session.framebuffer(),
+                    palette = session.palette(),
+                ),
+                current,
+            )
+            viewport = current
+            destination = current.destination()
+            image = cpuRenderer?.image()?.toImageBitmap()
+            presentedFrames++
+        }
+        return result.status == SessionStatus.Running
+    }
+
+    /**
+     * Draws the last presented frame. [frameVersion] is read by the caller so Compose repeats the
+     * draw when a new frame arrives; nothing in here needs its value.
+     */
+    fun draw(
+        scope: DrawScope,
+        @Suppress("UNUSED_PARAMETER") frameVersion: Int,
+    ) {
+        val currentViewport = viewport ?: return
+        val shader = shaderRenderer
+        when {
+            shader != null -> shader.draw(scope, currentViewport)
+            else -> image?.let { scope.drawUploadedFrame(it, destination) }
+        }
+    }
+
+    fun close() {
+        renderer.close()
+    }
+}
+
+/** Nearest-neighbour blit of an uploaded frame: pixels stay pixels. */
+private fun DrawScope.drawUploadedFrame(
+    frame: ImageBitmap,
+    destination: ViewportRect,
+) {
+    drawImage(
+        image = frame,
+        srcOffset = IntOffset.Zero,
+        srcSize = IntSize(frame.width, frame.height),
+        dstOffset = IntOffset(destination.x, destination.y),
+        dstSize = IntSize(destination.width, destination.height),
+        filterQuality = FilterQuality.None,
+    )
+}
+
+private fun BackendSelection.describe(): String = if (fellBack) "${backend.id} (fallback)" else "${backend.id}"
 
 /** Names the active rendering path, so a silent fallback is never invisible. */
 @Composable
