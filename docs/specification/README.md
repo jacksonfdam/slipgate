@@ -1,0 +1,18 @@
+# Build specification
+
+The repository is the single source of truth for what Slipgate is meant to be. This
+directory holds the specification it is built against, in the order it was written.
+
+| Document | Contents |
+|---|---|
+| [01-foundation.md](01-foundation.md) | Project definition, module layout, gate contract, engine-to-wasm pipeline, graphics, CI gates, delivery plan |
+| [02-addendum-01.md](02-addendum-01.md) | iOS as a first-class target, the Skia backend, the backend axis, additional labels and CI gates, plan deltas |
+
+Later documents amend earlier ones rather than replacing them. Where an amendment conflicts
+with something already merged, the pull request that resolves it says so explicitly and
+proposes the smaller change; working code is not rewritten to match a document.
+
+Rules that apply to every change — English only, micro commits, Conventional Commits, one
+pull request per feature, rebase and merge, latest stable dependency versions, no game data
+in the repository — are restated in [CONTRIBUTING.md](../../CONTRIBUTING.md), which is what
+CI enforces.
