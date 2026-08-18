@@ -25,6 +25,9 @@ kotlin {
     sourceSets {
         wasmJsMain.dependencies {
             implementation(project(":ui"))
+            implementation(project(":host:graphics:backend:webgpu"))
+            implementation(libs.kotlinx.browser)
+            implementation(libs.kotlinx.coroutines.core)
             implementation(compose.ui)
             implementation(libs.koin.core)
         }
