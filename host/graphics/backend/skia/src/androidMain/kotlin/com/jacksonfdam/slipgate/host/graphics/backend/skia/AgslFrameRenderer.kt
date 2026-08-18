@@ -2,6 +2,7 @@ package com.jacksonfdam.slipgate.host.graphics.backend.skia
 
 import android.graphics.Bitmap
 import android.graphics.BitmapShader
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.RuntimeShader
 import android.graphics.Shader
@@ -10,30 +11,37 @@ import androidx.annotation.RequiresApi
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
+import com.jacksonfdam.slipgate.host.graphics.core.CrtSettings
 import com.jacksonfdam.slipgate.host.graphics.core.GraphicsBackendId
 import com.jacksonfdam.slipgate.host.graphics.core.PresentedFrame
 import com.jacksonfdam.slipgate.host.graphics.core.Viewport
+import com.jacksonfdam.slipgate.host.graphics.core.ViewportRect
 import com.jacksonfdam.slipgate.host.runtime.DisplayFormat
 import com.jacksonfdam.slipgate.host.runtime.PixelFormat
 import java.nio.ByteBuffer
 
 private const val INDEXED_INPUT = "indexedFrame"
 private const val PALETTE_INPUT = "palette"
+private const val SOURCE_INPUT = "source"
 
 /** Presents an indexed frame through an AGSL runtime shader on Android 13 and later. */
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 internal class AgslFrameRenderer(
     private val format: DisplayFormat,
+    private val crt: CrtSettings,
 ) : ComposeFrameRenderer {
     override val backendId: GraphicsBackendId = GraphicsBackendId.Skia
 
-    private val shader = RuntimeShader(paletteShaderSource())
+    private val paletteRuntimeShader = RuntimeShader(paletteShaderSource())
+    private val crtRuntimeShader =
+        if (crt.enabled) RuntimeShader(crtShaderSource()) else null
     private val indexedBitmap =
         Bitmap.createBitmap(format.width, format.height, Bitmap.Config.ALPHA_8)
     private val paletteBitmap =
         Bitmap.createBitmap(PALETTE_ENTRIES, PALETTE_HEIGHT, Bitmap.Config.ARGB_8888)
     private val paletteRow = IntArray(PALETTE_ENTRIES)
-    private val paint = Paint().apply { shader = this@AgslFrameRenderer.shader }
+    private val paint = Paint()
+    private val frameMatrix = Matrix()
     private var uploadedPalette: IntArray? = null
     private var presented = false
 
@@ -51,7 +59,7 @@ internal class AgslFrameRenderer(
             "renderer was created for $format but was given ${frame.format}"
         }
         indexedBitmap.copyPixelsFromBuffer(ByteBuffer.wrap(frame.pixels))
-        shader.setInputShader(INDEXED_INPUT, nearestShader(indexedBitmap))
+        paletteRuntimeShader.setInputShader(INDEXED_INPUT, nearestShader(indexedBitmap))
         uploadPaletteIfChanged(frame)
         presented = true
     }
@@ -67,15 +75,34 @@ internal class AgslFrameRenderer(
         if (destination.width == 0 || destination.height == 0) {
             return
         }
+        val tube = crtRuntimeShader
         scope.drawIntoCanvas { canvas ->
             val native = canvas.nativeCanvas
             val checkpoint = native.save()
             native.translate(destination.x.toFloat(), destination.y.toFloat())
-            native.scale(
-                destination.width.toFloat() / format.width,
-                destination.height.toFloat() / format.height,
-            )
-            native.drawRect(0f, 0f, format.width.toFloat(), format.height.toFloat(), paint)
+            if (tube == null) {
+                native.scale(
+                    destination.width.toFloat() / format.width,
+                    destination.height.toFloat() / format.height,
+                )
+                paletteRuntimeShader.setLocalMatrix(null)
+                paint.shader = paletteRuntimeShader
+                native.drawRect(0f, 0f, format.width.toFloat(), format.height.toFloat(), paint)
+            } else {
+                // The tube pass works in destination pixels, so the frame is scaled by a local
+                // matrix on the child shader rather than by the canvas.
+                scaleFrameToDestination(destination)
+                tube.setInputShader(SOURCE_INPUT, paletteRuntimeShader)
+                applyCrtUniforms(tube, destination)
+                paint.shader = tube
+                native.drawRect(
+                    0f,
+                    0f,
+                    destination.width.toFloat(),
+                    destination.height.toFloat(),
+                    paint,
+                )
+            }
             native.restoreToCount(checkpoint)
         }
     }
@@ -93,8 +120,31 @@ internal class AgslFrameRenderer(
         }
         palette.copyInto(paletteRow, endIndex = PALETTE_ENTRIES)
         paletteBitmap.setPixels(paletteRow, 0, PALETTE_ENTRIES, 0, 0, PALETTE_ENTRIES, PALETTE_HEIGHT)
-        shader.setInputShader(PALETTE_INPUT, nearestShader(paletteBitmap))
+        paletteRuntimeShader.setInputShader(PALETTE_INPUT, nearestShader(paletteBitmap))
         uploadedPalette = palette.copyOf()
+    }
+
+    private fun scaleFrameToDestination(destination: ViewportRect) {
+        frameMatrix.reset()
+        frameMatrix.setScale(
+            destination.width.toFloat() / format.width,
+            destination.height.toFloat() / format.height,
+        )
+        paletteRuntimeShader.setLocalMatrix(frameMatrix)
+    }
+
+    private fun applyCrtUniforms(
+        tube: RuntimeShader,
+        destination: ViewportRect,
+    ) {
+        tube.setFloatUniform("widthPixels", destination.width.toFloat())
+        tube.setFloatUniform("heightPixels", destination.height.toFloat())
+        tube.setFloatUniform("sourceLines", format.height.toFloat())
+        tube.setFloatUniform("curvature", crt.curvature)
+        tube.setFloatUniform("scanlineStrength", crt.scanlines)
+        tube.setFloatUniform("grilleStrength", crt.grille)
+        tube.setFloatUniform("bloomStrength", crt.bloom)
+        tube.setFloatUniform("vignetteStrength", crt.vignette)
     }
 
     /** Nearest sampling, clamped: pixels must stay pixels and the palette must not wrap. */
