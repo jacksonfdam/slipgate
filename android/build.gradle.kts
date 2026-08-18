@@ -4,29 +4,25 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
+val slipgateJvmToolchain = property("slipgate.jvmToolchain") as String
+val slipgateAndroidCompileSdk = property("slipgate.androidCompileSdk") as String
+val slipgateAndroidMinSdk = property("slipgate.androidMinSdk") as String
+val slipgateAndroidTargetSdk = property("slipgate.androidTargetSdk") as String
+
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(libs.versions.jvm.toolchain.get()))
+        languageVersion.set(JavaLanguageVersion.of(slipgateJvmToolchain))
     }
 }
 
 android {
     namespace = "com.jacksonfdam.slipgate"
-    compileSdk =
-        libs.versions.android.compile.sdk
-            .get()
-            .toInt()
+    compileSdk = slipgateAndroidCompileSdk.toInt()
 
     defaultConfig {
         applicationId = "com.jacksonfdam.slipgate"
-        minSdk =
-            libs.versions.android.min.sdk
-                .get()
-                .toInt()
-        targetSdk =
-            libs.versions.android.target.sdk
-                .get()
-                .toInt()
+        minSdk = slipgateAndroidMinSdk.toInt()
+        targetSdk = slipgateAndroidTargetSdk.toInt()
         versionCode = 1
         versionName = "0.1.0"
     }
