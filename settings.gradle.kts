@@ -22,4 +22,5 @@ rootProject.name = "slipgate"
 include(":host:runtime")
 include(":ui")
 include(":android")
+include(":ios")
 include(":web")
