@@ -3,6 +3,7 @@ package com.jacksonfdam.slipgate.ui
 import com.jacksonfdam.slipgate.host.graphics.backend.classic.ClassicBackend
 import com.jacksonfdam.slipgate.host.graphics.backend.skia.skiaBackend
 import com.jacksonfdam.slipgate.host.graphics.core.BackendSelector
+import com.jacksonfdam.slipgate.host.graphics.core.CrtSettings
 import com.jacksonfdam.slipgate.host.runtime.BackendId
 import com.jacksonfdam.slipgate.host.runtime.BackendResolver
 import com.jacksonfdam.slipgate.host.runtime.GateHost
@@ -21,8 +22,9 @@ internal val uiModule: Module =
         // Preference order: the shader path where it exists, the classic path everywhere else.
         // skiaBackend() is null on Android below API 33, which is a platform fact rather than a
         // failure, so the list simply gets shorter.
+        single { CrtSettings.Default }
         single {
-            BackendSelector(candidates = listOfNotNull(skiaBackend(), ClassicBackend()))
+            BackendSelector(candidates = listOfNotNull(skiaBackend(get()), ClassicBackend()))
         }
         single<GateHost> { PlaceholderGateHost() }
     }
