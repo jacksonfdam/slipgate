@@ -1,0 +1,9 @@
+# Engine sources Slipgate builds from. Written by fetch-sources.sh --update.
+#
+# The commit is what actually gets built; the tag is recorded so a human can see which release it
+# is. CI fails when a fetched tree does not match this file, so a moved tag cannot slip through.
+
+[chocolate-doom]
+repository = https://github.com/chocolate-doom/chocolate-doom.git
+tag = chocolate-doom-3.1.1
+commit = 410d96855b5df5410ff591a90efeafa889119224
