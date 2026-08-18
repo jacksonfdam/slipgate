@@ -13,6 +13,16 @@ val slipgateAndroidMinSdk = property("slipgate.androidMinSdk") as String
 
 kotlin {
     explicitApi()
+    // iOS and web both render through Skia, so their framebuffer upload is written once.
+    applyDefaultHierarchyTemplate {
+        common {
+            group("skiko") {
+                withIos()
+                withWasmJs()
+            }
+        }
+    }
+
     jvmToolchain(slipgateJvmToolchain.toInt())
 
     android {
@@ -31,6 +41,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            api(project(":host:runtime"))
             api(compose.runtime)
             api(compose.ui)
             implementation(compose.foundation)
