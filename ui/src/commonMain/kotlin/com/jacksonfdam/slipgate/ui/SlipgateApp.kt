@@ -53,13 +53,15 @@ public fun SlipgateApp(
     }
 
     SlipgateTheme {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            val current = session
-            if (current == null) {
+        val current = session
+        if (current == null) {
+            Surface(modifier = Modifier.fillMaxSize()) {
                 BootScreen(message = failure ?: "opening gate", platformName = platformInfo.name)
-            } else {
-                GateSurface(session = current, modifier = Modifier.fillMaxSize())
             }
+        } else {
+            // Deliberately no Surface: a backend that owns its own canvas draws underneath the
+            // Compose one, and an opaque background here would hide it.
+            GateSurface(session = current, modifier = Modifier.fillMaxSize())
         }
     }
 }
