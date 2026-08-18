@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Slipgate" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#FF0B0B0D</item>
+    </style>
+</resources>
