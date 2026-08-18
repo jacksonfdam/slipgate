@@ -6,8 +6,10 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
+val slipgateJvmToolchain = property("slipgate.jvmToolchain") as String
+
 kotlin {
-    jvmToolchain(libs.versions.jvm.toolchain.get().toInt())
+    jvmToolchain(slipgateJvmToolchain.toInt())
 
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {

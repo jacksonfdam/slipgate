@@ -1,12 +1,8 @@
 [versions]
 agp = "9.3.1"
-android-compile-sdk = "37"
-android-min-sdk = "24"
-android-target-sdk = "37"
 androidx-activity-compose = "1.13.0"
 compose-multiplatform = "1.11.1"
 detekt = "1.23.8"
-jvm-toolchain = "21"
 koin = "4.2.2"
 kotlin = "2.4.10"
 kotlinx-coroutines = "1.11.0"
@@ -18,7 +14,9 @@ androidx-activity-compose = { module = "androidx.activity:activity-compose", ver
 koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
 koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

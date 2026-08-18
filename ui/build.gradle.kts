@@ -7,20 +7,18 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
+val slipgateJvmToolchain = property("slipgate.jvmToolchain") as String
+val slipgateAndroidCompileSdk = property("slipgate.androidCompileSdk") as String
+val slipgateAndroidMinSdk = property("slipgate.androidMinSdk") as String
+
 kotlin {
     explicitApi()
-    jvmToolchain(libs.versions.jvm.toolchain.get().toInt())
+    jvmToolchain(slipgateJvmToolchain.toInt())
 
     android {
         namespace = "com.jacksonfdam.slipgate.ui"
-        compileSdk =
-            libs.versions.android.compile.sdk
-                .get()
-                .toInt()
-        minSdk =
-            libs.versions.android.min.sdk
-                .get()
-                .toInt()
+        compileSdk = slipgateAndroidCompileSdk.toInt()
+        minSdk = slipgateAndroidMinSdk.toInt()
     }
 
     @OptIn(ExperimentalWasmDsl::class)

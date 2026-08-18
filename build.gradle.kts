@@ -1,6 +1,8 @@
 import io.gitlab.arturbosch.detekt.Detekt
 import org.jlleitschuh.gradle.ktlint.KtlintExtension
 
+val slipgateJvmToolchain = property("slipgate.jvmToolchain") as String
+
 plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.kmp.library) apply false
@@ -38,7 +40,7 @@ allprojects {
     }
 
     tasks.withType<Detekt>().configureEach {
-        jvmTarget = rootProject.libs.versions.jvm.toolchain.get()
+        jvmTarget = slipgateJvmToolchain
         reports {
             html.required.set(true)
             sarif.required.set(false)
