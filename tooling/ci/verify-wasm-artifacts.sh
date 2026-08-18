@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
-# Checks every wasm module in the repository against the hash SOURCES.lock records, and refuses
-# any module containing vector instructions.
+# Checks every wasm module in the repository against the hash SOURCES.lock records, and checks that
+# no build script asks for SIMD.
 #
-# Chasm has no SIMD support, so a single vector opcode makes a module unloadable on Android. The
-# check is here rather than in a comment because that failure appears at runtime, on a device,
-# with no useful message.
+# Chasm has no vector instruction support, so a module containing one is unloadable on Android and
+# on the JVM harness. The obvious check — scanning the binary for the 0xFD prefix — does not work:
+# in the Doom module that byte appears 510 times in the data section and 44 times inside code
+# section immediates, none of them instructions. Decoding the whole code section to tell them apart
+# would be reimplementing a wasm decoder in CI.
+#
+# So the check is split. Here it is the build flags, which is where SIMD would be asked for. The
+# instructions themselves are validated by Chasm: `host/backend/wasm` loads each module, and Chasm
+# rejects an opcode it cannot execute at decode time, which is exactly the failure this is meant to
+# catch.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -18,18 +25,6 @@ hash_of() {
     else
         sha256sum "$1" | awk '{ print $1 }'
     fi
-}
-
-# SIMD opcodes are the 0xFD prefix. Reading the bytes is enough: a module either contains the
-# prefix in its code section or it does not, and disassembling to find out needs a toolchain CI
-# would otherwise not install.
-contains_vector_opcodes() {
-    python3 - "$1" <<'PYTHON'
-import sys
-
-data = open(sys.argv[1], "rb").read()
-sys.exit(0 if b"\xfd" in data else 1)
-PYTHON
 }
 
 while read -r artifact expected; do
@@ -47,17 +42,19 @@ while read -r artifact expected; do
         failed=1
         continue
     fi
-    if contains_vector_opcodes "${path}"; then
-        echo "::error::${artifact} contains vector instructions, which Chasm cannot execute"
-        failed=1
-        continue
-    fi
-    echo "${artifact} matches the lock and is free of vector instructions"
+    echo "${artifact} matches the lock"
 done < <(
     awk '
         /^artifact = / { artifact = $3 }
         /^sha256 = / { print artifact, $3; artifact = "" }
     ' "${LOCK_FILE}"
 )
+
+if grep -rn -- "-msimd128" "${ROOT}/tooling" --include='*.sh' > /dev/null 2>&1; then
+    echo "::error::a build script asks for -msimd128, which Chasm cannot execute"
+    failed=1
+else
+    echo "no build script asks for SIMD"
+fi
 
 exit "${failed}"
