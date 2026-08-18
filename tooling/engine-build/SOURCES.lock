@@ -14,3 +14,10 @@ artifact = host/backend/wasm/src/jvmTest/resources/longjmp_probe.wasm
 sha256 = be2f3207e03802ac53d134b307023f4d237231835326f72ca26e0bac4a47fef1
 emscripten = 6.0.7
 flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM --no-entry -Oz
+
+[mars]
+artifact = host/backend/wasm/src/jvmTest/resources/mars.wasm
+sha256 = 3ebf493c82f9daee2fa75f55f47f39f1aa3dcd69ce047815548b770763894782
+emscripten = 6.0.7
+flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=1 --no-entry -Oz
+
