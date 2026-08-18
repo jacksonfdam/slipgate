@@ -19,6 +19,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "slipgate"
 
-
 include(":ui")
 include(":android")
+include(":web")

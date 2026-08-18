@@ -12,7 +12,6 @@ local.properties
 
 # Kotlin/JS and Node
 node_modules/
-kotlin-js-store/
 
 # Engine sources fetched by tooling/engine-build (never vendored)
 tooling/engine-build/.sources/
