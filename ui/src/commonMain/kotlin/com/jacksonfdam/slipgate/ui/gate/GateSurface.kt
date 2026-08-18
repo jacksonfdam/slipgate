@@ -3,6 +3,9 @@ package com.jacksonfdam.slipgate.ui.gate
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -11,12 +14,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import com.jacksonfdam.slipgate.host.graphics.core.BackendSelector
 import com.jacksonfdam.slipgate.host.graphics.core.CpuFrameRenderer
 import com.jacksonfdam.slipgate.host.graphics.core.PresentedFrame
@@ -94,6 +99,23 @@ public fun GateSurface(
                 filterQuality = FilterQuality.None,
             )
         }
+        BackendLabel(
+            text = if (selection.fellBack) "${selection.backend.id} (fallback)" else "${selection.backend.id}",
+            modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+        )
     }
 }
 
+/** Names the active rendering path, so a silent fallback is never invisible. */
+@Composable
+private fun BackendLabel(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+        modifier = modifier,
+    )
+}
