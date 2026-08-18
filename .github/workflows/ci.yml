@@ -75,7 +75,19 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v6
-      - run: ./gradlew :ui:compileKotlinIosArm64 :ui:compileKotlinIosSimulatorArm64
+      - name: Link the framework for device
+        run: ./gradlew :ios:linkDebugFrameworkIosArm64
+      - name: Build the simulator app
+        run: |
+          xcodebuild -project ios/Slipgate.xcodeproj \
+            -scheme Slipgate \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath ios/build/xcode-derived \
+            ARCHS=arm64 \
+            CODE_SIGNING_ALLOWED=NO \
+            build
 
   unit-tests:
     name: Unit tests
