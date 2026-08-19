@@ -31,6 +31,7 @@ static int palette_generation = 0;
 
 void I_InitGraphics(void)
 {
+    sg_host_log("slipgate: initialising graphics");
     if (I_VideoBuffer == NULL)
     {
         I_VideoBuffer_storage = (byte *)calloc(SCREENWIDTH * SCREENHEIGHT, sizeof(pixel_t));

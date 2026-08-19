@@ -33,7 +33,9 @@ source "${EMSDK_DIR}/emsdk_env.sh" > /dev/null 2>&1
 # port a layer rather than a fork. d_dedicated.c is the standalone server's entry point and brings
 # its own D_DoomMain and zone stubs, which is why it cannot be in a build that has the game's.
 # z_native.c is the malloc-backed zone, an alternative to z_zone.c rather than a companion, and
-# w_file_win32.c is the Windows file backend.
+# w_file_win32.c is the Windows file backend, and w_file_stdc.c is replaced by the memory-backed
+# one in platform/, because a wasm module's filesystem is inside the module and the host cannot put
+# a file into it from outside.
 REPLACED_SOURCES=(
     d_dedicated.c
     i_cdmus.c
@@ -54,6 +56,7 @@ REPLACED_SOURCES=(
     i_videohr.c
     net_gui.c
     net_sdl.c
+    w_file_stdc.c
     w_file_win32.c
     z_native.c
 )
@@ -106,6 +109,7 @@ emcc \
     -sINITIAL_MEMORY=67108864 \
     -sALLOW_MEMORY_GROWTH=1 \
     -sERROR_ON_UNDEFINED_SYMBOLS=1 \
+    -Wl,--wrap=M_FileCaseExists \
     --no-entry \
     -Oz \
     -Wno-unused-command-line-argument
