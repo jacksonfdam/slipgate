@@ -3,6 +3,7 @@ package com.jacksonfdam.slipgate.ui.gate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.jacksonfdam.slipgate.ui.design.ColorTokens
 import com.jacksonfdam.slipgate.ui.design.TypeScale
@@ -56,8 +58,10 @@ internal fun GateMenu(
             modifier
                 .fillMaxSize()
                 .background(ColorTokens.Void.copy(alpha = SCRIM_ALPHA))
-                // Swallows taps that miss the panel, so a stray thumb cannot reach the game behind it.
-                .clickable(onClick = onResume),
+                // Swallows taps that miss the panel, so a stray thumb cannot reach the game behind
+                // it. A gesture rather than a clickable: a clickable would announce itself to a
+                // screen reader as one button holding the whole menu.
+                .pointerInput(Unit) { detectTapGestures { onResume() } },
         contentAlignment = Alignment.Center,
     ) {
         Column(
