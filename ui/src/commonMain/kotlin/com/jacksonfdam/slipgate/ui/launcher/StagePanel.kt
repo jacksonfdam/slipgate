@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -31,19 +32,37 @@ import com.jacksonfdam.slipgate.ui.design.accentRamp
 @Composable
 public fun StagePanel(
     card: GateCard,
+    /**
+     * Whether the portrait should take the height the stage was given.
+     *
+     * True where the stage shares a column with the rack and must not push it off the screen; false
+     * where the stage is a header above a scrolling list and its height comes from its own width.
+     */
+    fillsHeight: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        PortraitPlaceholder(
-            dimmed = !card.isPlayable,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(PORTRAIT_ASPECT),
-        )
+        // Sized by the height the stage was given, keeping its shape by giving up width. A portrait
+        // that claimed the height it wanted pushed the rack off the screen.
+        if (fillsHeight) {
+            Box(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                contentAlignment = Alignment.Center,
+            ) {
+                PortraitPlaceholder(
+                    dimmed = !card.isPlayable,
+                    modifier = Modifier.fillMaxHeight().aspectRatio(PORTRAIT_ASPECT),
+                )
+            }
+        } else {
+            PortraitPlaceholder(
+                dimmed = !card.isPlayable,
+                modifier = Modifier.fillMaxWidth().aspectRatio(PORTRAIT_ASPECT),
+            )
+        }
         Text(
             text = card.descriptor.title,
             style = TypeScale.Display,
