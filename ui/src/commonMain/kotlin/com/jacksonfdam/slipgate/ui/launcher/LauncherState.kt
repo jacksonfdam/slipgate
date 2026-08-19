@@ -37,6 +37,9 @@ public data class LauncherState(
 
     public fun previous(): LauncherState = moveBy(-1)
 
+    /** Selects the card at [index], or stays put when the rack has no such card. */
+    public fun select(index: Int): LauncherState = if (index in cards.indices) copy(selected = index) else this
+
     /** Selects [id] if the rack holds it, and stays put if it does not. */
     public fun select(id: String): LauncherState {
         val index = cards.indexOfFirst { card -> card.id == id }
