@@ -6,3 +6,7 @@ actually does rather than describe it.
 `android-mars-running.jpg` shows Freedoom, the freely licensed replacement the app offers to
 download. Freedoom's data is distributed under a three-clause BSD licence by the Freedoom project;
 the game data itself is never part of this repository, and this is a picture of it running.
+
+`web-gate-menu.png` shows the menu a player opens over a running gate, captured from the web build.
+The gate behind it is the test pattern, which is what that build ships until a browser-side engine
+driver exists.
