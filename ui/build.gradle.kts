@@ -40,10 +40,20 @@ kotlin {
     iosSimulatorArm64()
 
     sourceSets {
+        androidMain.dependencies {
+            implementation(libs.koin.android)
+            implementation(libs.androidx.activity.compose)
+        }
+
+        wasmJsMain.dependencies {
+            implementation(libs.kotlinx.browser)
+        }
+
         commonMain.dependencies {
             api(project(":host:runtime"))
             implementation(project(":host:audio"))
             api(project(":host:graphics:core"))
+            implementation(project(":host:gamedata"))
             implementation(project(":host:graphics:backend:classic"))
             implementation(project(":host:graphics:backend:skia"))
             api(project(":host:controls"))
