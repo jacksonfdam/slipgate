@@ -16,10 +16,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.jacksonfdam.slipgate.host.audio.synth.InterfaceCue
 import com.jacksonfdam.slipgate.host.gamedata.GameDataAcquisition
 import com.jacksonfdam.slipgate.host.gamedata.GameDataStore
 import com.jacksonfdam.slipgate.host.gamedata.mount
@@ -34,6 +36,7 @@ import com.jacksonfdam.slipgate.host.runtime.GateHost
 import com.jacksonfdam.slipgate.host.runtime.GateRegistry
 import com.jacksonfdam.slipgate.host.runtime.GateSession
 import com.jacksonfdam.slipgate.host.runtime.InputProfile
+import com.jacksonfdam.slipgate.ui.audio.InterfaceAudio
 import com.jacksonfdam.slipgate.ui.data.GameDataStage
 import com.jacksonfdam.slipgate.ui.gate.GateSurface
 import com.jacksonfdam.slipgate.ui.launcher.GateCard
@@ -47,6 +50,8 @@ import com.jacksonfdam.slipgate.ui.settings.SettingsController
 import com.jacksonfdam.slipgate.ui.splash.SplashScreen
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+
+private const val NANOS_PER_MILLI = 1_000_000L
 
 /** What the shell is showing. */
 private sealed interface Stage {
@@ -89,10 +94,14 @@ public fun SlipgateApp(
     store: GameDataStore = koinInject(),
     acquisition: GameDataAcquisition = koinInject(),
     settings: SettingsController = koinInject(),
+    audio: InterfaceAudio = koinInject(),
 ) {
     var stage by remember { mutableStateOf<Stage>(Stage.Splash) }
     var section by remember { mutableStateOf(LauncherSection.Gates) }
     val scope = rememberCoroutineScope()
+
+    // The interface's voice, and its silence while a gate owns the device.
+    InterfaceVoice(audio, settings, quiet = stage is Stage.Playing)
 
     SlipgateTheme(reducedMotion = settings.settings.reducedMotion) {
         CompositionLocalProvider(
@@ -118,6 +127,7 @@ public fun SlipgateApp(
                             state = current.state,
                             section = section,
                             settings = settings,
+                            audio = audio,
                             onSection = { section = it },
                             onMove = { next -> stage = Stage.Choosing(next) },
                             onEnter = { card ->
@@ -177,6 +187,34 @@ private fun decisionFor(medianFrameMicros: Long): TierDecision =
         signals = TierSignals(),
     )
 
+/**
+ * The interface's own voice: it renders the audio elapsed time owes, from the frame clock.
+ *
+ * Paid for by elapsed time rather than by frames, the same way the engine's mixer earns its frames, so
+ * a slow frame owes more and a fast one less.
+ */
+@Composable
+private fun InterfaceVoice(
+    audio: InterfaceAudio,
+    settings: SettingsController,
+    quiet: Boolean,
+) {
+    LaunchedEffect(quiet) {
+        if (quiet) audio.silence() else audio.resume()
+    }
+    LaunchedEffect(Unit) {
+        var previousNanos = 0L
+        while (true) {
+            withFrameNanos { nanos ->
+                val elapsed = if (previousNanos == 0L) 0L else nanos - previousNanos
+                previousNanos = nanos
+                audio.volume = settings.settings.interfaceVolume
+                audio.pump(elapsed / NANOS_PER_MILLI)
+            }
+        }
+    }
+}
+
 /** A running gate, drawn through the tube and picture shape the player chose. */
 @Composable
 private fun PlayingStage(
@@ -193,12 +231,19 @@ private fun PlayingStage(
     )
 }
 
-/** The rack, and the settings the shell under it needs. */
+/**
+ * The rack, with the sounds its interactions make.
+ *
+ * Cues live here rather than in the shell because they belong to the act of choosing, not to the
+ * drawing of it: a focus change tracks the direction the selection moved, entering confirms, and
+ * entering a gate that cannot run is refused rather than silently ignored.
+ */
 @Composable
 private fun ChoosingStage(
     state: LauncherState,
     section: LauncherSection,
     settings: SettingsController,
+    audio: InterfaceAudio,
     onSection: (LauncherSection) -> Unit,
     onMove: (LauncherState) -> Unit,
     onEnter: (GateCard) -> Unit,
@@ -208,9 +253,18 @@ private fun ChoosingStage(
         state = state,
         section = section,
         settings = settings,
-        onSection = onSection,
-        onSelect = { index -> onMove(state.select(index)) },
-        onEnter = onEnter,
+        onSection = { chosen ->
+            audio.play(if (chosen == LauncherSection.Gates) InterfaceCue.Back else InterfaceCue.Navigate)
+            onSection(chosen)
+        },
+        onSelect = { index ->
+            audio.play(InterfaceCue.FocusChange, direction = (index - state.selected).toFloat())
+            onMove(state.select(index))
+        },
+        onEnter = { card ->
+            audio.play(if (card.isPlayable) InterfaceCue.Confirm else InterfaceCue.Blocked)
+            onEnter(card)
+        },
         statusLabel = statusLabel,
         modifier = Modifier.fillMaxSize(),
     )
