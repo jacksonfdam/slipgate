@@ -28,3 +28,11 @@ public expect fun scenePainter(shaderName: String): ScenePainter?
  * project, so what a card and the stage show is a live shader with the gate's own accent in it.
  */
 public fun portraitPainter(gateId: String): ScenePainter? = scenePainter("portrait_$gateId")
+
+/**
+ * The painter for the attract background: the fire behind the rack, in the focused gate's colours.
+ *
+ * One painter for the whole shell rather than one per gate, because the gate reaches it as a
+ * uniform: the shader is the same fire whichever palette is feeding it.
+ */
+public fun attractPainter(): ScenePainter? = scenePainter("attract_fire")
