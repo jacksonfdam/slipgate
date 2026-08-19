@@ -1,13 +1,5 @@
 package com.jacksonfdam.slipgate.host.graphics.backend.skia
 
-import org.jetbrains.skia.Bitmap
-import org.jetbrains.skia.ColorAlphaType
-import org.jetbrains.skia.Data
-import org.jetbrains.skia.ImageInfo
-import org.jetbrains.skia.Paint
-import org.jetbrains.skia.Rect
-import org.jetbrains.skia.RuntimeEffect
-import org.jetbrains.skia.Surface
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -73,53 +65,20 @@ class PortraitShaderTest {
     private fun renderedColours(
         octaves: Float,
         timeSeconds: Float,
-    ): Set<Int> {
-        val source = assertNotNull(sceneShaderSource("portrait_mars"))
-        val effect = RuntimeEffect.makeForShader(source)
-        val uniforms =
-            SceneUniforms(
-                widthPixels = WIDTH.toFloat(),
-                heightPixels = HEIGHT.toFloat(),
-                timeSeconds = timeSeconds,
-                accentDim = STEEL_DIM,
-                accentBase = STEEL_BASE,
-                accentHot = STEEL_HOT,
-                focusAmount = 1f,
-                audioLevel = 0f,
-                octaves = octaves,
-            ).pack()
-        val shader =
-            effect.makeShader(
-                uniforms = Data.makeFromBytes(floatBytes(uniforms)),
-                children = null,
-                localMatrix = null,
-            )
-        val info = ImageInfo.makeN32(WIDTH, HEIGHT, ColorAlphaType.UNPREMUL)
-        val surface = Surface.makeRaster(info)
-        val paint = Paint().apply { this.shader = shader }
-        surface.canvas.drawRect(Rect.makeWH(WIDTH.toFloat(), HEIGHT.toFloat()), paint)
-        val bitmap = Bitmap()
-        bitmap.allocPixels(info)
-        assertTrue(surface.readPixels(bitmap, 0, 0), "could not read the rendered surface back")
-        val bytes = assertNotNull(bitmap.readPixels(), "the surface produced no pixels")
-        val colours = mutableSetOf<Int>()
-        for (index in bytes.indices step 4) {
-            colours +=
-                (bytes[index].toInt() and 0xFF) or
-                ((bytes[index + 1].toInt() and 0xFF) shl 8) or
-                ((bytes[index + 2].toInt() and 0xFF) shl 16)
-        }
-        return colours
-    }
-
-    private fun floatBytes(values: FloatArray): ByteArray {
-        val bytes = ByteArray(values.size * Float.SIZE_BYTES)
-        values.forEachIndexed { index, value ->
-            val bits = value.toRawBits()
-            for (byte in 0 until Float.SIZE_BYTES) {
-                bytes[index * Float.SIZE_BYTES + byte] = (bits shr (byte * 8) and 0xFF).toByte()
-            }
-        }
-        return bytes
-    }
+    ): Set<Int> =
+        renderScene(
+            shaderName = "portrait_mars",
+            uniforms =
+                SceneUniforms(
+                    widthPixels = WIDTH.toFloat(),
+                    heightPixels = HEIGHT.toFloat(),
+                    timeSeconds = timeSeconds,
+                    accentDim = STEEL_DIM,
+                    accentBase = STEEL_BASE,
+                    accentHot = STEEL_HOT,
+                    focusAmount = 1f,
+                    audioLevel = 0f,
+                    octaves = octaves,
+                ),
+        ).colours()
 }
