@@ -2,10 +2,8 @@ package com.jacksonfdam.slipgate.ui.launcher
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -14,15 +12,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import com.jacksonfdam.slipgate.host.graphics.backend.skia.PortraitUniforms
 import com.jacksonfdam.slipgate.host.graphics.backend.skia.portraitPainter
-import com.jacksonfdam.slipgate.ui.design.ColorTokens
 import com.jacksonfdam.slipgate.ui.design.LocalReducedMotion
 import com.jacksonfdam.slipgate.ui.design.accentRamp
 import kotlinx.coroutines.isActive
@@ -32,8 +26,8 @@ import kotlinx.coroutines.isActive
  *
  * There is no cover art in this project, so a card and the stage show the same thing a launch will
  * fly into. A gate whose portrait has not been authored, or a device with no runtime shader at all,
- * gets the composed frame below instead — the shape, border and glow are identical, so a rack of
- * mixed gates still reads as one rack.
+ * gets the composed glow below instead, so a rack of mixed gates still reads as one rack. The frame
+ * around it — clip, ground, border — belongs to whatever is placing the portrait.
  *
  * [focus] is how selected this portrait is, from 0 to 1: the shader uses it to tighten its core, so a
  * resting card is calmer than the stage above it.
@@ -43,20 +37,13 @@ internal fun GatePortrait(
     card: GateCard,
     focus: Float,
     modifier: Modifier = Modifier,
-    corner: Dp = 4.dp,
 ) {
     val painter = remember(card.id) { portraitPainter(card.id) }
     val ramp = accentRamp
     val reducedMotion = LocalReducedMotion.current
     val octaves = LocalPortraitOctaves.current
 
-    Box(
-        modifier =
-            modifier
-                .clip(RoundedCornerShape(corner))
-                .background(ColorTokens.Recess)
-                .border(1.dp, ColorTokens.Edge, RoundedCornerShape(corner)),
-    ) {
+    Box(modifier = modifier) {
         if (painter == null) {
             ComposedPortrait(dimmed = !card.isPlayable)
         } else {
