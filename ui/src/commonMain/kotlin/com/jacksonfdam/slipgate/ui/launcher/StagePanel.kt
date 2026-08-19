@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -24,60 +23,26 @@ import com.jacksonfdam.slipgate.ui.design.TypeScale
 import com.jacksonfdam.slipgate.ui.design.accentRamp
 
 /**
- * The selected gate's stage: the portrait surface with the gate's identity underneath.
- * The portrait is a composed gradient placeholder until the live portrait shaders drive
- * it; everything around it already speaks the final layout.
+ * The selected gate's stage: the portrait surface with the gate's identity composed onto
+ * its lower-left corner, so the panel is one flexible surface that survives a short
+ * landscape screen. The portrait is a composed gradient placeholder until the live
+ * portrait shaders drive it.
+ *
+ * Give the panel a bounded height (a weight) on bounded screens; [keepAspect] is for
+ * unbounded columns, where the panel must size itself.
  */
 @Composable
 public fun StagePanel(
     card: GateCard,
     modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        PortraitPlaceholder(
-            dimmed = !card.isPlayable,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(PORTRAIT_ASPECT),
-        )
-        Text(
-            text = card.descriptor.title,
-            style = TypeScale.Display,
-            color = ColorTokens.Text,
-        )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            StatChip(text = card.descriptor.engine.uppercase())
-            StatChip(
-                text =
-                    when (card.availability) {
-                        GateAvailability.Installed -> "READY"
-                        is GateAvailability.NeedsData -> "ADD GAME FILES"
-                        is GateAvailability.UserSuppliedOnly -> "NEEDS YOUR FILES"
-                    },
-                emphasized = card.isPlayable,
-            )
-        }
-    }
-}
-
-/** Static composed stand-in for the live portal: recess floor with a low accent glow. */
-@Composable
-internal fun PortraitPlaceholder(
-    dimmed: Boolean,
-    modifier: Modifier = Modifier,
+    keepAspect: Boolean = false,
 ) {
     val accent = accentRamp
-    val glow = if (dimmed) accent.dim.copy(alpha = 0.35f) else accent.dim
+    val glow = if (card.isPlayable) accent.dim else accent.dim.copy(alpha = DIMMED_GLOW_ALPHA)
     Box(
         modifier =
             modifier
+                .then(if (keepAspect) Modifier.aspectRatio(PORTRAIT_ASPECT) else Modifier)
                 .clip(RoundedCornerShape(4.dp))
                 .background(ColorTokens.Recess)
                 .border(1.dp, ColorTokens.Edge, RoundedCornerShape(4.dp)),
@@ -92,6 +57,34 @@ internal fun PortraitPlaceholder(
                         ),
                     ),
         )
+        Column(
+            modifier =
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = card.descriptor.title,
+                style = TypeScale.Display,
+                color = ColorTokens.Text,
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                StatChip(text = card.descriptor.engine.uppercase())
+                StatChip(
+                    text =
+                        when (card.availability) {
+                            GateAvailability.Installed -> "READY"
+                            is GateAvailability.NeedsData -> "ADD GAME FILES"
+                            is GateAvailability.UserSuppliedOnly -> "NEEDS YOUR FILES"
+                        },
+                    emphasized = card.isPlayable,
+                )
+            }
+        }
     }
 }
 
@@ -115,3 +108,4 @@ private fun StatChip(
 }
 
 private const val PORTRAIT_ASPECT = 16f / 7f
+private const val DIMMED_GLOW_ALPHA = 0.35f
