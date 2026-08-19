@@ -1,6 +1,7 @@
 package com.jacksonfdam.slipgate.host.graphics.core
 
 import com.jacksonfdam.slipgate.host.runtime.DisplayFormat
+import com.jacksonfdam.slipgate.host.runtime.ID_TECH_1_PIXEL_ASPECT
 import com.jacksonfdam.slipgate.host.runtime.PixelFormat
 import kotlin.test.Test
 import kotlin.test.assertEquals
