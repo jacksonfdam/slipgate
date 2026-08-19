@@ -45,6 +45,9 @@ public fun LauncherShell(
     // portraits. One provider, so the whole interface recolours with the selection.
     CompositionLocalProvider(LocalAccentRamp provides rampFor(state.current)) {
         BoxWithConstraints(modifier = modifier.fillMaxSize().background(ColorTokens.Void)) {
+            // The fire is the shell's ground. Everything below draws on top of it, which is why it
+            // burns low: the rail and the panels have to stay readable over it.
+            AttractBackground(modifier = Modifier.matchParentSize())
             val compact = maxWidth < COMPACT_BREAKPOINT
             if (compact) {
                 Column(modifier = Modifier.fillMaxSize()) {
