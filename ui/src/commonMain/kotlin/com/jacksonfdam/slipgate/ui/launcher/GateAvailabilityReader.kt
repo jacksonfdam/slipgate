@@ -1,6 +1,7 @@
 package com.jacksonfdam.slipgate.ui.launcher
 
 import com.jacksonfdam.slipgate.host.gamedata.GameDataStore
+import com.jacksonfdam.slipgate.host.gamedata.storedAccent
 import com.jacksonfdam.slipgate.host.gamedata.unmet
 import com.jacksonfdam.slipgate.host.runtime.DataSource
 import com.jacksonfdam.slipgate.host.runtime.Gate
@@ -21,6 +22,7 @@ public suspend fun launcherState(
                 GateCard(
                     descriptor = gate.descriptor,
                     availability = availabilityOf(gate, store),
+                    accent = storedAccent(store, gate.descriptor.id.value),
                 )
             },
     )
