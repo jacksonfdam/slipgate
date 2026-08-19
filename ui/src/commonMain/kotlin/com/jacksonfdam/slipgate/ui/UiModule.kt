@@ -11,7 +11,6 @@ import com.jacksonfdam.slipgate.host.graphics.core.CrtSettings
 import com.jacksonfdam.slipgate.host.runtime.BackendId
 import com.jacksonfdam.slipgate.host.runtime.BackendResolver
 import com.jacksonfdam.slipgate.host.runtime.Gate
-import com.jacksonfdam.slipgate.host.runtime.GateHost
 import com.jacksonfdam.slipgate.host.runtime.GateRegistry
 import com.jacksonfdam.slipgate.ui.audio.InterfaceAudio
 import com.jacksonfdam.slipgate.ui.settings.SettingsController
@@ -43,7 +42,7 @@ internal fun uiModule(gates: List<Gate>): Module =
         // platform for the device on every gate change, and closing one is the shell's business
         // rather than a session's.
         single<AudioOutput> { openAudioOutput() }
-        single<GateHost> { PlaceholderGateHost(audio = get()) }
+        single { SessionHosts(audio = get(), store = get()) }
     }
 
 /** Every Koin module the shell needs, in the order the entry points should load them. */
