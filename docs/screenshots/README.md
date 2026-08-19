@@ -10,3 +10,8 @@ the game data itself is never part of this repository, and this is a picture of 
 `web-gate-menu.png` shows the menu a player opens over a running gate, captured from the web build.
 The gate behind it is the test pattern, which is what that build ships until a browser-side engine
 driver exists.
+
+`web-attract-background.png` shows the attract background behind the rack, captured from the web
+build at the Minimal tier — the tier that is given no noise octaves at all, so what is visible there
+is the shape the fire keeps when it cannot afford to burn.
+
