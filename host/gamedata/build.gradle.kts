@@ -12,8 +12,12 @@ val slipgateAndroidMinSdk = property("slipgate.androidMinSdk") as String
 // Lets a real IWAD be pointed at the inspector without one ever living in the repository.
 val suppliedIwad = providers.gradleProperty("slipgate.iwad")
 
+// Reaching the network is opt-in, so the download test never runs in a build that did not ask.
+val downloadUrl = providers.gradleProperty("slipgate.downloadUrl")
+
 tasks.withType<Test>().configureEach {
     environment("SLIPGATE_IWAD", suppliedIwad.getOrElse(""))
+    environment("SLIPGATE_DOWNLOAD_URL", downloadUrl.getOrElse(""))
 }
 
 kotlin {
