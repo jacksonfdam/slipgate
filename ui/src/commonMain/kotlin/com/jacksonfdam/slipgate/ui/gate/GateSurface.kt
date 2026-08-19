@@ -118,7 +118,9 @@ public fun GateSurface(
         }
         BackendLabel(
             text = selection.describe(),
-            modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+            // Bottom centre: the top left corner belongs to the menu button, the top right to the
+            // pad's utility row, and both bottom corners to a thumb.
+            modifier = Modifier.align(Alignment.BottomCenter).padding(8.dp),
         )
     }
 }
