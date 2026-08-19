@@ -41,6 +41,11 @@ int sg_elapsed_millis(void);
 void sg_push_event(int type, int code, int value);
 void sg_drain_events(void);
 
+// Implemented once per engine, under platform/<game>/, because each game keeps its own main loop
+// and its own demo entry point. The exported surface calls these and never names a game.
+void sg_engine_run_frame(void);
+boolean sg_engine_play_demo(const char *name, boolean single);
+
 int sg_audio_drain(int16_t *destination, int frames);
 void sg_audio_advance(int elapsed_millis);
 void sg_request_quit(void);
