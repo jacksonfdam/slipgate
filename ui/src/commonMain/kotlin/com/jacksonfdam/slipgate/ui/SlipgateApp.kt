@@ -298,3 +298,6 @@ private fun BootScreen(
         }
     }
 }
+
+/** The gate a card stands for. A card the registry cannot name is a bug rather than a state. */
+private fun GateRegistry.gateFor(id: String): Gate = gates.first { gate -> gate.descriptor.id.value == id }

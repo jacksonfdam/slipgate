@@ -26,12 +26,16 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.jacksonfdam.slipgate.host.controls.ControlState
 import com.jacksonfdam.slipgate.host.controls.VirtualGamepad
+import com.jacksonfdam.slipgate.host.graphics.backend.classic.ClassicBackend
 import com.jacksonfdam.slipgate.host.graphics.backend.skia.ComposeFrameRenderer
+import com.jacksonfdam.slipgate.host.graphics.backend.skia.skiaBackend
 import com.jacksonfdam.slipgate.host.graphics.core.BackendSelection
 import com.jacksonfdam.slipgate.host.graphics.core.BackendSelector
 import com.jacksonfdam.slipgate.host.graphics.core.CpuFrameRenderer
+import com.jacksonfdam.slipgate.host.graphics.core.CrtSettings
 import com.jacksonfdam.slipgate.host.graphics.core.FrameRenderer
 import com.jacksonfdam.slipgate.host.graphics.core.PresentedFrame
+import com.jacksonfdam.slipgate.host.graphics.core.ScalingMode
 import com.jacksonfdam.slipgate.host.graphics.core.SurfaceSize
 import com.jacksonfdam.slipgate.host.graphics.core.Viewport
 import com.jacksonfdam.slipgate.host.graphics.core.ViewportRect
@@ -39,7 +43,6 @@ import com.jacksonfdam.slipgate.host.runtime.GateSession
 import com.jacksonfdam.slipgate.host.runtime.InputFrame
 import com.jacksonfdam.slipgate.host.runtime.InputProfile
 import com.jacksonfdam.slipgate.host.runtime.SessionStatus
-import org.koin.compose.koinInject
 
 private val EmptyRect = ViewportRect(x = 0, y = 0, width = 0, height = 0)
 
@@ -56,13 +59,23 @@ public fun GateSurface(
     session: GateSession,
     inputProfile: InputProfile,
     modifier: Modifier = Modifier,
-    selector: BackendSelector = koinInject(),
+    crt: CrtSettings = CrtSettings.Default,
+    scaling: ScalingMode = ScalingMode.Fit,
 ) {
     val controls = remember(session) { ControlState() }
-    val selection = remember(session, selector) { selector.select() }
+    // The backend is built here rather than injected, because the tube settings are a player's
+    // choice: a selector built once at start-up could never change with them.
+    val selection =
+        remember(crt) {
+            BackendSelector(candidates = listOfNotNull(skiaBackend(crt), ClassicBackend())).select()
+        }
     val presentation =
-        remember(session, selection) {
-            GatePresentation(session, selection.backend.createRenderer(session.display))
+        remember(session, selection, scaling) {
+            GatePresentation(
+                session = session,
+                renderer = selection.backend.createRenderer(session.display),
+                scaling = scaling,
+            )
         }
 
     DisposableEffect(presentation) {
@@ -109,6 +122,7 @@ public fun GateSurface(
 private class GatePresentation(
     private val session: GateSession,
     private val renderer: FrameRenderer,
+    private val scaling: ScalingMode,
 ) {
     private val shaderRenderer = renderer as? ComposeFrameRenderer
     private val cpuRenderer = renderer as? CpuFrameRenderer
@@ -133,7 +147,7 @@ private class GatePresentation(
     ): Boolean {
         val result = session.step(input, elapsedMillis)
         if (result.frameRendered && !surface.isEmpty) {
-            val current = Viewport(source = session.display, surface = surface)
+            val current = Viewport(source = session.display, surface = surface, mode = scaling)
             renderer.present(
                 PresentedFrame(
                     format = session.display,
