@@ -18,6 +18,17 @@ tasks.withType<Test>().configureEach {
 
 kotlin {
     explicitApi()
+    // Android and the JVM both store files through java.io, so that half is written once. The group
+    // is declared through the template rather than with a dependsOn edge, because a manual edge
+    // switches the default template off entirely and silently drops iosMain from the build.
+    applyDefaultHierarchyTemplate {
+        common {
+            group("javaFile") {
+                withJvm()
+                withCompilations { it.target.name == "android" }
+            }
+        }
+    }
 
     jvmToolchain(slipgateJvmToolchain.toInt())
 
@@ -38,19 +49,8 @@ kotlin {
     iosSimulatorArm64()
 
     sourceSets {
-        // Android and the JVM both store files through java.io, so that half is written once. The
-        // dependency is declared rather than templated because the Android target's name in the
-        // hierarchy template depends on which Android plugin a module uses.
-        val javaFileMain by creating { dependsOn(commonMain.get()) }
-        androidMain.get().dependsOn(javaFileMain)
-        jvmMain.get().dependsOn(javaFileMain)
-
         commonMain.dependencies {
             api(project(":host:runtime"))
-            implementation(libs.kotlinx.coroutines.core)
-        }
-
-        javaFileMain.dependencies {
             implementation(libs.kotlinx.coroutines.core)
         }
 
