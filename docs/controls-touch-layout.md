@@ -45,6 +45,39 @@ Physical keyboards map through `ControlKey` in `host/controls/.../KeyboardBindin
 which carries the same defaults (arrows/WASD, Ctrl, space, comma/period, tab, Escape,
 Enter).
 
+## Reference: the classic default keymaps
+
+The default layout for the original 90s id Software / Raven engine games (Doom, Heretic,
+Hexen, Quake) relied entirely on the keyboard: movement on the arrow keys or numeric
+keypad, actions across the main board. Modern source ports such as GZDoom remap movement
+to WASD. See the Chocolate Doom keyboard configuration reference:
+https://www.chocolate-doom.org/wiki/index.php/Setup/Keyboard_configuration
+
+Vanilla defaults, shared across the family:
+
+| Function | Key |
+|---|---|
+| Move forward / backward | Up / Down arrows |
+| Turn left / right | Left / Right arrows |
+| Strafe (slide) modifier | `Alt` + Left/Right (or `,` and `.`) |
+| Fire weapon | `Ctrl` |
+| Use / open | `Space` (`E` in modern source ports) |
+| Run / fast | `Shift` |
+| Map toggle | `Tab` |
+| Pause / menu | `Esc` |
+
+Game-specific keys the later gates will need:
+
+- **Heretic and Hexen — inventory / artifacts**: `Enter` uses the current item;
+  `[` / `]` (or `Shift` + Left/Right) select items.
+- **Hexen and Quake — jumping**: `Space` (Doom and vanilla Heretic have no jump key).
+- **Quake — look up/down and centring**: `Page Up` / `Page Down`, `End` to centre the view.
+
+These tables are the source of truth when `corvus`, `korax` and `chthon` declare their
+`InputProfile`s and key translations — inventory needs `InputFrame.extensions` or new
+`GateAction`s (Confirm already covers Heretic/Hexen's "use current item" key), and jump
+maps differently per engine, which is exactly why translation lives with each gate.
+
 ## Deferred to the settings build (20c) and the gamepad visual layer (20d)
 
 - **Per-gate remapping** in Settings — let the player rebind touch controls and keys per
