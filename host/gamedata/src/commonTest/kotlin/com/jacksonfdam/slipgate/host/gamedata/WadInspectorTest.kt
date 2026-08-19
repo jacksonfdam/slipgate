@@ -14,7 +14,7 @@ class WadInspectorTest {
     fun anEpisodicDoomIwadIsRecognised() {
         val inspection =
             WadInspector.inspect(
-                wad("IWAD", listOf("PLAYPAL", "E1M1", "E2M1", "E3M1", "E4M1")),
+                syntheticWad("IWAD", listOf("PLAYPAL", "E1M1", "E2M1", "E3M1", "E4M1")),
             )
 
         val identity = assertIs<WadInspection.Recognised>(inspection).identity
@@ -26,7 +26,7 @@ class WadInspectorTest {
 
     @Test
     fun aMappedDoomIwadIsRecognised() {
-        val inspection = WadInspector.inspect(wad("IWAD", listOf("PLAYPAL", "MAP01", "MAP02")))
+        val inspection = WadInspector.inspect(syntheticWad("IWAD", listOf("PLAYPAL", "MAP01", "MAP02")))
 
         val identity = assertIs<WadInspection.Recognised>(inspection).identity
         assertEquals(GameFlavour.DoomMapped, identity.flavour)
@@ -37,8 +37,8 @@ class WadInspectorTest {
      * the two Raven games from each other. */
     @Test
     fun theTintTableTellsRavensEnginesApartFromDooms() {
-        val heretic = WadInspector.inspect(wad("IWAD", listOf("PLAYPAL", "TINTTAB", "E1M1")))
-        val hexen = WadInspector.inspect(wad("IWAD", listOf("PLAYPAL", "TINTTAB", "MAP01")))
+        val heretic = WadInspector.inspect(syntheticWad("IWAD", listOf("PLAYPAL", "TINTTAB", "E1M1")))
+        val hexen = WadInspector.inspect(syntheticWad("IWAD", listOf("PLAYPAL", "TINTTAB", "MAP01")))
 
         assertEquals(
             GameFlavour.Heretic,
@@ -52,7 +52,7 @@ class WadInspectorTest {
 
     @Test
     fun aPatchWadIsRecognisedAsOne() {
-        val inspection = WadInspector.inspect(wad("PWAD", listOf("PLAYPAL", "MAP01")))
+        val inspection = WadInspector.inspect(syntheticWad("PWAD", listOf("PLAYPAL", "MAP01")))
 
         assertEquals(WadKind.Pwad, assertIs<WadInspection.Recognised>(inspection).identity.kind)
     }
@@ -73,7 +73,7 @@ class WadInspectorTest {
 
     @Test
     fun aDirectoryPastTheEndOfTheFileIsRejected() {
-        val bytes = wad("IWAD", listOf("PLAYPAL", "MAP01"))
+        val bytes = syntheticWad("IWAD", listOf("PLAYPAL", "MAP01"))
         writeInt(bytes, offset = 8, value = bytes.size - 4)
 
         val inspection = WadInspector.inspect(bytes)
@@ -87,7 +87,7 @@ class WadInspectorTest {
     /** What a download that stopped halfway looks like from the inside. */
     @Test
     fun aLumpClaimingBytesTheFileLacksIsRejected() {
-        val whole = wad("IWAD", listOf("PLAYPAL", "MAP01"))
+        val whole = syntheticWad("IWAD", listOf("PLAYPAL", "MAP01"))
         val directoryOffset = readInt(whole, 8)
         writeInt(whole, offset = directoryOffset + 4, value = whole.size)
 
@@ -101,14 +101,14 @@ class WadInspectorTest {
 
     @Test
     fun aWadWithoutAPaletteIsRejected() {
-        val inspection = WadInspector.inspect(wad("IWAD", listOf("MAP01")))
+        val inspection = WadInspector.inspect(syntheticWad("IWAD", listOf("MAP01")))
 
         assertEquals(RejectionReason.NoPalette, assertIs<WadInspection.Rejected>(inspection).reason)
     }
 
     @Test
     fun aWadWithNoMapsIsRejected() {
-        val inspection = WadInspector.inspect(wad("IWAD", listOf("PLAYPAL", "COLORMAP")))
+        val inspection = WadInspector.inspect(syntheticWad("IWAD", listOf("PLAYPAL", "COLORMAP")))
 
         assertEquals(
             RejectionReason.UnknownGame,
@@ -118,55 +118,11 @@ class WadInspectorTest {
 
     @Test
     fun anEmptyDirectoryIsRejected() {
-        val bytes = wad("IWAD", emptyList())
+        val bytes = syntheticWad("IWAD", emptyList())
 
         assertEquals(
             RejectionReason.DirectoryUnreadable,
             assertIs<WadInspection.Rejected>(WadInspector.inspect(bytes)).reason,
         )
     }
-}
-
-/** Builds a WAD whose lumps hold one byte each: the inspector reads names, not contents. */
-private fun wad(
-    magic: String,
-    lumps: List<String>,
-): ByteArray {
-    val headerBytes = 12
-    val directoryOffset = headerBytes + lumps.size
-    val bytes = ByteArray(directoryOffset + lumps.size * 16)
-
-    magic.encodeToByteArray().copyInto(bytes)
-    writeInt(bytes, offset = 4, value = lumps.size)
-    writeInt(bytes, offset = 8, value = directoryOffset)
-
-    lumps.forEachIndexed { index, name ->
-        bytes[headerBytes + index] = 1
-        val entry = directoryOffset + index * 16
-        writeInt(bytes, entry, value = headerBytes + index)
-        writeInt(bytes, entry + 4, value = 1)
-        name.encodeToByteArray().copyInto(bytes, destinationOffset = entry + 8)
-    }
-    return bytes
-}
-
-private fun writeInt(
-    bytes: ByteArray,
-    offset: Int,
-    value: Int,
-) {
-    for (index in 0 until Int.SIZE_BYTES) {
-        bytes[offset + index] = (value shr (index * Byte.SIZE_BITS) and 0xFF).toByte()
-    }
-}
-
-private fun readInt(
-    bytes: ByteArray,
-    offset: Int,
-): Int {
-    var value = 0
-    for (index in 0 until Int.SIZE_BYTES) {
-        value = value or ((bytes[offset + index].toInt() and 0xFF) shl (index * Byte.SIZE_BITS))
-    }
-    return value
 }
