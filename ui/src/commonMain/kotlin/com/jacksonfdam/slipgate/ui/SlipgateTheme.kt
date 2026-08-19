@@ -1,47 +1,63 @@
 package com.jacksonfdam.slipgate.ui
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
-
-private val Ember = Color(0xFFFF5A1F)
-private val Ash = Color(0xFF0B0B0D)
-private val Bone = Color(0xFFE8E4DC)
-private val Slate = Color(0xFF16161A)
-
-private val SlipgateDarkColors =
-    darkColorScheme(
-        primary = Ember,
-        onPrimary = Ash,
-        background = Ash,
-        onBackground = Bone,
-        surface = Slate,
-        onSurface = Bone,
-    )
-
-private val SlipgateLightColors =
-    lightColorScheme(
-        primary = Ember,
-        onPrimary = Bone,
-        background = Bone,
-        onBackground = Ash,
-        surface = Color(0xFFF4F1EA),
-        onSurface = Ash,
-    )
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
+import com.jacksonfdam.slipgate.ui.design.AccentRamp
+import com.jacksonfdam.slipgate.ui.design.ColorTokens
+import com.jacksonfdam.slipgate.ui.design.LocalAccentRamp
+import com.jacksonfdam.slipgate.ui.design.LocalReducedMotion
+import com.jacksonfdam.slipgate.ui.design.TypeScale
 
 /**
- * Slipgate palette. Dark is the intended presentation; light exists so the shell stays
- * legible when the platform forces it.
+ * Slipgate is dark-only by design — it is a console interface, not a document reader.
+ * The chrome is fixed; the accent ramp is the one thing that changes, sampled from the
+ * mounted gate's palette and defaulting to the neutral steel fallback before any data.
  */
 @Composable
 public fun SlipgateTheme(
-    darkTheme: Boolean = true,
+    accent: AccentRamp = AccentRamp.Steel,
+    reducedMotion: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    MaterialTheme(
-        colorScheme = if (darkTheme) SlipgateDarkColors else SlipgateLightColors,
-        content = content,
-    )
+    val scheme =
+        remember(accent) {
+            darkColorScheme(
+                primary = accent.base,
+                onPrimary = ColorTokens.Void,
+                secondary = ColorTokens.Muted,
+                onSecondary = ColorTokens.Void,
+                background = ColorTokens.Void,
+                onBackground = ColorTokens.Text,
+                surface = ColorTokens.Surface,
+                onSurface = ColorTokens.Text,
+                surfaceVariant = ColorTokens.Recess,
+                onSurfaceVariant = ColorTokens.Muted,
+                outline = ColorTokens.Edge,
+            )
+        }
+    CompositionLocalProvider(
+        LocalAccentRamp provides accent,
+        LocalReducedMotion provides reducedMotion,
+    ) {
+        MaterialTheme(
+            colorScheme = scheme,
+            typography = SlipgateTypography,
+            content = content,
+        )
+    }
 }
+
+private val SlipgateTypography =
+    Typography(
+        displaySmall = TypeScale.Display,
+        headlineSmall = TypeScale.Headline,
+        titleMedium = TypeScale.Headline,
+        bodyMedium = TypeScale.Body,
+        bodyLarge = TypeScale.Body,
+        labelMedium = TypeScale.Label,
+        labelSmall = TypeScale.Data,
+    )
