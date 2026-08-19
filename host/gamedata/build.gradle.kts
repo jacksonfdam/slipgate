@@ -18,6 +18,7 @@ tasks.withType<Test>().configureEach {
 
 kotlin {
     explicitApi()
+
     jvmToolchain(slipgateJvmToolchain.toInt())
 
     android {
@@ -37,12 +38,29 @@ kotlin {
     iosSimulatorArm64()
 
     sourceSets {
+        // Android and the JVM both store files through java.io, so that half is written once. The
+        // dependency is declared rather than templated because the Android target's name in the
+        // hierarchy template depends on which Android plugin a module uses.
+        val javaFileMain by creating { dependsOn(commonMain.get()) }
+        androidMain.get().dependsOn(javaFileMain)
+        jvmMain.get().dependsOn(javaFileMain)
+
         commonMain.dependencies {
             api(project(":host:runtime"))
+            implementation(libs.kotlinx.coroutines.core)
+        }
+
+        javaFileMain.dependencies {
+            implementation(libs.kotlinx.coroutines.core)
+        }
+
+        wasmJsMain.dependencies {
+            implementation(libs.kotlinx.browser)
         }
 
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }
