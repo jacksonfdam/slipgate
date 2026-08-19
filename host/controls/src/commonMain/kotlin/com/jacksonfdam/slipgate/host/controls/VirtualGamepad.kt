@@ -2,8 +2,11 @@ package com.jacksonfdam.slipgate.host.controls
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -16,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -24,10 +28,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jacksonfdam.slipgate.host.runtime.Axis2
 import com.jacksonfdam.slipgate.host.runtime.GateAction
+import com.jacksonfdam.slipgate.host.runtime.InputExtension
 import com.jacksonfdam.slipgate.host.runtime.InputProfile
 
 private val PAD_SIZE = 160.dp
 private val EDGE_PADDING = 20.dp
+private val EXTENSION_HEIGHT = 44.dp
+private val EXTENSION_SPACING = 8.dp
+
+// Clear of the movement wheel's arc and of the diagnostics label under it, so a row of five still
+// leaves the middle of the picture alone.
+private val EXTENSION_BOTTOM_PADDING = 28.dp
 private const val IDLE_ALPHA = 0.30f
 private const val PRESSED_ALPHA = 0.55f
 private const val LABEL_ALPHA = 0.85f
@@ -108,6 +119,22 @@ public fun VirtualGamepad(
                     .padding(EDGE_PADDING)
                     .size(PAD_SIZE),
         )
+        // The controls this engine has and the shared set does not name: an inventory, flight. A row
+        // along the bottom edge rather than in a thumb's arc, because they are chosen deliberately
+        // between fights rather than held during one.
+        if (profile.extensions.isNotEmpty()) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(EXTENSION_SPACING),
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = EXTENSION_BOTTOM_PADDING),
+            ) {
+                profile.extensions.forEach { extension ->
+                    ExtensionButton(extension = extension, state = state)
+                }
+            }
+        }
         profile.actions.forEach { action ->
             val placement = placements.getValue(action)
             ActionButton(
@@ -179,6 +206,47 @@ private fun direction(offset: Float): Float =
         offset < -DEAD_ZONE -> -1f
         else -> 0f
     }
+
+/**
+ * One engine-specific control, labelled with whatever the gate called it.
+ *
+ * A rectangle rather than a circle, and off the thumb arcs: the shape says this is not one of the
+ * seven buttons every gate has. It reports travel rather than a boolean because that is what an
+ * extension is — the session decides how much of it counts as a press.
+ */
+@Composable
+private fun ExtensionButton(
+    extension: InputExtension,
+    state: ControlState,
+    modifier: Modifier = Modifier,
+) {
+    var pressed by remember { mutableStateOf(false) }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier =
+            modifier
+                .height(EXTENSION_HEIGHT)
+                .background(
+                    Color.White.copy(alpha = if (pressed) PRESSED_ALPHA else IDLE_ALPHA),
+                    RectangleShape,
+                ).padding(horizontal = 12.dp)
+                .pointerInput(extension.key, state) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            awaitPointerEvent()
+                            val down = currentEvent.changes.any { it.pressed }
+                            if (down != pressed) {
+                                pressed = down
+                                state.setExtension(extension.key, if (down) 1f else 0f)
+                            }
+                        }
+                    }
+                },
+    ) {
+        BasicText(text = extension.label, style = labelStyle)
+    }
+}
 
 @Composable
 private fun ActionButton(
