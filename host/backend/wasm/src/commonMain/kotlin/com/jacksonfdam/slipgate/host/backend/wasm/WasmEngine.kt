@@ -26,6 +26,9 @@ public class WasmEngine private constructor(
     private val instance: Instance,
     private val memory: Memory,
 ) {
+    private var audioPointer = 0
+    private var audioCapacityFrames = 0
+
     /** Bytes of the most recent frame, in the engine's own pixel format. */
     public fun framebuffer(): ByteArray = read(call(FRAMEBUFFER), call(FRAMEBUFFER_SIZE))
 
@@ -47,20 +50,40 @@ public class WasmEngine private constructor(
         call(PUSH_EVENT, type, code, value)
     }
 
-    /** Drains rendered audio into [destination] and returns how many frames arrived. */
+    /**
+     * Drains rendered audio into [destination] and returns how many frames arrived.
+     *
+     * The buffer inside the engine is allocated once and kept: this runs every frame, and asking a
+     * WebAssembly heap for the same block sixty times a second fragments it for no gain.
+     */
     public fun drainAudio(
         destination: ByteArray,
         frames: Int,
     ): Int {
-        val pointer = call(ALLOC, destination.size)
-        check(pointer != 0) { "the engine could not allocate an audio buffer" }
-        val drained = call(AUDIO_DRAIN, pointer, frames)
+        if (frames <= 0) {
+            return 0
+        }
+        require(frames * AUDIO_FRAME_BYTES <= destination.size) {
+            "asked for $frames frames but the destination holds ${destination.size / AUDIO_FRAME_BYTES}"
+        }
+        val drained = call(AUDIO_DRAIN, audioBuffer(frames), frames)
         if (drained > 0) {
-            readBytes(store, memory, destination, pointer, drained * AUDIO_FRAME_BYTES)
+            readBytes(store, memory, destination, audioPointer, drained * AUDIO_FRAME_BYTES)
                 .expect("could not read drained audio")
         }
-        call(FREE, pointer)
         return drained
+    }
+
+    private fun audioBuffer(frames: Int): Int {
+        if (frames > audioCapacityFrames) {
+            if (audioPointer != 0) {
+                call(FREE, audioPointer)
+            }
+            audioPointer = call(ALLOC, frames * AUDIO_FRAME_BYTES)
+            check(audioPointer != 0) { "the engine could not allocate an audio buffer" }
+            audioCapacityFrames = frames
+        }
+        return audioPointer
     }
 
     private fun read(
