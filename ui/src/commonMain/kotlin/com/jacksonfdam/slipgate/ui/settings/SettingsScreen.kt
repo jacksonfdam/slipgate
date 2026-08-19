@@ -46,6 +46,8 @@ internal fun SettingsScreen(
     version: String,
     modifier: Modifier = Modifier,
 ) {
+    val settings = controller.settings
+
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(28.dp),
@@ -82,8 +84,11 @@ internal fun SettingsScreen(
 
         item {
             Section(title = "Audio") {
+                Amount("Interface sounds", settings.interfaceVolume) { level ->
+                    controller.update { it.copy(interfaceVolume = level) }
+                }
                 Text(
-                    text = "Volumes arrive with the interface synthesiser, which is not connected yet.",
+                    text = "A game's own sound is mixed by the engine and follows your device volume.",
                     style = TypeScale.Body,
                     color = ColorTokens.Muted,
                 )
