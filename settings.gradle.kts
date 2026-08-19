@@ -22,6 +22,7 @@ rootProject.name = "slipgate"
 include(":host:audio")
 include(":host:backend:wasm")
 include(":host:controls")
+include(":host:gamedata")
 include(":host:graphics:backend:classic")
 include(":host:graphics:backend:skia")
 include(":host:graphics:core")
