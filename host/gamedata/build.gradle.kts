@@ -14,10 +14,12 @@ val suppliedIwad = providers.gradleProperty("slipgate.iwad")
 
 // Reaching the network is opt-in, so the download test never runs in a build that did not ask.
 val downloadUrl = providers.gradleProperty("slipgate.downloadUrl")
+val archiveEntry = providers.gradleProperty("slipgate.archiveEntry")
 
 tasks.withType<Test>().configureEach {
     environment("SLIPGATE_IWAD", suppliedIwad.getOrElse(""))
     environment("SLIPGATE_DOWNLOAD_URL", downloadUrl.getOrElse(""))
+    environment("SLIPGATE_ARCHIVE_ENTRY", archiveEntry.getOrElse(""))
 }
 
 kotlin {
