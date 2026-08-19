@@ -13,6 +13,8 @@ import com.jacksonfdam.slipgate.host.runtime.BackendResolver
 import com.jacksonfdam.slipgate.host.runtime.Gate
 import com.jacksonfdam.slipgate.host.runtime.GateHost
 import com.jacksonfdam.slipgate.host.runtime.GateRegistry
+import com.jacksonfdam.slipgate.ui.settings.SettingsController
+import com.jacksonfdam.slipgate.ui.settings.SettingsStore
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
@@ -24,6 +26,7 @@ internal fun uiModule(gates: List<Gate>): Module =
     module {
         single { GateRegistry(gates = gates) }
         single { GameDataAcquisition(store = get<GameDataStore>()) }
+        single { SettingsController(store = get<SettingsStore>()) }
         single { BackendResolver(supported = listOf(BackendId.Wasm)) }
         // Candidates are listed in preference order; the classic path always works and so
         // always comes last. The shader backends are appended as they land.
