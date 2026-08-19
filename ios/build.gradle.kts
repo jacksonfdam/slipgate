@@ -19,6 +19,7 @@ kotlin {
     sourceSets {
         iosMain.dependencies {
             implementation(project(":ui"))
+            implementation(project(":games:mars"))
             implementation(libs.koin.core)
         }
     }
