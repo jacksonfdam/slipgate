@@ -45,9 +45,15 @@ public class InterfaceSynth(
      * Renders one block of [BLOCK_FRAMES] frames of interleaved stereo 16-bit PCM into
      * [out], which must hold at least [BLOCK_FRAMES] * 2 values. Returns the frame count.
      */
-    public fun render(out: ShortArray): Int {
+    public fun render(
+        out: ShortArray,
+        bed: AmbientBed? = null,
+    ): Int {
         mixLeft.fill(0f)
         mixRight.fill(0f)
+        // The bed goes in before the voices so both share the clipper: an interface that clips when a
+        // cue lands over the pads is worse than one that ducks slightly.
+        bed?.render(mixLeft, mixRight)
         reverbBus.fill(0f)
         for (index in voices.indices) {
             voices[index].render(mixLeft, mixRight, reverbBus, BLOCK_FRAMES)

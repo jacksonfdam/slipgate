@@ -1,6 +1,8 @@
 package com.jacksonfdam.slipgate.ui.audio
 
 import com.jacksonfdam.slipgate.host.audio.AudioOutput
+import com.jacksonfdam.slipgate.host.audio.synth.AmbientBed
+import com.jacksonfdam.slipgate.host.audio.synth.AmbientKey
 import com.jacksonfdam.slipgate.host.audio.synth.InterfaceCue
 import com.jacksonfdam.slipgate.host.audio.synth.InterfaceSynth
 
@@ -23,6 +25,7 @@ private const val SHORT_MIN = -32768
 public class InterfaceAudio(
     private val output: AudioOutput,
     private val synth: InterfaceSynth = InterfaceSynth(sampleRate = output.sampleRate),
+    private val bed: AmbientBed = AmbientBed(sampleRate = output.sampleRate),
 ) {
     private val block = ShortArray(InterfaceSynth.BLOCK_FRAMES * InterfaceSynth.CHANNELS)
     private var owedFrames = 0
@@ -33,6 +36,19 @@ public class InterfaceAudio(
         set(value) {
             field = value.coerceIn(0f, 1f)
         }
+
+    /**
+     * Puts the bed in the focused gate's key, so the interface is scored by the game the player owns
+     * as well as coloured by it.
+     */
+    public fun setAmbientKey(key: AmbientKey) {
+        bed.setKey(key)
+    }
+
+    /** How many ambient voices the tier allows; zero silences the bed and keeps the cues. */
+    public fun setAmbientVoices(count: Int) {
+        bed.setVoices(count)
+    }
 
     /** Plays [cue]. [direction] flips the sweep on cues that track which way a selection moved. */
     public fun play(
@@ -65,7 +81,7 @@ public class InterfaceAudio(
         owedFrames += (elapsedMillis * output.sampleRate / MILLIS_PER_SECOND).toInt()
         var blocks = 0
         while (owedFrames >= InterfaceSynth.BLOCK_FRAMES && blocks < MAX_BLOCKS_PER_PUMP) {
-            val frames = synth.render(block)
+            val frames = synth.render(block, bed)
             scale(frames)
             val accepted = output.submit(block, frames)
             if (accepted <= 0) {
