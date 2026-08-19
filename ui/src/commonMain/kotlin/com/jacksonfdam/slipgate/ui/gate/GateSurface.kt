@@ -24,6 +24,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.jacksonfdam.slipgate.host.controls.ControlState
+import com.jacksonfdam.slipgate.host.controls.VirtualGamepad
 import com.jacksonfdam.slipgate.host.graphics.backend.skia.ComposeFrameRenderer
 import com.jacksonfdam.slipgate.host.graphics.core.BackendSelection
 import com.jacksonfdam.slipgate.host.graphics.core.BackendSelector
@@ -35,6 +37,7 @@ import com.jacksonfdam.slipgate.host.graphics.core.Viewport
 import com.jacksonfdam.slipgate.host.graphics.core.ViewportRect
 import com.jacksonfdam.slipgate.host.runtime.GateSession
 import com.jacksonfdam.slipgate.host.runtime.InputFrame
+import com.jacksonfdam.slipgate.host.runtime.InputProfile
 import com.jacksonfdam.slipgate.host.runtime.SessionStatus
 import org.koin.compose.koinInject
 
@@ -51,9 +54,11 @@ private val EmptyRect = ViewportRect(x = 0, y = 0, width = 0, height = 0)
 @Composable
 public fun GateSurface(
     session: GateSession,
+    inputProfile: InputProfile,
     modifier: Modifier = Modifier,
     selector: BackendSelector = koinInject(),
 ) {
+    val controls = remember(session) { ControlState() }
     val selection = remember(session, selector) { selector.select() }
     val presentation =
         remember(session, selection) {
@@ -72,7 +77,7 @@ public fun GateSurface(
                 val elapsed =
                     if (previousFrameMillis == 0L) 0L else frameTimeMillis - previousFrameMillis
                 previousFrameMillis = frameTimeMillis
-                running = presentation.step(elapsed)
+                running = presentation.step(elapsed, controls.frame())
             }
         }
     }
@@ -86,6 +91,7 @@ public fun GateSurface(
         ) {
             presentation.draw(this, presentation.presentedFrames)
         }
+        VirtualGamepad(profile = inputProfile, state = controls)
         BackendLabel(
             text = selection.describe(),
             modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
@@ -121,8 +127,11 @@ private class GatePresentation(
     }
 
     /** Steps the session and presents what it drew. Returns whether the session is still running. */
-    fun step(elapsedMillis: Long): Boolean {
-        val result = session.step(InputFrame.Idle, elapsedMillis)
+    fun step(
+        elapsedMillis: Long,
+        input: InputFrame,
+    ): Boolean {
+        val result = session.step(input, elapsedMillis)
         if (result.frameRendered && !surface.isEmpty) {
             val current = Viewport(source = session.display, surface = surface)
             renderer.present(

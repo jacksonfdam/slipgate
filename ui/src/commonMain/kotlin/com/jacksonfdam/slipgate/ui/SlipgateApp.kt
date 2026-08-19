@@ -22,6 +22,7 @@ import com.jacksonfdam.slipgate.host.runtime.BackendResolver
 import com.jacksonfdam.slipgate.host.runtime.GateHost
 import com.jacksonfdam.slipgate.host.runtime.GateRegistry
 import com.jacksonfdam.slipgate.host.runtime.GateSession
+import com.jacksonfdam.slipgate.host.runtime.InputProfile
 import com.jacksonfdam.slipgate.host.runtime.MountedGameData
 import com.jacksonfdam.slipgate.ui.gate.GateSurface
 import org.koin.compose.koinInject
@@ -38,6 +39,7 @@ public fun SlipgateApp(
     host: GateHost = koinInject(),
 ) {
     var session by remember { mutableStateOf<GateSession?>(null) }
+    var inputProfile by remember { mutableStateOf<InputProfile?>(null) }
     var failure by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(registry) {
@@ -48,8 +50,10 @@ public fun SlipgateApp(
         }
         resolver
             .factoryFor(gate)
-            .onSuccess { factory -> session = factory.create(MountedGameData.Empty, host) }
-            .onFailure { error -> failure = error.message }
+            .onSuccess { factory ->
+                inputProfile = gate.inputProfile()
+                session = factory.create(MountedGameData.Empty, host)
+            }.onFailure { error -> failure = error.message }
     }
 
     SlipgateTheme {
@@ -58,7 +62,11 @@ public fun SlipgateApp(
             if (current == null) {
                 BootScreen(message = failure ?: "opening gate", platformName = platformInfo.name)
             } else {
-                GateSurface(session = current, modifier = Modifier.fillMaxSize())
+                GateSurface(
+                    session = current,
+                    inputProfile = inputProfile ?: InputProfile(actions = emptySet()),
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
         }
     }

@@ -45,6 +45,7 @@ kotlin {
             api(project(":host:graphics:core"))
             implementation(project(":host:graphics:backend:classic"))
             implementation(project(":host:graphics:backend:skia"))
+            api(project(":host:controls"))
             api(compose.runtime)
             api(compose.ui)
             implementation(compose.foundation)
