@@ -23,6 +23,7 @@ private val DOOM_KEYS: Map<GateAction, Int> =
         GateAction.PreviousWeapon to ';'.code,
         GateAction.Map to 0x80 + 0x3B + 0x07, // KEY_F8, the automap in the default bindings
         GateAction.Menu to 27, // KEY_ESCAPE
+        GateAction.Confirm to 13, // KEY_ENTER, what the menus read as a choice
     )
 
 /**
