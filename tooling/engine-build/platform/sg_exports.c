@@ -3,10 +3,11 @@
 // Every gate exposes the same handful of functions regardless of which engine is behind them, so
 // host/runtime sees one shape and the launcher never learns which game it is running.
 //
-// The interesting part is the boot: D_DoomMain never returns, because it ends in D_DoomLoop's
+// The interesting part is the boot: D_DoomMain never returns, because it ends in the main loop's
 // infinite loop. Rather than patch the engine, the platform layer sets a jump before calling it
-// and escapes from the first I_StartFrame — by which point every initialisation D_DoomLoop does
-// has already run. Stepping afterwards is just calling D_RunFrame.
+// and escapes from the first I_StartFrame — by which point every initialisation the loop does has
+// already run. Stepping afterwards is one frame of whichever engine was linked in, which is what
+// sg_engine_run_frame is for.
 
 #include <setjmp.h>
 #include <stdlib.h>
@@ -19,15 +20,10 @@
 #include "m_argv.h"
 #include "m_misc.h"
 #include "w_wad.h"
-// Doom's own start-up and demo entry points: the platform layer calls them rather than reimplementing
-// what the game already knows how to do.
-#include "doomstat.h"
-#include "g_game.h"
 
 #include "sg_platform.h"
 
 extern void D_DoomMain(void);
-extern void D_RunFrame(void);
 
 #define SNAPSHOT_BYTES 8
 
@@ -127,7 +123,7 @@ int slipgate_init(void)
     myargv = arguments;
 
     booting = true;
-    sg_host_log("slipgate: entering D_DoomMain");
+    sg_host_log("slipgate: entering the engine's start-up");
     if (setjmp(boot_escape) == 0)
     {
         D_DoomMain();
@@ -167,9 +163,7 @@ int slipgate_play_demo(int name_pointer, int single)
         return 0;
     }
 
-    singledemo = single != 0;
-    G_DeferedPlayDemo(demo_name);
-    return 1;
+    return sg_engine_play_demo(demo_name, single != 0) ? 1 : 0;
 }
 
 __attribute__((export_name("slipgate_step")))
@@ -190,7 +184,7 @@ int slipgate_step(int elapsed_millis)
 
     sg_set_elapsed_millis(sg_elapsed_millis() + elapsed_millis);
     sg_audio_advance(elapsed_millis);
-    D_RunFrame();
+    sg_engine_run_frame();
     step_escape_valid = false;
 
     int status = 0;
