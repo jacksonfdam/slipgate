@@ -2,13 +2,12 @@ package com.jacksonfdam.slipgate.host.controls
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,17 +17,73 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.jacksonfdam.slipgate.host.runtime.Axis2
 import com.jacksonfdam.slipgate.host.runtime.GateAction
 import com.jacksonfdam.slipgate.host.runtime.InputProfile
 
-private val PAD_SIZE = 132.dp
-private val BUTTON_SIZE = 64.dp
+private val PAD_SIZE = 148.dp
 private val EDGE_PADDING = 20.dp
-private const val IDLE_ALPHA = 0.18f
-private const val PRESSED_ALPHA = 0.38f
+private const val IDLE_ALPHA = 0.30f
+private const val PRESSED_ALPHA = 0.55f
+private const val LABEL_ALPHA = 0.85f
 private const val DEAD_ZONE = 12f
+
+/**
+ * Where one action's button sits and how big it is. Trigger actions cluster around the
+ * right thumb's resting arc; the utility pair sits out of the way at the top edge.
+ */
+private class ButtonPlacement(
+    val fromTop: Boolean,
+    val end: Dp,
+    val vertical: Dp,
+    val size: Dp,
+    val label: String,
+)
+
+// Distances are from the corner the button hangs off, so the cluster hugs the bezel the
+// thumb already rests on instead of marching across the middle of the picture.
+private val placements: Map<GateAction, ButtonPlacement> =
+    mapOf(
+        GateAction.Fire to
+            ButtonPlacement(
+                fromTop = false,
+                end = 24.dp,
+                vertical = 32.dp,
+                size = 76.dp,
+                label = "FIRE",
+            ),
+        GateAction.Use to
+            ButtonPlacement(
+                fromTop = false,
+                end = 118.dp,
+                vertical = 56.dp,
+                size = 60.dp,
+                label = "USE",
+            ),
+        GateAction.NextWeapon to
+            ButtonPlacement(fromTop = false, end = 28.dp, vertical = 130.dp, size = 52.dp, label = "›"),
+        GateAction.PreviousWeapon to
+            ButtonPlacement(fromTop = false, end = 98.dp, vertical = 136.dp, size = 52.dp, label = "‹"),
+        GateAction.Jump to
+            ButtonPlacement(fromTop = false, end = 198.dp, vertical = 28.dp, size = 60.dp, label = "JUMP"),
+        GateAction.Crouch to
+            ButtonPlacement(fromTop = false, end = 204.dp, vertical = 108.dp, size = 52.dp, label = "DUCK"),
+        GateAction.Map to ButtonPlacement(fromTop = true, end = 24.dp, vertical = 20.dp, size = 48.dp, label = "MAP"),
+        GateAction.Menu to ButtonPlacement(fromTop = true, end = 84.dp, vertical = 20.dp, size = 48.dp, label = "MENU"),
+    )
+
+private val labelStyle =
+    TextStyle(
+        color = Color.White.copy(alpha = LABEL_ALPHA),
+        fontSize = 11.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 1.sp,
+    )
 
 /**
  * The touch controls, laid out from the gate's own input profile.
@@ -51,17 +106,23 @@ public fun VirtualGamepad(
                     .padding(EDGE_PADDING)
                     .size(PAD_SIZE),
         )
-        Row(
-            modifier =
-                Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(EDGE_PADDING),
-            horizontalArrangement = Arrangement.spacedBy(EDGE_PADDING),
-        ) {
-            // Ordered so the actions a thumb reaches for most sit nearest the edge.
-            profile.actions.sortedBy { it.ordinal }.forEach { action ->
-                ActionButton(action = action, state = state)
-            }
+        profile.actions.forEach { action ->
+            val placement = placements.getValue(action)
+            ActionButton(
+                action = action,
+                state = state,
+                placement = placement,
+                modifier =
+                    if (placement.fromTop) {
+                        Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(end = placement.end, top = placement.vertical)
+                    } else {
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = placement.end, bottom = placement.vertical)
+                    },
+            )
         }
     }
 }
@@ -121,14 +182,16 @@ private fun direction(offset: Float): Float =
 private fun ActionButton(
     action: GateAction,
     state: ControlState,
+    placement: ButtonPlacement,
     modifier: Modifier = Modifier,
 ) {
     var pressed by remember { mutableStateOf(false) }
 
     Box(
+        contentAlignment = Alignment.Center,
         modifier =
             modifier
-                .size(BUTTON_SIZE)
+                .size(placement.size)
                 .background(
                     Color.White.copy(alpha = if (pressed) PRESSED_ALPHA else IDLE_ALPHA),
                     CircleShape,
@@ -146,5 +209,7 @@ private fun ActionButton(
                         }
                     }
                 },
-    )
+    ) {
+        BasicText(text = placement.label, style = labelStyle)
+    }
 }
