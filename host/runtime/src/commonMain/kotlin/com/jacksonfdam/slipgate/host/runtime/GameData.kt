@@ -6,6 +6,12 @@ public sealed interface DataSource {
     public data class FreeDownload(
         val displayName: String,
         val url: String,
+        /**
+         * When [url] points at an archive, the file inside it to take, matched by how its name ends.
+         * Both free replacements are published inside a zip, so this is the usual case rather than
+         * the exception.
+         */
+        val archiveEntry: String? = null,
     ) : DataSource
 
     /** The user must supply the file; nothing may be offered for download. */
