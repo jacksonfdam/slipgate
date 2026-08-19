@@ -1,0 +1,108 @@
+// The attract background: a fire that rises behind the rack, in the colours of the gate the
+// player is looking at. Written in the dialect Skia runtime effects and AGSL share.
+//
+// It declares the shared scene uniform block — the same fifteen floats every scene shader
+// takes, in the same order — so the host packs one FloatArray for portraits and for this.
+//
+// The fire is procedural rather than a cellular automaton: a fragment shader has no previous
+// frame to burn down from, so heat comes from a domain-warped noise field advected upward.
+// What makes it read as an id Tech 1 fire sky is the colour step, not the simulation: heat is
+// quantised into palette bands and the band boundary is what cycles, the way a game of the
+// period animated fire by rotating palette entries rather than by moving pixels.
+//
+// The quality tier arrives as `octaves`, and zero octaves must still compose a readable still:
+// that is the Minimal-tier and reduced-motion frame, with timeSeconds frozen by the host.
+
+uniform float widthPixels;
+uniform float heightPixels;
+uniform float timeSeconds;
+uniform float accentDimR;
+uniform float accentDimG;
+uniform float accentDimB;
+uniform float accentBaseR;
+uniform float accentBaseG;
+uniform float accentBaseB;
+uniform float accentHotR;
+uniform float accentHotG;
+uniform float accentHotB;
+uniform float focusAmount;
+uniform float audioLevel;
+uniform float octaves;
+
+const float MAX_OCTAVES = 6.0;
+const float RISE = 0.09;
+const float WARP_STRENGTH = 1.35;
+const float BANDS = 7.0;
+const float CYCLE_RATE = 0.35;
+const float FIELD_WIDTH = 2.6;
+const float FIELD_HEIGHT = 3.2;
+const float HORIZON = 0.62;
+const float CEILING = 0.18;
+
+float hash(float2 p) {
+    return fract(sin(dot(p, float2(127.1, 311.7))) * 43758.5453);
+}
+
+float valueNoise(float2 p) {
+    float2 cell = floor(p);
+    float2 inside = fract(p);
+    float2 eased = inside * inside * (3.0 - 2.0 * inside);
+    float a = hash(cell);
+    float b = hash(cell + float2(1.0, 0.0));
+    float c = hash(cell + float2(0.0, 1.0));
+    float d = hash(cell + float2(1.0, 1.0));
+    return mix(mix(a, b, eased.x), mix(c, d, eased.x), eased.y);
+}
+
+float fbm(float2 p) {
+    float sum = 0.0;
+    float amplitude = 0.5;
+    float weight = 0.0;
+    for (float octave = 0.0; octave < MAX_OCTAVES; octave += 1.0) {
+        if (octave >= octaves) { break; }
+        sum += amplitude * valueNoise(p);
+        weight += amplitude;
+        amplitude *= 0.5;
+        p = p * 2.07 + float2(11.0, 23.0);
+    }
+    return weight > 0.0 ? sum / weight : 0.5;
+}
+
+half4 main(float2 coord) {
+    float2 uv = coord / float2(widthPixels, heightPixels);
+
+    // Fuel sits along the bottom edge and thins upward, so the fire has a floor to burn from
+    // and the top of the screen stays dark enough to read type against.
+    float fuel = smoothstep(1.0, HORIZON, uv.y);
+
+    // Advection: the sample field scrolls down, so the flame climbs.
+    float2 field = float2(uv.x * FIELD_WIDTH, uv.y * FIELD_HEIGHT + timeSeconds * RISE);
+    float2 warp = float2(fbm(field), fbm(field + float2(3.7, 8.1)));
+    float flame = fbm(field + WARP_STRENGTH * (warp - 0.5));
+
+    float heat = fuel * (0.30 + 0.70 * flame);
+    heat *= 0.55 + 0.45 * focusAmount + 0.25 * audioLevel;
+    heat = clamp(heat, 0.0, 1.0);
+
+    // The palette cycle: heat is stepped into bands and the steps drift, which is what makes a
+    // still field look like it is burning. It is also what keeps the background legible — bands
+    // change slowly, so nothing flickers behind text.
+    float cycled = heat * BANDS + timeSeconds * CYCLE_RATE;
+    float band = floor(cycled) / BANDS;
+    float within = fract(cycled);
+    float stepped = clamp(band + within * within / BANDS, 0.0, 1.0);
+
+    half3 dim = half3(half(accentDimR), half(accentDimG), half(accentDimB));
+    half3 base = half3(half(accentBaseR), half(accentBaseG), half(accentBaseB));
+    half3 hot = half3(half(accentHotR), half(accentHotG), half(accentHotB));
+
+    // Embers to base to core, and never the full accent: this sits under the whole interface, so
+    // its brightest band is the dim end of the ramp lifted, not the hot end at full strength.
+    half3 colour = mix(half3(0.0), dim, half(smoothstep(0.02, 0.45, stepped)));
+    colour = mix(colour, base * half(0.85), half(smoothstep(0.40, 0.80, stepped)));
+    colour = mix(colour, hot * half(0.7), half(smoothstep(0.86, 1.0, stepped)));
+
+    // A ceiling fade, so the fire dies out toward the top rather than ending on a line.
+    float ceiling = smoothstep(0.0, CEILING, uv.y);
+    return half4(colour * half(ceiling), 1.0);
+}
