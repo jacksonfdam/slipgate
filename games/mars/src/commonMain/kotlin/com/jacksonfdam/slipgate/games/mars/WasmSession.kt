@@ -27,8 +27,8 @@ private val DOOM_KEYS: Map<GateAction, Int> =
 /**
  * Boots the Doom module with the data the host mounted.
  *
- * `-nosound` and `-nomusic` are passed because the sound path is a ring buffer with no mixer yet;
- * asking the engine for audio it cannot deliver would only produce silence with extra steps.
+ * `-nomusic` is passed because the platform layer mixes sound effects but leaves music to a later
+ * measured budget; sound effects are on, and the host drains them as it steps.
  */
 internal suspend fun openWasmSession(
     data: MountedGameData,
@@ -43,7 +43,7 @@ internal suspend fun openWasmSession(
         WasmEngine.start(
             moduleBytes = marsModuleBytes(),
             files = mapOf(iwadName to iwad),
-            arguments = listOf("slipgate", "-iwad", iwadName, "-nosound", "-nomusic"),
+            arguments = listOf("slipgate", "-iwad", iwadName, "-nomusic"),
             host = GateHostBridge(host),
         )
 
