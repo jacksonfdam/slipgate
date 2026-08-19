@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -104,11 +103,11 @@ private fun GatesSection(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         SlipgateWordmark(modifier = Modifier.height(WORDMARK_HEIGHT))
-        StagePanel(card = current)
         if (compact) {
+            StagePanel(card = current, keepAspect = true)
             GateList(state, onSelect, onEnter, modifier = Modifier.weight(1f))
         } else {
-            Spacer(modifier = Modifier.weight(1f))
+            StagePanel(card = current, modifier = Modifier.weight(1f).fillMaxWidth())
             GateRack(state, onSelect, onEnter)
             Text(
                 text = describe(current),
