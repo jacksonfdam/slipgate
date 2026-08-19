@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,7 +36,10 @@ import com.jacksonfdam.slipgate.ui.gate.GateSurface
 import com.jacksonfdam.slipgate.ui.launcher.LauncherSection
 import com.jacksonfdam.slipgate.ui.launcher.LauncherShell
 import com.jacksonfdam.slipgate.ui.launcher.LauncherState
+import com.jacksonfdam.slipgate.ui.launcher.LocalPortraitOctaves
+import com.jacksonfdam.slipgate.ui.launcher.LocalQualityTier
 import com.jacksonfdam.slipgate.ui.launcher.launcherState
+import com.jacksonfdam.slipgate.ui.settings.SettingsController
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -74,6 +78,7 @@ public fun SlipgateApp(
     host: GateHost = koinInject(),
     store: GameDataStore = koinInject(),
     acquisition: GameDataAcquisition = koinInject(),
+    settingsController: SettingsController = koinInject(),
 ) {
     var stage by remember { mutableStateOf<Stage>(Stage.Opening) }
     var section by remember { mutableStateOf(LauncherSection.Gates) }
@@ -108,54 +113,64 @@ public fun SlipgateApp(
 
     LaunchedEffect(registry) { showRack() }
 
-    SlipgateTheme {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            when (val current = stage) {
-                is Stage.Opening -> {
-                    BootScreen(message = "opening gate", platformName = platformInfo.name)
-                }
+    // What the player chose reaches the whole interface from one place: the portraits read the tier
+    // and the motion setting, and a running gate reads the tube and the picture shape.
+    SlipgateTheme(reducedMotion = settingsController.settings.reducedMotion) {
+        CompositionLocalProvider(
+            LocalQualityTier provides settingsController.activeTier,
+            LocalPortraitOctaves provides settingsController.activeTier.portraitOctaves.toFloat(),
+        ) {
+            Surface(modifier = Modifier.fillMaxSize()) {
+                when (val current = stage) {
+                    is Stage.Opening -> {
+                        BootScreen(message = "opening gate", platformName = platformInfo.name)
+                    }
 
-                is Stage.Stuck -> {
-                    BootScreen(message = current.message, platformName = platformInfo.name)
-                }
+                    is Stage.Stuck -> {
+                        BootScreen(message = current.message, platformName = platformInfo.name)
+                    }
 
-                is Stage.Choosing -> {
-                    LauncherShell(
-                        state = current.state,
-                        section = section,
-                        onSection = { section = it },
-                        onSelect = { index ->
-                            stage =
-                                Stage.Choosing(current.state.moveBy(index - current.state.selected))
-                        },
-                        onEnter = { card ->
-                            scope.launch {
-                                registry.gates
-                                    .firstOrNull { gate -> gate.descriptor.id.value == card.id }
-                                    ?.let { gate -> enter(gate) }
-                            }
-                        },
-                        statusLabel = platformInfo.name,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
+                    is Stage.Choosing -> {
+                        LauncherShell(
+                            settings = settingsController,
+                            state = current.state,
+                            section = section,
+                            onSection = { section = it },
+                            onSelect = { index ->
+                                stage =
+                                    Stage.Choosing(current.state.moveBy(index - current.state.selected))
+                            },
+                            onEnter = { card ->
+                                scope.launch {
+                                    registry.gates
+                                        .firstOrNull { gate -> gate.descriptor.id.value == card.id }
+                                        ?.let { gate -> enter(gate) }
+                                }
+                            },
+                            statusLabel = platformInfo.name,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
 
-                is Stage.NeedsData -> {
-                    GameDataStage(
-                        gate = current.gate,
-                        entry = current.entry,
-                        acquisition = acquisition,
-                        onInstalled = { scope.launch { enter(current.gate) } },
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
+                    is Stage.NeedsData -> {
+                        GameDataStage(
+                            gate = current.gate,
+                            entry = current.entry,
+                            acquisition = acquisition,
+                            onInstalled = { scope.launch { enter(current.gate) } },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
 
-                is Stage.Playing -> {
-                    GateSurface(
-                        session = current.session,
-                        inputProfile = current.profile,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    is Stage.Playing -> {
+                        GateSurface(
+                            session = current.session,
+                            inputProfile = current.profile,
+                            crt = settingsController.settings.crt,
+                            scaling = settingsController.settings.scaling,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
             }
         }
