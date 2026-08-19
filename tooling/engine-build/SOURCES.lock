@@ -17,7 +17,7 @@ flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sST
 
 [mars]
 artifact = games/mars/src/commonMain/composeResources/files/mars.wasm
-sha256 = 028512906810be69ad692b2627d9f06aab636d719b992594c9fb7a90424325fd
+sha256 = 81322bceeb96fa8a98ad74efabcbd50b838f57e49c11954fddbe10901c79e727
 emscripten = 6.0.7
 flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=1 -Wl,--wrap=M_FileCaseExists --no-entry -Oz
 
