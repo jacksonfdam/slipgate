@@ -42,6 +42,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":host:runtime"))
+            implementation(project(":host:audio"))
             api(project(":host:graphics:core"))
             implementation(project(":host:graphics:backend:classic"))
             implementation(project(":host:graphics:backend:skia"))
