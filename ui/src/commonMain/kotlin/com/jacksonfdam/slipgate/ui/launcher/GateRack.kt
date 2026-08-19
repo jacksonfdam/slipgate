@@ -9,10 +9,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -29,7 +29,6 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 private const val SELECTED_SCALE = 1f
@@ -40,14 +39,13 @@ private const val COVER_ASPECT = 3f / 4f
 private const val CARD_WIDTH_DP = 220
 
 /**
- * The rack of gates.
- *
- * Not a list view: cards sit in a row the selection walks along, the selected one stands taller and
- * brighter, and the rest recede. The shader work in the next changes lands on top of this layout
- * rather than replacing it — a card with no cover art still has to read as a card.
+ * The rack of gates. Not a list view: cards sit in a row the selection walks along, the
+ * selected one stands taller and brighter, and the rest recede. The portrait shaders land
+ * on top of this layout rather than replacing it — a card with no cover art still has to
+ * read as a card.
  */
 @Composable
-internal fun LauncherScreen(
+internal fun GateRack(
     state: LauncherState,
     onSelect: (Int) -> Unit,
     onEnter: (GateCard) -> Unit,
@@ -55,50 +53,54 @@ internal fun LauncherScreen(
 ) {
     val listState = rememberLazyListState()
 
-    // The selection can move without a touch — a key, a gamepad — so the rack follows it rather than
-    // the other way round.
+    // The selection can move without a touch — a key, a gamepad — so the rack follows it
+    // rather than the other way round.
     LaunchedEffect(state.selected) {
         if (state.cards.isNotEmpty()) {
             listState.animateScrollToItem(state.selected)
         }
     }
 
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically),
+    LazyRow(
+        state = listState,
+        // Centred so a rack of one or two gates sits in the middle of the screen rather
+        // than clinging to the left edge, which is how a short rack reads as deliberate.
+        horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterHorizontally),
+        contentPadding = PaddingValues(horizontal = 32.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.fillMaxWidth(),
     ) {
-        Text(
-            text = "SLIPGATE",
-            style = MaterialTheme.typography.displaySmall,
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        LazyRow(
-            state = listState,
-            // Centred so a rack of one or two gates sits in the middle of the screen rather than
-            // clinging to the left edge, which is how a short rack reads as deliberate.
-            horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterHorizontally),
-            contentPadding = PaddingValues(horizontal = 32.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            itemsIndexed(state.cards) { index, card ->
-                GateCardView(
-                    card = card,
-                    selected = index == state.selected,
-                    onClick = { if (index == state.selected) onEnter(card) else onSelect(index) },
-                )
-            }
+        itemsIndexed(state.cards) { index, card ->
+            GateCardView(
+                card = card,
+                selected = index == state.selected,
+                onClick = { if (index == state.selected) onEnter(card) else onSelect(index) },
+                modifier = Modifier.width(CARD_WIDTH_DP.dp),
+            )
         }
+    }
+}
 
-        Text(
-            text = state.current?.let(::describe) ?: "no gates are registered in this build",
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp),
-        )
+/** The rack as a vertical list, for widths where a row of cards cannot breathe. */
+@Composable
+internal fun GateList(
+    state: LauncherState,
+    onSelect: (Int) -> Unit,
+    onEnter: (GateCard) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        itemsIndexed(state.cards) { index, card ->
+            GateCardView(
+                card = card,
+                selected = index == state.selected,
+                onClick = { if (index == state.selected) onEnter(card) else onSelect(index) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 
@@ -107,6 +109,7 @@ private fun GateCardView(
     card: GateCard,
     selected: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val scale by animateFloatAsState(if (selected) SELECTED_SCALE else RESTING_SCALE)
     val accent = accentOf(card.descriptor.accent)
@@ -114,8 +117,7 @@ private fun GateCardView(
 
     Column(
         modifier =
-            Modifier
-                .width(CARD_WIDTH_DP.dp)
+            modifier
                 .scale(scale)
                 .clickable(onClick = onClick)
                 .padding(vertical = 8.dp),
@@ -148,8 +150,8 @@ private fun GateCardView(
 }
 
 /**
- * The stand-in for cover art, which no gate ships: a gradient in the gate's own accent, dimmed for a
- * gate that cannot be entered yet. Artwork replaces the brush and nothing else.
+ * The stand-in for cover art, which no gate ships: a gradient in the gate's own accent,
+ * dimmed for a gate that cannot be entered yet. Artwork replaces the brush and nothing else.
  */
 private fun cover(
     accent: Color,
@@ -160,7 +162,7 @@ private fun cover(
 }
 
 /** What the line under the rack says about the selected gate. */
-private fun describe(card: GateCard): String =
+internal fun describe(card: GateCard): String =
     when (val availability = card.availability) {
         GateAvailability.Installed -> {
             "ready — tap again to enter"
