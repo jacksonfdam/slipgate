@@ -21,3 +21,9 @@ sha256 = 965a80f07fc5709a5b1ebb04f521b489ae840c71b2afc3de693dc1685efcb497
 emscripten = 6.0.7
 flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=1 -Wl,--wrap=M_FileCaseExists --no-entry -Oz
 
+[corvus]
+artifact = games/corvus/src/commonMain/composeResources/files/corvus.wasm
+sha256 = 8812fd9355a7e7b673a4011da6e9f91bb6dbe31f32cc8c5715c6bc1eb1cdb32a
+emscripten = 6.0.7
+flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=1 -Wl,--wrap=M_FileCaseExists --no-entry -Oz
+
