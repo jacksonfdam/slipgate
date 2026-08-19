@@ -16,6 +16,13 @@ env:
   GRADLE_OPTS: -Dorg.gradle.daemon=false
 
 jobs:
+  no-assets:
+    name: No asset files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: tooling/ci/verify-no-assets.sh
+
   static-analysis:
     name: Static analysis
     runs-on: ubuntu-latest
