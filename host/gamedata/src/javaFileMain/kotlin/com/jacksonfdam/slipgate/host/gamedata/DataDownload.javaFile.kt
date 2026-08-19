@@ -30,6 +30,10 @@ internal class UrlConnectionDownload : DataDownload {
                 read(connection, total, onProgress)
             } catch (failure: IOException) {
                 throw DataDownloadException("the download did not finish: ${failure.message}", failure)
+            } catch (refused: SecurityException) {
+                // Android answers a request the app has no permission for by throwing this, and a
+                // download that cannot start is a download that failed rather than a crash.
+                throw DataDownloadException("this build may not use the network: ${refused.message}", refused)
             } finally {
                 connection.disconnect()
             }
