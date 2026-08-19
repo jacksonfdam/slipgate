@@ -36,6 +36,7 @@ android {
 
 dependencies {
     implementation(project(":ui"))
+    implementation(project(":games:mars"))
     implementation(libs.androidx.activity.compose)
     implementation(libs.koin.android)
 }
