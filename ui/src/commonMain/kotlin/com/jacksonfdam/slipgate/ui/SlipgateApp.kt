@@ -37,6 +37,7 @@ import com.jacksonfdam.slipgate.host.runtime.GateRegistry
 import com.jacksonfdam.slipgate.host.runtime.GateSession
 import com.jacksonfdam.slipgate.host.runtime.InputProfile
 import com.jacksonfdam.slipgate.ui.audio.InterfaceAudio
+import com.jacksonfdam.slipgate.ui.audio.ambientKeyOf
 import com.jacksonfdam.slipgate.ui.data.GameDataStage
 import com.jacksonfdam.slipgate.ui.gate.GateSurface
 import com.jacksonfdam.slipgate.ui.launcher.GateCard
@@ -98,10 +99,23 @@ public fun SlipgateApp(
 ) {
     var stage by remember { mutableStateOf<Stage>(Stage.Splash) }
     var section by remember { mutableStateOf(LauncherSection.Gates) }
-    val scope = rememberCoroutineScope()
+    val shell =
+        remember(registry, resolver, host, store, acquisition, settings, audio) {
+            Shell(
+                gates = Gates(registry, resolver, host, store),
+                acquisition = acquisition,
+                settings = settings,
+                audio = audio,
+            )
+        }
 
-    // The interface's voice, and its silence while a gate owns the device.
-    InterfaceVoice(audio, settings, quiet = stage is Stage.Playing)
+    // The interface's voice: cues, and the bed in the focused gate's key.
+    InterfaceVoice(
+        audio = audio,
+        settings = settings,
+        quiet = stage is Stage.Playing,
+        focused = (stage as? Stage.Choosing)?.state?.current,
+    )
 
     SlipgateTheme(reducedMotion = settings.settings.reducedMotion) {
         CompositionLocalProvider(
@@ -109,53 +123,90 @@ public fun SlipgateApp(
             LocalPortraitOctaves provides settings.activeTier.portraitOctaves.toFloat(),
         ) {
             Surface(modifier = Modifier.fillMaxSize()) {
-                when (val current = stage) {
-                    is Stage.Splash -> {
-                        SplashStage(
-                            settings = settings,
-                            onReady = { rack -> stage = Stage.Choosing(rack) },
-                            rack = { launcherState(registry.gates, store) },
-                        )
-                    }
-
-                    is Stage.Stuck -> {
-                        BootScreen(message = current.message, platformName = platformInfo.name)
-                    }
-
-                    is Stage.Choosing -> {
-                        ChoosingStage(
-                            state = current.state,
-                            section = section,
-                            settings = settings,
-                            audio = audio,
-                            onSection = { section = it },
-                            onMove = { next -> stage = Stage.Choosing(next) },
-                            onEnter = { card ->
-                                scope.launch {
-                                    registry.gates
-                                        .firstOrNull { gate -> gate.descriptor.id.value == card.id }
-                                        ?.let { gate -> stage = openedStage(gate, resolver, store, host) }
-                                }
-                            },
-                            statusLabel = "${platformInfo.name} · ${settings.activeTier.name}",
-                        )
-                    }
-
-                    is Stage.NeedsData -> {
-                        GameDataStage(
-                            gate = current.gate,
-                            entry = current.entry,
-                            acquisition = acquisition,
-                            onInstalled = { scope.launch { stage = openedStage(current.gate, resolver, store, host) } },
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-
-                    is Stage.Playing -> {
-                        PlayingStage(current.session, current.profile, settings)
-                    }
-                }
+                StageSurface(
+                    stage = stage,
+                    section = section,
+                    shell = shell,
+                    platformName = platformInfo.name,
+                    onStage = { next -> stage = next },
+                    onSection = { chosen -> section = chosen },
+                )
             }
+        }
+    }
+}
+
+/** What it takes to open a gate: the registry to find it, and the three services it runs on. */
+private class Gates(
+    val registry: GateRegistry,
+    val resolver: BackendResolver,
+    val host: GateHost,
+    val store: GameDataStore,
+)
+
+/** What the shell needs beyond the gates themselves, kept together so a stage reads in one breath. */
+private class Shell(
+    val gates: Gates,
+    val acquisition: GameDataAcquisition,
+    val settings: SettingsController,
+    val audio: InterfaceAudio,
+)
+
+/** Whichever stage the shell is on, drawn with what that stage needs. */
+@Composable
+private fun StageSurface(
+    stage: Stage,
+    section: LauncherSection,
+    shell: Shell,
+    platformName: String,
+    onStage: (Stage) -> Unit,
+    onSection: (LauncherSection) -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    when (stage) {
+        is Stage.Splash -> {
+            SplashStage(
+                settings = shell.settings,
+                onReady = { rack -> onStage(Stage.Choosing(rack)) },
+                rack = { launcherState(shell.gates.registry.gates, shell.gates.store) },
+            )
+        }
+
+        is Stage.Stuck -> {
+            BootScreen(message = stage.message, platformName = platformName)
+        }
+
+        is Stage.Choosing -> {
+            ChoosingStage(
+                state = stage.state,
+                section = section,
+                settings = shell.settings,
+                audio = shell.audio,
+                onSection = onSection,
+                onMove = { next -> onStage(Stage.Choosing(next)) },
+                onEnter = { card ->
+                    scope.launch {
+                        shell.gates.registry.gates
+                            .firstOrNull { gate -> gate.descriptor.id.value == card.id }
+                            ?.let { gate -> onStage(shell.gates.openedStage(gate)) }
+                    }
+                },
+                statusLabel = "$platformName · ${shell.settings.activeTier.name}",
+            )
+        }
+
+        is Stage.NeedsData -> {
+            GameDataStage(
+                gate = stage.gate,
+                entry = stage.entry,
+                acquisition = shell.acquisition,
+                onInstalled = { scope.launch { onStage(shell.gates.openedStage(stage.gate)) } },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        is Stage.Playing -> {
+            PlayingStage(stage.session, stage.profile, shell.settings)
         }
     }
 }
@@ -198,9 +249,17 @@ private fun InterfaceVoice(
     audio: InterfaceAudio,
     settings: SettingsController,
     quiet: Boolean,
+    focused: GateCard?,
 ) {
     LaunchedEffect(quiet) {
         if (quiet) audio.silence() else audio.resume()
+    }
+
+    // The bed follows the selection: the focused gate's palette gives it a root, its identity a mode,
+    // and the tier decides how many voices it may use.
+    LaunchedEffect(focused?.id, focused?.accent, settings.activeTier) {
+        focused?.let { card -> audio.setAmbientKey(ambientKeyOf(card)) }
+        audio.setAmbientVoices(settings.activeTier.ambientVoices)
     }
     LaunchedEffect(Unit) {
         var previousNanos = 0L
@@ -271,12 +330,7 @@ private fun ChoosingStage(
 }
 
 /** Everything a chosen gate resolves to: missing data, a running session, or the reason. */
-private suspend fun openedStage(
-    gate: Gate,
-    resolver: BackendResolver,
-    store: GameDataStore,
-    host: GateHost,
-): Stage {
+private suspend fun Gates.openedStage(gate: Gate): Stage {
     val gateId = gate.descriptor.id.value
     val outstanding = gate.requirements().unmet(store.names(gateId)).firstOrNull()
     if (outstanding != null) {
