@@ -1,5 +1,7 @@
 package com.jacksonfdam.slipgate.ui
 
+import com.jacksonfdam.slipgate.host.audio.AudioOutput
+import com.jacksonfdam.slipgate.host.audio.openAudioOutput
 import com.jacksonfdam.slipgate.host.graphics.backend.classic.ClassicBackend
 import com.jacksonfdam.slipgate.host.graphics.backend.skia.skiaBackend
 import com.jacksonfdam.slipgate.host.graphics.core.BackendSelector
@@ -26,7 +28,11 @@ internal val uiModule: Module =
         single {
             BackendSelector(candidates = listOfNotNull(skiaBackend(get()), ClassicBackend()))
         }
-        single<GateHost> { PlaceholderGateHost() }
+        // The output lives as long as the shell does. Opening one per session would fight the
+        // platform for the device on every gate change, and closing one is the shell's business
+        // rather than a session's.
+        single<AudioOutput> { openAudioOutput() }
+        single<GateHost> { PlaceholderGateHost(audio = get()) }
     }
 
 /** Every Koin module the shell needs, in the order the entry points should load them. */

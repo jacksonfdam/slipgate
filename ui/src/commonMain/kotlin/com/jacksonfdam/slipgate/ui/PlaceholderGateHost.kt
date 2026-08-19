@@ -8,22 +8,13 @@ import com.jacksonfdam.slipgate.host.runtime.Logger
 import com.jacksonfdam.slipgate.host.runtime.SaveStorage
 
 /**
- * Host services that accept everything and store nothing, so a session can run before the
- * audio, storage and logging modules exist. Each field is replaced by a real implementation
- * in its own change; nothing here is meant to survive.
+ * Host services that store nothing, so a session can run before the storage and logging modules
+ * exist. Audio is real and comes from outside: the remaining fields are replaced the same way, each
+ * in its own change.
  */
-internal class PlaceholderGateHost : GateHost {
-    override val audio: AudioSink =
-        object : AudioSink {
-            override val sampleRate: Int = SAMPLE_RATE
-            override val channels: Int = CHANNELS
-
-            override fun submit(
-                samples: ShortArray,
-                frameCount: Int,
-            ): Int = frameCount
-        }
-
+internal class PlaceholderGateHost(
+    override val audio: AudioSink,
+) : GateHost {
     override val storage: SaveStorage =
         object : SaveStorage {
             override suspend fun slots(): List<String> = emptyList()
@@ -60,9 +51,4 @@ internal class PlaceholderGateHost : GateHost {
         object : Clock {
             override fun elapsedMillis(): Long = 0L
         }
-
-    private companion object {
-        const val SAMPLE_RATE = 44_100
-        const val CHANNELS = 2
-    }
 }
