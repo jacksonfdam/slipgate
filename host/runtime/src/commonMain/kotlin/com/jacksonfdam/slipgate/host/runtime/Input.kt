@@ -25,6 +25,9 @@ public enum class GateAction {
     PreviousWeapon,
     Map,
     Menu,
+
+    /** Accepts the highlighted choice in an engine's own menus, the way Enter does. */
+    Confirm,
     ;
 
     public val bit: Int
