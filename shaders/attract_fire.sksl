@@ -36,8 +36,11 @@ const float BANDS = 7.0;
 const float CYCLE_RATE = 0.35;
 const float FIELD_WIDTH = 2.6;
 const float FIELD_HEIGHT = 3.2;
-const float HORIZON = 0.62;
-const float CEILING = 0.18;
+const float HORIZON = 0.50;
+const float CEILING = 0.10;
+const float TONGUES = 9.0;
+const float SWAY = 0.22;
+const float GAIN = 0.62;
 
 float hash(float2 p) {
     return fract(sin(dot(p, float2(127.1, 311.7))) * 43758.5453);
@@ -80,7 +83,12 @@ half4 main(float2 coord) {
     float2 warp = float2(fbm(field), fbm(field + float2(3.7, 8.1)));
     float flame = fbm(field + WARP_STRENGTH * (warp - 0.5));
 
-    float heat = fuel * (0.30 + 0.70 * flame);
+    // Tongues: a shape the fire has with no noise at all, so the Minimal tier — which is given
+    // zero octaves — and a reduced-motion still both get a fire rather than a gradient.
+    float tongues = 0.5 + 0.5 * sin(uv.x * TONGUES + sin(uv.x * 3.1) * 2.0 + timeSeconds * SWAY);
+    float shape = 0.55 * tongues + 0.45 * flame;
+
+    float heat = fuel * (0.22 + 0.78 * shape);
     heat *= 0.55 + 0.45 * focusAmount + 0.25 * audioLevel;
     heat = clamp(heat, 0.0, 1.0);
 
@@ -98,9 +106,10 @@ half4 main(float2 coord) {
 
     // Embers to base to core, and never the full accent: this sits under the whole interface, so
     // its brightest band is the dim end of the ramp lifted, not the hot end at full strength.
-    half3 colour = mix(half3(0.0), dim, half(smoothstep(0.02, 0.45, stepped)));
-    colour = mix(colour, base * half(0.85), half(smoothstep(0.40, 0.80, stepped)));
-    colour = mix(colour, hot * half(0.7), half(smoothstep(0.86, 1.0, stepped)));
+    half3 colour = mix(half3(0.0), dim, half(smoothstep(0.05, 0.55, stepped)));
+    colour = mix(colour, base, half(smoothstep(0.55, 0.88, stepped)));
+    colour = mix(colour, hot, half(smoothstep(0.90, 1.0, stepped)));
+    colour *= half(GAIN);
 
     // A ceiling fade, so the fire dies out toward the top rather than ending on a line.
     float ceiling = smoothstep(0.0, CEILING, uv.y);
