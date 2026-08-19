@@ -32,7 +32,6 @@ import com.jacksonfdam.slipgate.host.graphics.core.TierSignals
 import com.jacksonfdam.slipgate.host.runtime.BackendResolver
 import com.jacksonfdam.slipgate.host.runtime.DataEntry
 import com.jacksonfdam.slipgate.host.runtime.Gate
-import com.jacksonfdam.slipgate.host.runtime.GateHost
 import com.jacksonfdam.slipgate.host.runtime.GateRegistry
 import com.jacksonfdam.slipgate.host.runtime.GateSession
 import com.jacksonfdam.slipgate.host.runtime.InputProfile
@@ -91,7 +90,7 @@ public fun SlipgateApp(
     platformInfo: PlatformInfo = koinInject(),
     registry: GateRegistry = koinInject(),
     resolver: BackendResolver = koinInject(),
-    host: GateHost = koinInject(),
+    hosts: SessionHosts = koinInject(),
     store: GameDataStore = koinInject(),
     acquisition: GameDataAcquisition = koinInject(),
     settings: SettingsController = koinInject(),
@@ -100,9 +99,9 @@ public fun SlipgateApp(
     var stage by remember { mutableStateOf<Stage>(Stage.Splash) }
     var section by remember { mutableStateOf(LauncherSection.Gates) }
     val shell =
-        remember(registry, resolver, host, store, acquisition, settings, audio) {
+        remember(registry, resolver, hosts, store, acquisition, settings, audio) {
             Shell(
-                gates = Gates(registry, resolver, host, store),
+                gates = Gates(registry, resolver, hosts, store),
                 acquisition = acquisition,
                 settings = settings,
                 audio = audio,
@@ -140,7 +139,7 @@ public fun SlipgateApp(
 private class Gates(
     val registry: GateRegistry,
     val resolver: BackendResolver,
-    val host: GateHost,
+    val hosts: SessionHosts,
     val store: GameDataStore,
 )
 
@@ -340,7 +339,7 @@ private suspend fun Gates.openedStage(gate: Gate): Stage {
         .factoryFor(gate)
         .mapCatching { factory ->
             Stage.Playing(
-                session = factory.create(store.mount(gateId), host),
+                session = factory.create(store.mount(gateId), hosts.forGate(gateId)),
                 profile = gate.inputProfile(),
             ) as Stage
         }.getOrElse { failure -> Stage.Stuck(failure.message ?: "the gate did not open") }
