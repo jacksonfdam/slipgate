@@ -30,18 +30,22 @@ import com.jacksonfdam.slipgate.host.runtime.GateHost
 import com.jacksonfdam.slipgate.host.runtime.GateRegistry
 import com.jacksonfdam.slipgate.host.runtime.GateSession
 import com.jacksonfdam.slipgate.host.runtime.InputProfile
-import com.jacksonfdam.slipgate.ui.data.AcquisitionState
-import com.jacksonfdam.slipgate.ui.data.GameDataScreen
-import com.jacksonfdam.slipgate.ui.data.asState
-import com.jacksonfdam.slipgate.ui.data.rememberFilePicker
-import com.jacksonfdam.slipgate.ui.data.take
+import com.jacksonfdam.slipgate.ui.data.GameDataStage
 import com.jacksonfdam.slipgate.ui.gate.GateSurface
+import com.jacksonfdam.slipgate.ui.launcher.LauncherScreen
+import com.jacksonfdam.slipgate.ui.launcher.LauncherState
+import com.jacksonfdam.slipgate.ui.launcher.launcherState
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
-/** What the shell is showing. Until the launcher exists, one gate is the whole of it. */
+/** What the shell is showing. */
 private sealed interface Stage {
     data object Opening : Stage
+
+    /** The rack. Where the app starts and, once a session can be left, where it returns to. */
+    data class Choosing(
+        val state: LauncherState,
+    ) : Stage
 
     data class NeedsData(
         val gate: Gate,
@@ -59,8 +63,7 @@ private sealed interface Stage {
 }
 
 /**
- * Root of the shell. Until the launcher exists it opens the first registered gate directly, asking
- * for the gate's data first when the store has none.
+ * Root of the shell: the rack of gates, whatever a chosen gate still needs, and then the gate itself.
  */
 @Composable
 public fun SlipgateApp(
@@ -72,15 +75,9 @@ public fun SlipgateApp(
     acquisition: GameDataAcquisition = koinInject(),
 ) {
     var stage by remember { mutableStateOf<Stage>(Stage.Opening) }
-    var progress by remember { mutableStateOf<AcquisitionState>(AcquisitionState.Waiting) }
     val scope = rememberCoroutineScope()
 
-    suspend fun open() {
-        val gate = registry.gates.firstOrNull()
-        if (gate == null) {
-            stage = Stage.Stuck("no gates registered")
-            return
-        }
+    suspend fun enter(gate: Gate) {
         val gateId = gate.descriptor.id.value
         val outstanding = gate.requirements().unmet(store.names(gateId)).firstOrNull()
         stage =
@@ -102,7 +99,12 @@ public fun SlipgateApp(
             }
     }
 
-    LaunchedEffect(registry) { open() }
+    suspend fun showRack(selected: String? = null) {
+        val rack = launcherState(registry.gates, store)
+        stage = Stage.Choosing(selected?.let(rack::select) ?: rack)
+    }
+
+    LaunchedEffect(registry) { showRack() }
 
     SlipgateTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
@@ -115,43 +117,32 @@ public fun SlipgateApp(
                     BootScreen(message = current.message, platformName = platformInfo.name)
                 }
 
-                is Stage.NeedsData -> {
-                    val gateId = current.gate.descriptor.id.value
-                    val engine = current.gate.descriptor.engine
-                    // Both routes only report; the effect below is what reacts to an install, so
-                    // there is one place that decides the gate is ready to open.
-                    val supply =
-                        rememberFilePicker { file ->
+                is Stage.Choosing -> {
+                    LauncherScreen(
+                        state = current.state,
+                        onSelect = { index ->
+                            stage =
+                                Stage.Choosing(current.state.moveBy(index - current.state.selected))
+                        },
+                        onEnter = { card ->
                             scope.launch {
-                                progress = AcquisitionState.Working(received = 0, total = null)
-                                progress = acquisition.take(gateId, engine, current.entry, file).asState()
-                            }
-                        }
-
-                    GameDataScreen(
-                        gateTitle = current.gate.descriptor.title,
-                        engine = engine,
-                        entry = current.entry,
-                        state = progress,
-                        onDownload = { source ->
-                            scope.launch {
-                                progress = AcquisitionState.Working(received = 0, total = null)
-                                progress =
-                                    acquisition
-                                        .take(gateId, engine, current.entry, source) { received, total ->
-                                            progress = AcquisitionState.Working(received, total)
-                                        }.asState()
+                                registry.gates
+                                    .firstOrNull { gate -> gate.descriptor.id.value == card.id }
+                                    ?.let { gate -> enter(gate) }
                             }
                         },
-                        onSupply = supply,
                         modifier = Modifier.fillMaxSize(),
                     )
+                }
 
-                    LaunchedEffect(progress) {
-                        if (progress is AcquisitionState.Installed) {
-                            open()
-                        }
-                    }
+                is Stage.NeedsData -> {
+                    GameDataStage(
+                        gate = current.gate,
+                        entry = current.entry,
+                        acquisition = acquisition,
+                        onInstalled = { scope.launch { enter(current.gate) } },
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 }
 
                 is Stage.Playing -> {
