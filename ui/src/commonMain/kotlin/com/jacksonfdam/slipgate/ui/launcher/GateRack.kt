@@ -35,8 +35,8 @@ private const val SELECTED_SCALE = 1f
 private const val RESTING_SCALE = 0.88f
 private const val SELECTED_COVER_ALPHA = 1f
 private const val RESTING_COVER_ALPHA = 0.45f
-private const val COVER_ASPECT = 3f / 4f
-private const val CARD_WIDTH_DP = 220
+private const val COVER_ASPECT = 16f / 10f
+private const val CARD_WIDTH_DP = 156
 
 /**
  * The rack of gates. Not a list view: cards sit in a row the selection walks along, the
@@ -120,7 +120,7 @@ private fun GateCardView(
             modifier
                 .scale(scale)
                 .clickable(onClick = onClick)
-                .padding(vertical = 8.dp),
+                .padding(vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -138,7 +138,7 @@ private fun GateCardView(
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(12.dp),
             )
         }
         Text(
