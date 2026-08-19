@@ -41,6 +41,28 @@ that the touch layout drives the engine exactly as its keyboard defaults would:
 Menus are therefore fully operable by touch: MENU opens them (Escape), the movement pad
 walks them (arrow keys), ENTER selects, MENU backs out.
 
+### The controls one engine has and another does not
+
+Heretic adds an inventory and flight, which no `GateAction` names — they belong to one engine rather
+than to every engine, which is what `InputProfile.extensions` is for. A gate declares them, the pad
+draws a labelled button for each along the bottom edge, and the gate's own key map is what turns a
+press into a key. `games/corvus/.../WasmSession.kt` holds Heretic's, at the defaults
+`m_controls.c` gives them:
+
+| Touch control | Extension | Heretic key |
+|---|---|---|
+| ITEM ‹ / ITEM › | `corvus.inventory.previous` / `corvus.inventory.next` | `[` / `]` |
+| USE ITEM | `corvus.inventory.use` | Enter — the same key its menus read as a choice |
+| FLY UP | `corvus.fly.up` | Page Up |
+| FLY DOWN | `corvus.fly.down` | Insert |
+
+`CorvusGateTest` asserts that every extension the profile declares has a key and every key has an
+extension, because a drawn button with no binding is silent rather than broken.
+
+Heretic's look up and down are not bound yet: nothing produces a look axis — the pad has one wheel
+and the session reads movement only — and the game plays without free look, as it did on a
+keyboard.
+
 Physical keyboards map through `ControlKey` in `host/controls/.../KeyboardBindings.kt`,
 which carries the same defaults (arrows/WASD, Ctrl, space, comma/period, tab, Escape,
 Enter).
