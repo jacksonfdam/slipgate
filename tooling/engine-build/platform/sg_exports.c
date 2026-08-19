@@ -125,6 +125,7 @@ int slipgate_step(int elapsed_millis)
     }
 
     sg_set_elapsed_millis(sg_elapsed_millis() + elapsed_millis);
+    sg_audio_advance(elapsed_millis);
     D_RunFrame();
 
     int status = 0;

@@ -42,4 +42,5 @@ void sg_push_event(int type, int code, int value);
 void sg_drain_events(void);
 
 int sg_audio_drain(int16_t *destination, int frames);
+void sg_audio_advance(int elapsed_millis);
 void sg_audio_reset(void);
