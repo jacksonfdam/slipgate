@@ -31,6 +31,10 @@ private const val BYTE_BITS = 8
 // feel immediate without a resting thumb walking the player into a wall.
 private const val DIRECTION_THRESHOLD = 0.1f
 
+// An extension arrives as a float because that is what an axis needs; the ones an engine of this age
+// can use are buttons, so anything past half travel is a press.
+private const val EXTENSION_THRESHOLD = 0.5f
+
 private const val PALETTE_ENTRIES = 256
 private const val PALETTE_ENTRY_BYTES = 3
 private const val CHANNEL_MAX = 0xFF
@@ -55,6 +59,12 @@ public class WasmGateSession(
     private val keyBindings: Map<GateAction, Int>,
     private val directionBindings: DirectionBindings,
     pixelAspect: Float,
+    /**
+     * Key codes for the controls this engine has that the shared action set does not name — an
+     * inventory, flight, whatever the next engine brings. Keyed by the extension key the gate put in
+     * its input profile, so the gate says once what a control is called and what it does.
+     */
+    private val extensionBindings: Map<String, Int> = emptyMap(),
 ) : GateSession {
     override val display: DisplayFormat =
         DisplayFormat(
@@ -74,6 +84,7 @@ public class WasmGateSession(
     private var frame = ByteArray(display.frameSizeBytes)
     private var heldActions = 0
     private var heldDirections = emptySet<Direction>()
+    private var heldExtensions = emptySet<String>()
     private var finished = false
     private var paletteRead = false
 
@@ -133,6 +144,7 @@ public class WasmGateSession(
      */
     private fun sendInput(input: InputFrame) {
         sendDirections(input)
+        sendExtensions(input)
         val actions = input.actions.mask
         val pressed = actions and heldActions.inv()
         val released = heldActions and actions.inv()
@@ -228,6 +240,27 @@ public class WasmGateSession(
             engine.pushEvent(EVENT_KEY_UP, directionBindings.codeFor(direction), 0)
         }
         heldDirections = pressed
+    }
+
+    /**
+     * Sends the engine-specific controls the same way as the rest: only the ones that changed, and
+     * only the ones this gate declared a key for. An extension nothing is bound to is ignored rather
+     * than guessed at.
+     */
+    private fun sendExtensions(input: InputFrame) {
+        val pressed =
+            input.extensions
+                .filterKeys { key -> key in extensionBindings }
+                .filterValues { value -> value >= EXTENSION_THRESHOLD }
+                .keys
+
+        (pressed - heldExtensions).forEach { key ->
+            engine.pushEvent(EVENT_KEY_DOWN, extensionBindings.getValue(key), 0)
+        }
+        (heldExtensions - pressed).forEach { key ->
+            engine.pushEvent(EVENT_KEY_UP, extensionBindings.getValue(key), 0)
+        }
+        heldExtensions = pressed
     }
 
     /** The engine keeps a palette of red-green-blue triples; the renderer wants opaque colours. */
