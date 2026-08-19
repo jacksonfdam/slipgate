@@ -136,17 +136,8 @@ public fun SlipgateApp(
                             state = current.state,
                             section = section,
                             onSection = { section = it },
-                            onSelect = { index ->
-                                stage =
-                                    Stage.Choosing(current.state.moveBy(index - current.state.selected))
-                            },
-                            onEnter = { card ->
-                                scope.launch {
-                                    registry.gates
-                                        .firstOrNull { gate -> gate.descriptor.id.value == card.id }
-                                        ?.let { gate -> enter(gate) }
-                                }
-                            },
+                            onSelect = { index -> stage = Stage.Choosing(current.state.select(index)) },
+                            onEnter = { card -> scope.launch { enter(registry.gateFor(card.id)) } },
                             statusLabel = platformInfo.name,
                             modifier = Modifier.fillMaxSize(),
                         )
@@ -207,3 +198,6 @@ private fun BootScreen(
         }
     }
 }
+
+/** The gate a card stands for. A card the registry cannot name is a bug rather than a state. */
+private fun GateRegistry.gateFor(id: String): Gate = gates.first { gate -> gate.descriptor.id.value == id }
