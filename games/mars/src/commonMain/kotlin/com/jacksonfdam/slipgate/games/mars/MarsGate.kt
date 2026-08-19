@@ -82,6 +82,7 @@ public class MarsGate : Gate {
                     GateAction.PreviousWeapon,
                     GateAction.Map,
                     GateAction.Menu,
+                    GateAction.Confirm,
                 ),
             usesLookAxis = false,
         )
