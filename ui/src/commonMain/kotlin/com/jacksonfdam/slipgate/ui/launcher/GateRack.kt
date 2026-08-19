@@ -1,8 +1,8 @@
 package com.jacksonfdam.slipgate.ui.launcher
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,11 +30,16 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.jacksonfdam.slipgate.ui.design.ColorTokens
+import com.jacksonfdam.slipgate.ui.design.TypeScale
+import com.jacksonfdam.slipgate.ui.design.accentRamp
 
 private const val SELECTED_SCALE = 1f
 private const val RESTING_SCALE = 0.88f
-private const val SELECTED_COVER_ALPHA = 1f
-private const val RESTING_COVER_ALPHA = 0.45f
+
+/** How much the portrait tightens its core: the selected card is the loud one. */
+private const val SELECTED_FOCUS = 1f
+private const val RESTING_FOCUS = 0.35f
 private const val COVER_ASPECT = 16f / 10f
 private const val CARD_WIDTH_DP = 156
 
@@ -112,8 +117,7 @@ private fun GateCardView(
     modifier: Modifier = Modifier,
 ) {
     val scale by animateFloatAsState(if (selected) SELECTED_SCALE else RESTING_SCALE)
-    val accent = accentOf(card.descriptor.accent)
-    val tint by animateColorAsState(if (selected) accent else accent.copy(alpha = RESTING_COVER_ALPHA))
+    val ramp = accentRamp
 
     Column(
         modifier =
@@ -130,35 +134,33 @@ private fun GateCardView(
                     .fillMaxWidth()
                     .aspectRatio(COVER_ASPECT)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(cover(tint, card.isPlayable)),
+                    .background(ColorTokens.Recess)
+                    .border(
+                        width = 1.dp,
+                        color = if (selected) ramp.base else ColorTokens.Edge,
+                        shape = RoundedCornerShape(12.dp),
+                    ),
             contentAlignment = Alignment.BottomStart,
         ) {
+            // The cover is the gate's own portrait, calmer on a resting card than on the stage.
+            GatePortrait(
+                card = card,
+                focus = if (selected) SELECTED_FOCUS else RESTING_FOCUS,
+                modifier = Modifier.matchParentSize(),
+            )
             Text(
                 text = card.descriptor.title.uppercase(),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
+                style = TypeScale.Headline,
+                color = ColorTokens.Text,
                 modifier = Modifier.padding(12.dp),
             )
         }
         Text(
-            text = card.descriptor.engine,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            text = card.descriptor.engine.uppercase(),
+            style = TypeScale.Label,
+            color = ColorTokens.Muted,
         )
     }
-}
-
-/**
- * The stand-in for cover art, which no gate ships: a gradient in the gate's own accent,
- * dimmed for a gate that cannot be entered yet. Artwork replaces the brush and nothing else.
- */
-private fun cover(
-    accent: Color,
-    playable: Boolean,
-): Brush {
-    val top = if (playable) accent else accent.copy(alpha = RESTING_COVER_ALPHA)
-    return Brush.verticalGradient(listOf(top, Color.Black.copy(alpha = SELECTED_COVER_ALPHA)))
 }
 
 /** What the line under the rack says about the selected gate. */

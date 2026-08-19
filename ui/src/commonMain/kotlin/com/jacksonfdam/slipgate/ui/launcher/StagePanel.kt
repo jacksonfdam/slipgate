@@ -15,8 +15,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.jacksonfdam.slipgate.ui.design.ColorTokens
 import com.jacksonfdam.slipgate.ui.design.TypeScale
@@ -25,8 +23,9 @@ import com.jacksonfdam.slipgate.ui.design.accentRamp
 /**
  * The selected gate's stage: the portrait surface with the gate's identity composed onto
  * its lower-left corner, so the panel is one flexible surface that survives a short
- * landscape screen. The portrait is a composed gradient placeholder until the live
- * portrait shaders drive it.
+ * landscape screen. The portrait is the gate's own live shader — this is the surface a launch flies
+ * into — and falls back to a composed glow where a gate has no portrait or a device has no runtime
+ * shader.
  *
  * Give the panel a bounded height (a weight) on bounded screens; [keepAspect] is for
  * unbounded columns, where the panel must size itself.
@@ -37,8 +36,6 @@ public fun StagePanel(
     modifier: Modifier = Modifier,
     keepAspect: Boolean = false,
 ) {
-    val accent = accentRamp
-    val glow = if (card.isPlayable) accent.dim else accent.dim.copy(alpha = DIMMED_GLOW_ALPHA)
     Box(
         modifier =
             modifier
@@ -47,15 +44,10 @@ public fun StagePanel(
                 .background(ColorTokens.Recess)
                 .border(1.dp, ColorTokens.Edge, RoundedCornerShape(4.dp)),
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(glow, Color.Transparent),
-                        ),
-                    ),
+        GatePortrait(
+            card = card,
+            focus = STAGE_FOCUS,
+            modifier = Modifier.fillMaxSize(),
         )
         Column(
             modifier =
@@ -107,5 +99,7 @@ private fun StatChip(
     )
 }
 
+/** The stage is the focused surface by definition, so its portrait runs at full focus. */
+private const val STAGE_FOCUS = 1f
+
 private const val PORTRAIT_ASPECT = 16f / 7f
-private const val DIMMED_GLOW_ALPHA = 0.35f
