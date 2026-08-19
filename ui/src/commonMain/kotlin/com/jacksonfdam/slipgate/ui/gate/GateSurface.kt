@@ -48,7 +48,11 @@ private val EmptyRect = ViewportRect(x = 0, y = 0, width = 0, height = 0)
 
 /**
  * Draws a running session, stepping it once per display frame through the selected graphics
- * backend. Input is idle for now; the control layer feeds real frames once it exists.
+ * backend.
+ *
+ * A [paused] surface keeps drawing the last frame it was given but stops stepping the session, so a
+ * game does not play on behind the menu a player opened over it. Held controls are forgotten on the
+ * way in, because a thumb that was on the fire button when the menu opened is not still on it.
  *
  * Two kinds of renderer are handled. A shader renderer draws into Compose's own canvas, so the
  * frame counter is what invalidates the draw. A CPU renderer hands back pixels, so the uploaded
@@ -61,6 +65,7 @@ public fun GateSurface(
     modifier: Modifier = Modifier,
     crt: CrtSettings = CrtSettings.Default,
     scaling: ScalingMode = ScalingMode.Fit,
+    paused: Boolean = false,
 ) {
     val controls = remember(session) { ControlState() }
     // The backend is built here rather than injected, because the tube settings are a player's
@@ -82,7 +87,11 @@ public fun GateSurface(
         onDispose { presentation.close() }
     }
 
-    LaunchedEffect(presentation) {
+    LaunchedEffect(presentation, paused) {
+        if (paused) {
+            controls.releaseAll()
+            return@LaunchedEffect
+        }
         var previousFrameMillis = 0L
         var running = true
         while (running) {
@@ -104,7 +113,9 @@ public fun GateSurface(
         ) {
             presentation.draw(this, presentation.presentedFrames)
         }
-        VirtualGamepad(profile = inputProfile, state = controls)
+        if (!paused) {
+            VirtualGamepad(profile = inputProfile, state = controls)
+        }
         BackendLabel(
             text = selection.describe(),
             modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
