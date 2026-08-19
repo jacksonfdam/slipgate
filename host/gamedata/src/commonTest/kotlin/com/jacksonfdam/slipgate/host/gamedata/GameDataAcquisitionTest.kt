@@ -9,6 +9,17 @@ import kotlin.test.assertTrue
 
 private val DOOM = setOf(GameFlavour.DoomEpisodic, GameFlavour.DoomMapped)
 
+private fun request(
+    archiveEntry: String? = null,
+    gate: String = "mars",
+) = AcquisitionRequest(
+    gate = gate,
+    name = "doom.wad",
+    url = "https://example.invalid/data",
+    accepts = DOOM,
+    archiveEntry = archiveEntry,
+)
+
 class GameDataAcquisitionTest {
     private val store = InMemoryGameDataStore()
 
@@ -18,7 +29,7 @@ class GameDataAcquisitionTest {
             val bytes = syntheticWad("IWAD", listOf("PLAYPAL", "E1M1"))
             val acquisition = GameDataAcquisition(store, download = ServesOnce(bytes))
 
-            val result = acquisition.acquire("mars", "doom.wad", "https://example.invalid/iwad", DOOM)
+            val result = acquisition.acquire(request())
 
             assertEquals(GameFlavour.DoomEpisodic, assertIs<AcquisitionResult.Stored>(result).identity.flavour)
             assertContentEquals(bytes, store.read("mars", "doom.wad"))
@@ -31,7 +42,7 @@ class GameDataAcquisitionTest {
             val acquisition = GameDataAcquisition(store, download = ServesOnce(bytes))
             val seen = mutableListOf<Pair<Long, Long?>>()
 
-            acquisition.acquire("mars", "doom.wad", "https://example.invalid/iwad", DOOM) { received, total ->
+            acquisition.acquire(request()) { received, total ->
                 seen += received to total
             }
 
@@ -45,7 +56,7 @@ class GameDataAcquisitionTest {
             val acquisition =
                 GameDataAcquisition(store, download = ServesOnce("a photograph".encodeToByteArray()))
 
-            val result = acquisition.acquire("mars", "doom.wad", "https://example.invalid/x", DOOM)
+            val result = acquisition.acquire(request())
 
             assertEquals(RejectionReason.NotAWad, assertIs<AcquisitionResult.Refused>(result).inspection.reason)
             assertTrue(store.names("mars").isEmpty())
@@ -57,7 +68,7 @@ class GameDataAcquisitionTest {
             val acquisition =
                 GameDataAcquisition(store, download = ServesOnce(syntheticWad("PWAD", listOf("PLAYPAL", "MAP01"))))
 
-            val result = acquisition.acquire("mars", "doom.wad", "https://example.invalid/x", DOOM)
+            val result = acquisition.acquire(request())
 
             assertTrue("patch" in assertIs<AcquisitionResult.Failed>(result).message)
             assertTrue(store.names("mars").isEmpty())
@@ -70,7 +81,7 @@ class GameDataAcquisitionTest {
 
             val result =
                 GameDataAcquisition(store, download = ServesOnce(hexen))
-                    .acquire("mars", "doom.wad", "https://example.invalid/x", DOOM)
+                    .acquire(request())
 
             val message = assertIs<AcquisitionResult.Failed>(result).message
             assertTrue("Hexen" in message, message)
@@ -82,9 +93,46 @@ class GameDataAcquisitionTest {
         runTest {
             val acquisition = GameDataAcquisition(store, download = Fails("the server answered 404"))
 
-            val result = acquisition.acquire("mars", "doom.wad", "https://example.invalid/x", DOOM)
+            val result = acquisition.acquire(request())
 
             assertEquals("the server answered 404", assertIs<AcquisitionResult.Failed>(result).message)
+            assertTrue(store.names("mars").isEmpty())
+        }
+
+    @Test
+    fun anIwadInsideAnArchiveIsUnpackedAndStored() =
+        runTest {
+            val iwad = syntheticWad("IWAD", listOf("PLAYPAL", "E1M1"))
+            val archive = syntheticZip(listOf("freedoom-0.13.0/freedoom1.wad" to iwad))
+            val acquisition = GameDataAcquisition(store, download = ServesOnce(archive))
+
+            val result = acquisition.acquire(request(archiveEntry = "freedoom1.wad"))
+
+            assertIs<AcquisitionResult.Stored>(result)
+            assertContentEquals(iwad, store.read("mars", "doom.wad"))
+        }
+
+    @Test
+    fun anArchiveWithoutTheWantedFileSaysSo() =
+        runTest {
+            val archive = syntheticZip(listOf("readme.txt" to "nothing here".encodeToByteArray()))
+            val acquisition = GameDataAcquisition(store, download = ServesOnce(archive))
+
+            val result = acquisition.acquire(request(archiveEntry = "freedoom1.wad"))
+
+            assertTrue("freedoom1.wad" in assertIs<AcquisitionResult.Failed>(result).message)
+            assertTrue(store.names("mars").isEmpty())
+        }
+
+    @Test
+    fun somethingThatIsNotAnArchiveIsReportedAsSuch() =
+        runTest {
+            val acquisition =
+                GameDataAcquisition(store, download = ServesOnce("not a zip at all".encodeToByteArray()))
+
+            val result = acquisition.acquire(request(archiveEntry = "freedoom1.wad"))
+
+            assertIs<AcquisitionResult.Failed>(result)
             assertTrue(store.names("mars").isEmpty())
         }
 

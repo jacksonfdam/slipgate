@@ -3,6 +3,19 @@ package com.jacksonfdam.slipgate.host.gamedata
 /** How far a download has got. [total] is null when the server did not say how large the file is. */
 public typealias DownloadProgress = (received: Long, total: Long?) -> Unit
 
+/** What to fetch, what to call it, and what would make it acceptable. */
+public data class AcquisitionRequest(
+    val gate: String,
+    val name: String,
+    val url: String,
+    val accepts: Set<GameFlavour>,
+    /**
+     * When the download is an archive, the file inside it to take, matched by how its name ends.
+     * Freedoom and Blasphemer both publish their WADs inside a zip.
+     */
+    val archiveEntry: String? = null,
+)
+
 /** What became of an attempt to install game data. */
 public sealed interface AcquisitionResult {
     public data class Stored(
@@ -10,12 +23,12 @@ public sealed interface AcquisitionResult {
         val identity: WadIdentity,
     ) : AcquisitionResult
 
-    /** The file arrived intact and is not what this gate needs. */
+    /** The file arrived intact and is not game data at all. */
     public data class Refused(
         val inspection: WadInspection.Rejected,
     ) : AcquisitionResult
 
-    /** The file did not arrive, or is a game this gate does not run. */
+    /** The file did not arrive, could not be unpacked, or is a game this gate does not run. */
     public data class Failed(
         val message: String,
     ) : AcquisitionResult
@@ -31,24 +44,18 @@ public class GameDataAcquisition(
     private val store: GameDataStore,
     private val download: DataDownload = platformDataDownload(),
 ) {
-    /**
-     * Downloads [url] and stores it as [name] for [gate], provided it inspects as an IWAD whose
-     * layout is one of [accepts].
-     */
+    /** Fetches what [request] describes, unpacks it if it is an archive, and stores what passes. */
     public suspend fun acquire(
-        gate: String,
-        name: String,
-        url: String,
-        accepts: Set<GameFlavour>,
+        request: AcquisitionRequest,
         onProgress: DownloadProgress = { _, _ -> },
     ): AcquisitionResult {
-        val bytes =
+        val fetched =
             try {
-                download.fetch(url, onProgress)
+                download.fetch(request.url, onProgress)
             } catch (failure: DataDownloadException) {
                 return AcquisitionResult.Failed(failure.message ?: "the download did not finish")
             }
-        return install(gate, name, bytes, accepts)
+        return unpack(request, fetched)
     }
 
     /** Stores [bytes] under [name] for [gate] if they inspect as game data this gate can run. */
@@ -63,6 +70,29 @@ public class GameDataAcquisition(
             store.write(gate, name, bytes)
         }
         return verdict
+    }
+
+    private suspend fun unpack(
+        request: AcquisitionRequest,
+        fetched: ByteArray,
+    ): AcquisitionResult {
+        val entryName =
+            request.archiveEntry
+                ?: return install(request.gate, request.name, fetched, request.accepts)
+
+        return try {
+            val archive = ZipArchive(fetched)
+            val entry = archive.find(entryName)
+            if (entry == null) {
+                AcquisitionResult.Failed("the archive holds no $entryName")
+            } else {
+                install(request.gate, request.name, archive.read(entry), request.accepts)
+            }
+        } catch (damaged: ZipException) {
+            AcquisitionResult.Failed(damaged.message ?: "the archive is damaged")
+        } catch (damaged: InflateException) {
+            AcquisitionResult.Failed(damaged.message ?: "the archive could not be expanded")
+        }
     }
 
     private fun verdict(
