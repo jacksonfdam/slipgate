@@ -38,6 +38,8 @@ import com.jacksonfdam.slipgate.host.runtime.InputProfile
 import com.jacksonfdam.slipgate.ui.audio.InterfaceAudio
 import com.jacksonfdam.slipgate.ui.audio.ambientKeyOf
 import com.jacksonfdam.slipgate.ui.data.GameDataStage
+import com.jacksonfdam.slipgate.ui.gate.GateMenu
+import com.jacksonfdam.slipgate.ui.gate.GateMenuButton
 import com.jacksonfdam.slipgate.ui.gate.GateSurface
 import com.jacksonfdam.slipgate.ui.launcher.GateCard
 import com.jacksonfdam.slipgate.ui.launcher.LauncherSection
@@ -71,6 +73,8 @@ private sealed interface Stage {
     data class Playing(
         val session: GateSession,
         val profile: InputProfile,
+        val title: String,
+        val menuOpen: Boolean = false,
     ) : Stage
 
     data class Stuck(
@@ -108,11 +112,13 @@ public fun SlipgateApp(
             )
         }
 
-    // The interface's voice: cues, and the bed in the focused gate's key.
+    // The interface's voice: cues, and the bed in the focused gate's key. A gate paused behind its
+    // own menu is not playing, so the shell may be heard again.
+    val playing = stage as? Stage.Playing
     InterfaceVoice(
         audio = audio,
         settings = settings,
-        quiet = stage is Stage.Playing,
+        quiet = playing != null && !playing.menuOpen,
         focused = (stage as? Stage.Choosing)?.state?.current,
     )
 
@@ -205,7 +211,18 @@ private fun StageSurface(
         }
 
         is Stage.Playing -> {
-            PlayingStage(stage.session, stage.profile, shell.settings)
+            PlayingStage(
+                stage = stage,
+                settings = shell.settings,
+                onMenu = { open -> onStage(stage.copy(menuOpen = open)) },
+                onLeave = {
+                    scope.launch {
+                        stage.session.close()
+                        onSection(LauncherSection.Gates)
+                        onStage(Stage.Choosing(launcherState(shell.gates.registry.gates, shell.gates.store)))
+                    }
+                },
+            )
         }
     }
 }
@@ -273,20 +290,43 @@ private fun InterfaceVoice(
     }
 }
 
-/** A running gate, drawn through the tube and picture shape the player chose. */
+/**
+ * A running gate, drawn through the tube and picture shape the player chose, with the menu that
+ * leaves it.
+ *
+ * The gate stops stepping while the menu is open rather than playing on behind it, and the frame it
+ * stopped on stays on screen: what a player left is what they come back to.
+ */
 @Composable
 private fun PlayingStage(
-    session: GateSession,
-    profile: InputProfile,
+    stage: Stage.Playing,
     settings: SettingsController,
+    onMenu: (Boolean) -> Unit,
+    onLeave: () -> Unit,
 ) {
-    GateSurface(
-        session = session,
-        inputProfile = profile,
-        crt = settings.settings.crt,
-        scaling = settings.settings.scaling,
-        modifier = Modifier.fillMaxSize(),
-    )
+    Box(modifier = Modifier.fillMaxSize()) {
+        GateSurface(
+            session = stage.session,
+            inputProfile = stage.profile,
+            crt = settings.settings.crt,
+            scaling = settings.settings.scaling,
+            paused = stage.menuOpen,
+            modifier = Modifier.fillMaxSize(),
+        )
+        if (stage.menuOpen) {
+            GateMenu(
+                gateTitle = stage.title,
+                settings = settings,
+                onResume = { onMenu(false) },
+                onLeave = onLeave,
+            )
+        } else {
+            GateMenuButton(
+                onOpen = { onMenu(true) },
+                modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
+            )
+        }
+    }
 }
 
 /**
@@ -341,6 +381,7 @@ private suspend fun Gates.openedStage(gate: Gate): Stage {
             Stage.Playing(
                 session = factory.create(store.mount(gateId), hosts.forGate(gateId)),
                 profile = gate.inputProfile(),
+                title = gate.descriptor.title,
             ) as Stage
         }.getOrElse { failure -> Stage.Stuck(failure.message ?: "the gate did not open") }
 }
