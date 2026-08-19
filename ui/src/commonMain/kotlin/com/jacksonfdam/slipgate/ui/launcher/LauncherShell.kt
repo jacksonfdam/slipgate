@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.jacksonfdam.slipgate.ui.design.ColorTokens
+import com.jacksonfdam.slipgate.ui.design.LocalAccentRamp
 import com.jacksonfdam.slipgate.ui.design.SlipgateWordmark
 import com.jacksonfdam.slipgate.ui.design.TypeScale
 
@@ -34,20 +36,24 @@ public fun LauncherShell(
     statusLabel: String,
     modifier: Modifier = Modifier,
 ) {
-    BoxWithConstraints(modifier = modifier.fillMaxSize().background(ColorTokens.Void)) {
-        val compact = maxWidth < COMPACT_BREAKPOINT
-        if (compact) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Box(modifier = Modifier.weight(1f)) {
-                    SectionContent(section, state, onSelect, onEnter, compact = true)
+    // Every surface under the shell draws in the focused gate's own accent: rail, chips, cards,
+    // portraits. One provider, so the whole interface recolours with the selection.
+    CompositionLocalProvider(LocalAccentRamp provides rampFor(state.current)) {
+        BoxWithConstraints(modifier = modifier.fillMaxSize().background(ColorTokens.Void)) {
+            val compact = maxWidth < COMPACT_BREAKPOINT
+            if (compact) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        SectionContent(section, state, onSelect, onEnter, compact = true)
+                    }
+                    LauncherBottomBar(section, onSection, statusLabel)
                 }
-                LauncherBottomBar(section, onSection, statusLabel)
-            }
-        } else {
-            Row(modifier = Modifier.fillMaxSize()) {
-                LauncherRail(section, onSection, statusLabel)
-                Box(modifier = Modifier.weight(1f)) {
-                    SectionContent(section, state, onSelect, onEnter, compact = false)
+            } else {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    LauncherRail(section, onSection, statusLabel)
+                    Box(modifier = Modifier.weight(1f)) {
+                        SectionContent(section, state, onSelect, onEnter, compact = false)
+                    }
                 }
             }
         }
