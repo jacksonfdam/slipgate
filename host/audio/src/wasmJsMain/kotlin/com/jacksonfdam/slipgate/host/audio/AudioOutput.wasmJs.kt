@@ -1,4 +1,8 @@
+@file:OptIn(ExperimentalWasmJsInterop::class)
+
 package com.jacksonfdam.slipgate.host.audio
+
+import kotlin.js.ExperimentalWasmJsInterop
 
 private const val SHORT_SCALE = 32768f
 private const val SCHEDULING_HORIZON_SECONDS = 0.4
@@ -37,9 +41,12 @@ private external class AudioBufferSourceNode : JsAny {
     fun start(at: Double)
 }
 
+// The bodies of these two are JavaScript, which static analysis cannot see reads the parameters.
+@Suppress("UnusedParameter")
 private fun newAudioContext(sampleRate: Int): AudioContext? =
     js("typeof AudioContext === 'undefined' ? null : new AudioContext({ sampleRate: sampleRate })")
 
+@Suppress("UnusedParameter")
 private fun writeSample(
     channelData: Float32Array,
     index: Int,
@@ -78,9 +85,6 @@ private class WebAudioSink(
         samples: ShortArray,
         frameCount: Int,
     ): Int {
-        if (frameCount <= 0) {
-            return 0
-        }
         // A context starts suspended until the page has been interacted with; resuming a running
         // one is harmless, and asking every time is cheaper than tracking the gesture ourselves.
         if (context.state != "running") {
@@ -88,7 +92,7 @@ private class WebAudioSink(
         }
         val now = context.currentTime
         val startAt = maxOf(now, cursorSeconds)
-        if (startAt - now > SCHEDULING_HORIZON_SECONDS) {
+        if (frameCount <= 0 || startAt - now > SCHEDULING_HORIZON_SECONDS) {
             return 0
         }
         val buffer = context.createBuffer(channels, frameCount, sampleRate)
