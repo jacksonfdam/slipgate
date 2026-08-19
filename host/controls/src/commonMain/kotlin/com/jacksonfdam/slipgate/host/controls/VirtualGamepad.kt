@@ -26,7 +26,7 @@ import com.jacksonfdam.slipgate.host.runtime.Axis2
 import com.jacksonfdam.slipgate.host.runtime.GateAction
 import com.jacksonfdam.slipgate.host.runtime.InputProfile
 
-private val PAD_SIZE = 148.dp
+private val PAD_SIZE = 160.dp
 private val EDGE_PADDING = 20.dp
 private const val IDLE_ALPHA = 0.30f
 private const val PRESSED_ALPHA = 0.55f
@@ -52,29 +52,31 @@ private val placements: Map<GateAction, ButtonPlacement> =
         GateAction.Fire to
             ButtonPlacement(
                 fromTop = false,
-                end = 24.dp,
-                vertical = 32.dp,
-                size = 76.dp,
+                end = 28.dp,
+                vertical = 28.dp,
+                size = 80.dp,
                 label = "FIRE",
             ),
         GateAction.Use to
             ButtonPlacement(
                 fromTop = false,
-                end = 118.dp,
-                vertical = 56.dp,
+                end = 132.dp,
+                vertical = 36.dp,
                 size = 60.dp,
                 label = "USE",
             ),
         GateAction.NextWeapon to
-            ButtonPlacement(fromTop = false, end = 28.dp, vertical = 130.dp, size = 52.dp, label = "›"),
+            ButtonPlacement(fromTop = false, end = 116.dp, vertical = 118.dp, size = 56.dp, label = "›"),
         GateAction.PreviousWeapon to
-            ButtonPlacement(fromTop = false, end = 98.dp, vertical = 136.dp, size = 52.dp, label = "‹"),
+            ButtonPlacement(fromTop = false, end = 28.dp, vertical = 148.dp, size = 56.dp, label = "‹"),
         GateAction.Jump to
-            ButtonPlacement(fromTop = false, end = 198.dp, vertical = 28.dp, size = 60.dp, label = "JUMP"),
+            ButtonPlacement(fromTop = false, end = 216.dp, vertical = 28.dp, size = 60.dp, label = "JUMP"),
         GateAction.Crouch to
-            ButtonPlacement(fromTop = false, end = 204.dp, vertical = 108.dp, size = 52.dp, label = "DUCK"),
-        GateAction.Map to ButtonPlacement(fromTop = true, end = 24.dp, vertical = 20.dp, size = 48.dp, label = "MAP"),
-        GateAction.Menu to ButtonPlacement(fromTop = true, end = 84.dp, vertical = 20.dp, size = 48.dp, label = "MENU"),
+            ButtonPlacement(fromTop = false, end = 208.dp, vertical = 112.dp, size = 52.dp, label = "DUCK"),
+        GateAction.Map to ButtonPlacement(fromTop = true, end = 84.dp, vertical = 20.dp, size = 48.dp, label = "MAP"),
+        GateAction.Menu to ButtonPlacement(fromTop = true, end = 24.dp, vertical = 20.dp, size = 48.dp, label = "MENU"),
+        GateAction.Confirm to
+            ButtonPlacement(fromTop = true, end = 144.dp, vertical = 20.dp, size = 48.dp, label = "ENTER"),
     )
 
 private val labelStyle =

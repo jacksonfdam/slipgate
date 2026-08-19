@@ -24,6 +24,7 @@ public enum class ControlKey {
     Period,
     Tab,
     Escape,
+    Enter,
 }
 
 /**
@@ -41,6 +42,7 @@ public data class KeyboardBindings(
             ControlKey.Period to GateAction.NextWeapon,
             ControlKey.Tab to GateAction.Map,
             ControlKey.Escape to GateAction.Menu,
+            ControlKey.Enter to GateAction.Confirm,
         ),
     val forward: Set<ControlKey> = setOf(ControlKey.ArrowUp, ControlKey.W),
     val backward: Set<ControlKey> = setOf(ControlKey.ArrowDown, ControlKey.S),
