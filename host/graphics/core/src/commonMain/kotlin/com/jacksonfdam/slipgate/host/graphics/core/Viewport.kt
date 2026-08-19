@@ -1,6 +1,7 @@
 package com.jacksonfdam.slipgate.host.graphics.core
 
 import com.jacksonfdam.slipgate.host.runtime.DisplayFormat
+import com.jacksonfdam.slipgate.host.runtime.ID_TECH_1_PIXEL_ASPECT
 import kotlin.math.floor
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -37,13 +38,6 @@ public enum class ScalingMode {
     /** Fill the surface, aspect ratio be damned. */
     Stretch,
 }
-
-/**
- * Ratio of a source pixel's width to its height in the id Tech 1 games. They render 320x200
- * for a 4:3 display, so each pixel is 1.2 times taller than it is wide; presenting them as
- * squares makes everything look squashed.
- */
-public const val ID_TECH_1_PIXEL_ASPECT: Float = 5f / 6f
 
 /**
  * Geometry of a presented frame.

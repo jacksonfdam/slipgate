@@ -1,5 +1,15 @@
 package com.jacksonfdam.slipgate.host.runtime
 
+/**
+ * Ratio of a source pixel's width to its height in the id Tech 1 games. They render 320x200 for a
+ * 4:3 display, so each pixel is 1.2 times taller than it is wide; presenting them as squares makes
+ * everything look squashed.
+ *
+ * It lives here rather than in the renderer because it is a property of what the engine draws, and
+ * only the gate knows which engine that is.
+ */
+public const val ID_TECH_1_PIXEL_ASPECT: Float = 5f / 6f
+
 /** Layout of the pixels a session produces. */
 public enum class PixelFormat {
     /** One byte per pixel, resolved through the session's palette. */
