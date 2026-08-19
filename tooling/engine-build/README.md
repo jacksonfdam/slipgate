@@ -11,6 +11,17 @@ repository holds a pin rather than a copy of anyone else's tree.
 ./fetch-sources.sh --update   # move the pin to CHOCOLATE_DOOM_REF and rewrite SOURCES.lock
 ```
 
+## Building
+
+```
+./build-doom.sh               # writes .build/mars.wasm
+./build-heretic.sh            # writes .build/corvus.wasm
+```
+
+`build-engine.sh` is the build; the per-game scripts are what differs between games — the directory
+under `src/`, the module's name, how much memory its zone needs. A number guessed once and shared is
+a number nobody owns, which is why each game states its own.
+
 `SOURCES.lock` records the repository, the tag and the commit. The commit is what gets built; the
 tag is there so a human can see which release it is. A tag that moves upstream fails the fetch
 rather than silently changing what Slipgate builds.
@@ -29,10 +40,22 @@ The port replaces that platform layer rather than patching the engines:
 | `src/i_input.c` | an event queue the host writes into |
 | `src/i_timer.c`, `src/i_system.c` | imported host functions |
 
-`D_RunFrame` already exists in this revision (`src/doom/d_main.c`), and `D_DoomLoop` is a loop
-around it. The engine's main loop therefore does not need splitting by hand: the port calls the
-initialisation path once and `D_RunFrame` per step, which is what makes a stepped session possible
-at all.
+Each game's main loop is inverted the same way and in one file, `platform/<game>/sg_engine.c`: the
+exported surface asks for a frame and never learns which game answers.
+
+`D_RunFrame` already exists for Doom in this revision (`src/doom/d_main.c`), and `D_DoomLoop` is a
+loop around it, so Doom's frame is one call. Heretic was never factored that way upstream: its
+`D_DoomLoop` is still a `while` loop around `I_StartFrame`, `TryRunTics`, `S_UpdateSounds` and
+`D_Display`, so its frame is those four calls made from the platform layer. Either way the port
+calls the initialisation path once and a frame per step, which is what makes a stepped session
+possible at all — and either way the upstream tree stays unpatched.
+
+Heretic needs one thing Doom does not: its `d_main.c` calls Chocolate Doom's textscreen library
+directly to draw a DOS-style loading screen. That library is an SDL window with a bitmap font in it,
+which has no place inside a gate, so `platform/include/txt_main.h` declares the calls that file
+makes and `platform/heretic/sg_textscreen.c` implements them as nothing. `TXT_Init` reporting
+failure is a path the engine already handles: it clears `using_graphical_startup` and boots without
+the loading screen.
 
 ## The toolchain
 
