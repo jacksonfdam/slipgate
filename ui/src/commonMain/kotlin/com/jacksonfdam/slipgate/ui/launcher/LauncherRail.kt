@@ -38,7 +38,9 @@ public fun LauncherRail(
             modifier
                 .fillMaxHeight()
                 .width(RAIL_WIDTH)
-                .background(ColorTokens.Recess)
+                // Not quite opaque: the attract fire behind the shell licks up the rail's edge,
+                // which is what keeps the chrome part of the picture rather than a bar over it.
+                .background(ColorTokens.Recess.copy(alpha = CHROME_ALPHA))
                 .padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -64,7 +66,7 @@ public fun LauncherBottomBar(
             modifier
                 .fillMaxWidth()
                 .height(RAIL_WIDTH)
-                .background(ColorTokens.Recess),
+                .background(ColorTokens.Recess.copy(alpha = CHROME_ALPHA)),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -118,3 +120,4 @@ private fun StatusDot(label: String) {
 
 private val RAIL_WIDTH = 64.dp
 private val TOUCH_TARGET = 48.dp
+private const val CHROME_ALPHA = 0.82f
