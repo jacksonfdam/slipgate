@@ -16,8 +16,15 @@ import com.jacksonfdam.slipgate.host.runtime.InputProfile
 /** The IWAD the gate runs from, whatever the user actually supplies. */
 public const val MARS_IWAD: String = "doom.wad"
 
-/** Freedoom's first phase, the freely licensed replacement Slipgate offers to download. */
-private const val FREEDOOM_URL = "https://github.com/freedoom/freedoom/releases"
+/**
+ * Freedoom's first phase, the freely licensed replacement Slipgate offers to download.
+ *
+ * A pinned release rather than the latest: what the app downloads should be the same file next month,
+ * and a release that moved is a download that broke. The IWAD arrives inside the archive.
+ */
+private const val FREEDOOM_URL =
+    "https://github.com/freedoom/freedoom/releases/download/v0.13.0/freedoom-0.13.0.zip"
+private const val FREEDOOM_ENTRY = "freedoom1.wad"
 
 /**
  * Doom, running as WebAssembly through Chocolate Doom.
@@ -50,6 +57,7 @@ public class MarsGate : Gate {
                                 DataSource.FreeDownload(
                                     displayName = "Freedoom: Phase 1",
                                     url = FREEDOOM_URL,
+                                    archiveEntry = FREEDOOM_ENTRY,
                                 ),
                                 DataSource.UserSupplied,
                             ),
