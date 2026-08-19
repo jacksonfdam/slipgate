@@ -24,6 +24,8 @@ public data class SlipgateSettings(
     val scaling: ScalingMode = ScalingMode.Fit,
     /** Freezes ambient shader motion and shortens transitions, without breaking the composition. */
     val reducedMotion: Boolean = false,
+    /** How loud the interface's own sounds are, from silence to full. */
+    val interfaceVolume: Float = 0.7f,
 ) {
     public companion object {
         public val Default: SlipgateSettings = SlipgateSettings()
