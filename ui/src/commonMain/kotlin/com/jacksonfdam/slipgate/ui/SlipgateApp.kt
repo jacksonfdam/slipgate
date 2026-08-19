@@ -23,6 +23,8 @@ import com.jacksonfdam.slipgate.host.gamedata.GameDataAcquisition
 import com.jacksonfdam.slipgate.host.gamedata.GameDataStore
 import com.jacksonfdam.slipgate.host.gamedata.mount
 import com.jacksonfdam.slipgate.host.gamedata.unmet
+import com.jacksonfdam.slipgate.host.graphics.core.QualityTier
+import com.jacksonfdam.slipgate.host.graphics.core.TierDetection
 import com.jacksonfdam.slipgate.host.runtime.BackendResolver
 import com.jacksonfdam.slipgate.host.runtime.DataEntry
 import com.jacksonfdam.slipgate.host.runtime.Gate
@@ -32,16 +34,19 @@ import com.jacksonfdam.slipgate.host.runtime.GateSession
 import com.jacksonfdam.slipgate.host.runtime.InputProfile
 import com.jacksonfdam.slipgate.ui.data.GameDataStage
 import com.jacksonfdam.slipgate.ui.gate.GateSurface
+import com.jacksonfdam.slipgate.ui.launcher.GateCard
 import com.jacksonfdam.slipgate.ui.launcher.LauncherSection
 import com.jacksonfdam.slipgate.ui.launcher.LauncherShell
 import com.jacksonfdam.slipgate.ui.launcher.LauncherState
 import com.jacksonfdam.slipgate.ui.launcher.launcherState
+import com.jacksonfdam.slipgate.ui.splash.SplashScreen
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /** What the shell is showing. */
 private sealed interface Stage {
-    data object Opening : Stage
+    /** The cold-start splash, which doubles as the benchmark window. */
+    data object Splash : Stage
 
     /** The rack. Where the app starts and, once a session can be left, where it returns to. */
     data class Choosing(
@@ -75,44 +80,23 @@ public fun SlipgateApp(
     store: GameDataStore = koinInject(),
     acquisition: GameDataAcquisition = koinInject(),
 ) {
-    var stage by remember { mutableStateOf<Stage>(Stage.Opening) }
+    var stage by remember { mutableStateOf<Stage>(Stage.Splash) }
     var section by remember { mutableStateOf(LauncherSection.Gates) }
+    var tier by remember { mutableStateOf<QualityTier?>(null) }
     val scope = rememberCoroutineScope()
-
-    suspend fun enter(gate: Gate) {
-        val gateId = gate.descriptor.id.value
-        val outstanding = gate.requirements().unmet(store.names(gateId)).firstOrNull()
-        stage =
-            when {
-                outstanding != null -> {
-                    Stage.NeedsData(gate, outstanding)
-                }
-
-                else -> {
-                    resolver
-                        .factoryFor(gate)
-                        .mapCatching { factory ->
-                            Stage.Playing(
-                                session = factory.create(store.mount(gateId), host),
-                                profile = gate.inputProfile(),
-                            )
-                        }.getOrElse { failure -> Stage.Stuck(failure.message ?: "the gate did not open") }
-                }
-            }
-    }
-
-    suspend fun showRack(selected: String? = null) {
-        val rack = launcherState(registry.gates, store)
-        stage = Stage.Choosing(selected?.let(rack::select) ?: rack)
-    }
-
-    LaunchedEffect(registry) { showRack() }
 
     SlipgateTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             when (val current = stage) {
-                is Stage.Opening -> {
-                    BootScreen(message = "opening gate", platformName = platformInfo.name)
+                is Stage.Splash -> {
+                    SplashScreen(
+                        onFinished = { medianMicros ->
+                            tier = medianMicros?.let { TierDetection.detect(it) }
+                            scope.launch {
+                                stage = Stage.Choosing(launcherState(registry.gates, store))
+                            }
+                        },
+                    )
                 }
 
                 is Stage.Stuck -> {
@@ -120,23 +104,20 @@ public fun SlipgateApp(
                 }
 
                 is Stage.Choosing -> {
-                    LauncherShell(
+                    ChoosingStage(
                         state = current.state,
                         section = section,
                         onSection = { section = it },
-                        onSelect = { index ->
-                            stage =
-                                Stage.Choosing(current.state.moveBy(index - current.state.selected))
-                        },
+                        onMove = { next -> stage = Stage.Choosing(next) },
                         onEnter = { card ->
                             scope.launch {
                                 registry.gates
                                     .firstOrNull { gate -> gate.descriptor.id.value == card.id }
-                                    ?.let { gate -> enter(gate) }
+                                    ?.let { gate -> stage = openedStage(gate, resolver, store, host) }
                             }
                         },
-                        statusLabel = platformInfo.name,
-                        modifier = Modifier.fillMaxSize(),
+                        statusLabel =
+                            tier?.let { "${platformInfo.name} · ${it.name}" } ?: platformInfo.name,
                     )
                 }
 
@@ -145,7 +126,7 @@ public fun SlipgateApp(
                         gate = current.gate,
                         entry = current.entry,
                         acquisition = acquisition,
-                        onInstalled = { scope.launch { enter(current.gate) } },
+                        onInstalled = { scope.launch { stage = openedStage(current.gate, resolver, store, host) } },
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -160,6 +141,48 @@ public fun SlipgateApp(
             }
         }
     }
+}
+
+@Composable
+private fun ChoosingStage(
+    state: LauncherState,
+    section: LauncherSection,
+    onSection: (LauncherSection) -> Unit,
+    onMove: (LauncherState) -> Unit,
+    onEnter: (GateCard) -> Unit,
+    statusLabel: String,
+) {
+    LauncherShell(
+        state = state,
+        section = section,
+        onSection = onSection,
+        onSelect = { index -> onMove(state.moveBy(index - state.selected)) },
+        onEnter = onEnter,
+        statusLabel = statusLabel,
+        modifier = Modifier.fillMaxSize(),
+    )
+}
+
+/** Everything a chosen gate resolves to: missing data, a running session, or the reason. */
+private suspend fun openedStage(
+    gate: Gate,
+    resolver: BackendResolver,
+    store: GameDataStore,
+    host: GateHost,
+): Stage {
+    val gateId = gate.descriptor.id.value
+    val outstanding = gate.requirements().unmet(store.names(gateId)).firstOrNull()
+    if (outstanding != null) {
+        return Stage.NeedsData(gate, outstanding)
+    }
+    return resolver
+        .factoryFor(gate)
+        .mapCatching { factory ->
+            Stage.Playing(
+                session = factory.create(store.mount(gateId), host),
+                profile = gate.inputProfile(),
+            ) as Stage
+        }.getOrElse { failure -> Stage.Stuck(failure.message ?: "the gate did not open") }
 }
 
 @Composable
