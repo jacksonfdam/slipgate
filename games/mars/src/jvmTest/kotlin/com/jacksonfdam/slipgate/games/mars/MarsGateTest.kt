@@ -1,5 +1,6 @@
 package com.jacksonfdam.slipgate.games.mars
 
+import com.jacksonfdam.slipgate.host.runtime.ActionSet
 import com.jacksonfdam.slipgate.host.runtime.AudioSink
 import com.jacksonfdam.slipgate.host.runtime.BackendId
 import com.jacksonfdam.slipgate.host.runtime.Clock
@@ -108,12 +109,31 @@ class MarsGateTest {
             assertEquals(SessionStatus.Finished, session.step(InputFrame.Idle, 29).status)
         }
 
-    private suspend fun openSession() =
+    /**
+     * Opening the menu makes Doom play a sound, which is the shortest path from an input to an
+     * audible sample. Asserting on a non-zero sample rather than on a frame count is what separates
+     * a mixer that works from a drain that hands out silence.
+     */
+    @Test
+    fun openingTheMenuIsAudible() =
+        runTest {
+            val host = RecordingHost()
+            val session = openSession(host) ?: return@runTest
+
+            val menu = InputFrame(actions = ActionSet.of(GateAction.Menu))
+            session.step(menu, elapsedMillis = 29)
+            repeat(16) { session.step(InputFrame.Idle, elapsedMillis = 29) }
+
+            assertTrue(host.audio.frames > 0, "no audio was drained at all")
+            assertTrue(host.audio.heardSomething, "every drained frame was silent")
+        }
+
+    private suspend fun openSession(host: RecordingHost = RecordingHost()) =
         iwad
             ?.takeIf { it.isFile }
             ?.let { file ->
                 val factory = assertNotNull(gate.sessionFactories()[BackendId.Wasm])
-                factory.create(SingleFileData(file.name, file.readBytes()), RecordingHost())
+                factory.create(SingleFileData(file.name, file.readBytes()), host)
             }
             ?: null.also { println("skipping: set -Pslipgate.iwad to run the boot tests") }
 }
@@ -132,19 +152,33 @@ private class SingleFileData(
         if (name == this.name) bytes.size.toLong() else throw NoSuchElementException(name)
 }
 
+/** Counts what the session played, and whether any of it was more than silence. */
+private class CountingAudioSink : AudioSink {
+    override val sampleRate: Int = 44_100
+    override val channels: Int = 2
+
+    var frames: Int = 0
+        private set
+
+    var heardSomething: Boolean = false
+        private set
+
+    override fun submit(
+        samples: ShortArray,
+        frameCount: Int,
+    ): Int {
+        frames += frameCount
+        if (!heardSomething) {
+            heardSomething = (0 until frameCount * channels).any { samples[it] != 0.toShort() }
+        }
+        return frameCount
+    }
+}
+
 private class RecordingHost : GateHost {
     val lines: MutableList<String> = mutableListOf()
 
-    override val audio: AudioSink =
-        object : AudioSink {
-            override val sampleRate: Int = 44_100
-            override val channels: Int = 2
-
-            override fun submit(
-                samples: ShortArray,
-                frameCount: Int,
-            ): Int = frameCount
-        }
+    override val audio: CountingAudioSink = CountingAudioSink()
 
     override val storage: SaveStorage =
         object : SaveStorage {
