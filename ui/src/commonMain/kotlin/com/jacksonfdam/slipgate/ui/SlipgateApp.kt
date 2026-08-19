@@ -16,10 +16,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.jacksonfdam.slipgate.host.audio.synth.InterfaceCue
 import com.jacksonfdam.slipgate.host.gamedata.GameDataAcquisition
 import com.jacksonfdam.slipgate.host.gamedata.GameDataStore
 import com.jacksonfdam.slipgate.host.gamedata.mount
@@ -31,8 +33,11 @@ import com.jacksonfdam.slipgate.host.runtime.GateHost
 import com.jacksonfdam.slipgate.host.runtime.GateRegistry
 import com.jacksonfdam.slipgate.host.runtime.GateSession
 import com.jacksonfdam.slipgate.host.runtime.InputProfile
+import com.jacksonfdam.slipgate.ui.audio.FrameBenchmark
+import com.jacksonfdam.slipgate.ui.audio.InterfaceAudio
 import com.jacksonfdam.slipgate.ui.data.GameDataStage
 import com.jacksonfdam.slipgate.ui.gate.GateSurface
+import com.jacksonfdam.slipgate.ui.launcher.GateCard
 import com.jacksonfdam.slipgate.ui.launcher.LauncherSection
 import com.jacksonfdam.slipgate.ui.launcher.LauncherShell
 import com.jacksonfdam.slipgate.ui.launcher.LauncherState
@@ -79,6 +84,7 @@ public fun SlipgateApp(
     store: GameDataStore = koinInject(),
     acquisition: GameDataAcquisition = koinInject(),
     settingsController: SettingsController = koinInject(),
+    interfaceAudio: InterfaceAudio = koinInject(),
 ) {
     var stage by remember { mutableStateOf<Stage>(Stage.Opening) }
     var section by remember { mutableStateOf(LauncherSection.Gates) }
@@ -113,6 +119,13 @@ public fun SlipgateApp(
 
     LaunchedEffect(registry) { showRack() }
 
+    InterfaceRuntime(interfaceAudio, settingsController)
+
+    // A gate owns the device while it runs: the interface goes quiet rather than mixing over it.
+    LaunchedEffect(stage) {
+        if (stage is Stage.Playing) interfaceAudio.silence() else interfaceAudio.resume()
+    }
+
     // What the player chose reaches the whole interface from one place: the portraits read the tier
     // and the motion setting, and a running gate reads the tube and the picture shape.
     SlipgateTheme(reducedMotion = settingsController.settings.reducedMotion) {
@@ -131,15 +144,15 @@ public fun SlipgateApp(
                     }
 
                     is Stage.Choosing -> {
-                        LauncherShell(
-                            settings = settingsController,
+                        RackStage(
                             state = current.state,
                             section = section,
-                            onSection = { section = it },
-                            onSelect = { index -> stage = Stage.Choosing(current.state.select(index)) },
-                            onEnter = { card -> scope.launch { enter(registry.gateFor(card.id)) } },
+                            settings = settingsController,
+                            audio = interfaceAudio,
                             statusLabel = platformInfo.name,
-                            modifier = Modifier.fillMaxSize(),
+                            onSection = { chosen -> section = chosen },
+                            onState = { next -> stage = Stage.Choosing(next) },
+                            onEnter = { card -> scope.launch { enter(registry.gateFor(card.id)) } },
                         )
                     }
 
@@ -162,6 +175,72 @@ public fun SlipgateApp(
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The rack, with the sounds its interactions make.
+ *
+ * Cues live here rather than inside the shell because they belong to the act of choosing, not to the
+ * drawing of it: a focus change tracks the direction the selection moved, entering confirms, and
+ * entering a gate that cannot run is refused rather than silently ignored.
+ */
+@Composable
+private fun RackStage(
+    state: LauncherState,
+    section: LauncherSection,
+    settings: SettingsController,
+    audio: InterfaceAudio,
+    statusLabel: String,
+    onSection: (LauncherSection) -> Unit,
+    onState: (LauncherState) -> Unit,
+    onEnter: (GateCard) -> Unit,
+) {
+    LauncherShell(
+        settings = settings,
+        state = state,
+        section = section,
+        onSection = { chosen ->
+            audio.play(if (chosen == LauncherSection.Gates) InterfaceCue.Back else InterfaceCue.Navigate)
+            onSection(chosen)
+        },
+        onSelect = { index ->
+            audio.play(InterfaceCue.FocusChange, direction = (index - state.selected).toFloat())
+            onState(state.select(index))
+        },
+        onEnter = { card ->
+            audio.play(if (card.isPlayable) InterfaceCue.Confirm else InterfaceCue.Blocked)
+            onEnter(card)
+        },
+        statusLabel = statusLabel,
+        modifier = Modifier.fillMaxSize(),
+    )
+}
+
+/**
+ * The interface's own frame loop: it renders the audio the elapsed time owes and measures how long
+ * frames actually take, because both want the same clock and neither wants a thread of its own.
+ */
+@Composable
+private fun InterfaceRuntime(
+    audio: InterfaceAudio,
+    settings: SettingsController,
+) {
+    val benchmark = remember { FrameBenchmark() }
+    LaunchedEffect(Unit) {
+        var previousNanos = 0L
+        while (true) {
+            withFrameNanos { nanos ->
+                val elapsed = if (previousNanos == 0L) 0L else nanos - previousNanos
+                previousNanos = nanos
+                audio.volume = settings.settings.interfaceVolume
+                audio.pump(elapsed / NANOS_PER_MILLI)
+                benchmark.record(elapsed)
+                if (settings.measured == null) {
+                    benchmark.decide()?.let(settings::recordMeasurement)
                 }
             }
         }
@@ -201,3 +280,5 @@ private fun BootScreen(
 
 /** The gate a card stands for. A card the registry cannot name is a bug rather than a state. */
 private fun GateRegistry.gateFor(id: String): Gate = gates.first { gate -> gate.descriptor.id.value == id }
+
+private const val NANOS_PER_MILLI = 1_000_000L
