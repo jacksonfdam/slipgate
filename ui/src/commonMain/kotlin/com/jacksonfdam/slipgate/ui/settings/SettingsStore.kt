@@ -75,6 +75,7 @@ private const val KEY_CRT_SCANLINES = "crt.scanlines"
 private const val KEY_CRT_GRILLE = "crt.grille"
 private const val KEY_CRT_BLOOM = "crt.bloom"
 private const val KEY_CRT_VIGNETTE = "crt.vignette"
+private const val KEY_INTERFACE_VOLUME = "audio.interface"
 
 /** Reads what was stored, falling back to the default for anything absent or no longer recognised. */
 public fun SettingsStore.read(): SlipgateSettings {
@@ -85,6 +86,7 @@ public fun SettingsStore.read(): SlipgateSettings {
             string(KEY_SCALING)?.let { name -> ScalingMode.entries.firstOrNull { it.name == name } }
                 ?: defaults.scaling,
         reducedMotion = boolean(KEY_REDUCED_MOTION) ?: defaults.reducedMotion,
+        interfaceVolume = float(KEY_INTERFACE_VOLUME) ?: defaults.interfaceVolume,
         crt =
             CrtSettings(
                 enabled = boolean(KEY_CRT_ENABLED) ?: defaults.crt.enabled,
@@ -102,6 +104,7 @@ public fun SettingsStore.write(settings: SlipgateSettings) {
     putString(KEY_QUALITY, settings.qualityOverride?.name)
     putString(KEY_SCALING, settings.scaling.name)
     putBoolean(KEY_REDUCED_MOTION, settings.reducedMotion)
+    putFloat(KEY_INTERFACE_VOLUME, settings.interfaceVolume)
     putBoolean(KEY_CRT_ENABLED, settings.crt.enabled)
     putFloat(KEY_CRT_CURVATURE, settings.crt.curvature)
     putFloat(KEY_CRT_SCANLINES, settings.crt.scanlines)
