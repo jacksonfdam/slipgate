@@ -17,6 +17,7 @@ private const val BYTE_BITS = 8
  * The JVM target exists so the ring buffer and the drain can be exercised where the audio device is
  * real but the platform is not a phone.
  */
+@Suppress("SwallowedException") // A machine with no usable output is a fact, not an error to report.
 public actual fun openAudioOutput(
     sampleRate: Int,
     channels: Int,
