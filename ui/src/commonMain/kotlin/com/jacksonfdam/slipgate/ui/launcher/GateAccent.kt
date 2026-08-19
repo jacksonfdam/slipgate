@@ -3,19 +3,25 @@ package com.jacksonfdam.slipgate.ui.launcher
 import androidx.compose.ui.graphics.Color
 import com.jacksonfdam.slipgate.host.runtime.AccentSource
 
-/** What the rack tints a card with before the game's own palette is available. */
-public val FALLBACK_ACCENT: Color = Color(0xFF8A8F98)
+/** What a card is tinted with when the game's own palette cannot say. */
+public const val FALLBACK_ACCENT_ARGB: Int = 0xFF8A8F98.toInt()
 
 /**
- * The colour a card is drawn in.
+ * Resolves the colour a gate is drawn in.
  *
- * A palette-derived accent needs the game's own data, which a card without data does not have and a
- * card with data has not booted. Reading it from the stored IWAD is the attract background's job;
- * until then a palette accent falls back to something neutral, which is the difference between
- * degraded and broken.
+ * A gate may name a fixed colour or an entry in its own palette. The palette route is the one that
+ * matters — it is what makes the menu look like the game it is about to launch — but it needs the
+ * game's data, so a gate with nothing installed falls back to something neutral. Degraded, not
+ * broken: a card in grey still reads as a card.
  */
-public fun accentOf(source: AccentSource): Color =
+public fun accentArgbOf(
+    source: AccentSource,
+    palette: IntArray?,
+): Int =
     when (source) {
-        is AccentSource.Fixed -> Color(source.argb)
-        is AccentSource.PaletteEntry -> FALLBACK_ACCENT
+        is AccentSource.Fixed -> source.argb
+        is AccentSource.PaletteEntry -> palette?.getOrNull(source.index) ?: FALLBACK_ACCENT_ARGB
     }
+
+/** The card's accent as a Compose colour. */
+public fun GateCard.accent(): Color = Color(accentArgb)

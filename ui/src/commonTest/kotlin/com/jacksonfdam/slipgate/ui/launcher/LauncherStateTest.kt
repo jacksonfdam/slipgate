@@ -24,6 +24,7 @@ private fun card(
             accent = AccentSource.Fixed(argb = 0xFFFF0000.toInt()),
         ),
     availability = availability,
+    accentArgb = 0xFFFF0000.toInt(),
 )
 
 private val NEEDED =

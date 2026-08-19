@@ -109,7 +109,7 @@ private fun GateCardView(
     onClick: () -> Unit,
 ) {
     val scale by animateFloatAsState(if (selected) SELECTED_SCALE else RESTING_SCALE)
-    val accent = accentOf(card.descriptor.accent)
+    val accent = card.accent()
     val tint by animateColorAsState(if (selected) accent else accent.copy(alpha = RESTING_COVER_ALPHA))
 
     Column(

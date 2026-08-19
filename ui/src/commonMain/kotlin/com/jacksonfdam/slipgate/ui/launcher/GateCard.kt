@@ -28,6 +28,13 @@ public sealed interface GateAvailability {
 public data class GateCard(
     val descriptor: GateDescriptor,
     val availability: GateAvailability,
+    /**
+     * The colour the card is drawn in, as `0xAARRGGBB`.
+     *
+     * Resolved when the rack is read rather than when it is drawn, because a palette accent comes
+     * from the game's own data and reading data is not something a composable should be doing.
+     */
+    val accentArgb: Int,
 ) {
     public val id: String get() = descriptor.id.value
 
