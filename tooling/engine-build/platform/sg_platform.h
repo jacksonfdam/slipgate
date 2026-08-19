@@ -43,4 +43,5 @@ void sg_drain_events(void);
 
 int sg_audio_drain(int16_t *destination, int frames);
 void sg_audio_advance(int elapsed_millis);
+void sg_request_quit(void);
 void sg_audio_reset(void);

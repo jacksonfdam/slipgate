@@ -90,9 +90,9 @@ static void run_exit_functions(boolean erroring)
 void I_Quit(void)
 {
     run_exit_functions(false);
-    sg_host_fatal("the engine quit");
-    // A host import always returns, so stopping has to be the module's own doing: trap, and the
-    // host gets an error instead of an instance spinning in a loop it can never leave.
+    sg_host_log("slipgate: the engine quit");
+    sg_request_quit();
+    // Only reachable if there was no frame to leave, which would mean the engine quit outside one.
     __builtin_trap();
 }
 
