@@ -20,6 +20,14 @@ tasks.withType<Test>().configureEach {
     environment("SLIPGATE_IWAD", suppliedIwad.getOrElse(""))
 }
 
+// Compose resources are not packaged for the Android target of the Android KMP library plugin, so
+// the engine module is also staged as a plain java resource, which an AAR does carry. One committed
+// file, two ways of reaching it: the alternative is a second copy of a binary in the repository.
+val stageEngineModule by tasks.registering(Sync::class) {
+    from(layout.projectDirectory.dir("src/commonMain/composeResources/files")) { into("files") }
+    into(layout.buildDirectory.dir("engineResources"))
+}
+
 compose.resources {
     // Named explicitly so the accessor lands where the gate's own code can see it.
     packageOfResClass = "com.jacksonfdam.slipgate.games.mars.generated.resources"
@@ -44,6 +52,8 @@ kotlin {
     iosSimulatorArm64()
 
     sourceSets {
+        androidMain { resources.srcDir(stageEngineModule) }
+
         commonMain.dependencies {
             api(project(":host:runtime"))
             implementation(project(":host:backend:wasm"))
