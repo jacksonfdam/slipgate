@@ -8,7 +8,7 @@ import kotlin.test.assertNull
  * The painter's contract, which the launcher depends on for its fallback: a gate with a portrait gets
  * one, and a gate without gets nothing rather than an empty shader that would draw black.
  */
-class PortraitPainterTest {
+class ScenePainterTest {
     @Test
     fun aGateWithAPortraitGetsAPainter() {
         assertNotNull(portraitPainter("mars"), "the mars portrait did not compile")

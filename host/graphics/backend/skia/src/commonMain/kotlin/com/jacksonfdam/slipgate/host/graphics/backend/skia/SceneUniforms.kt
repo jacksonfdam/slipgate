@@ -1,12 +1,12 @@
 package com.jacksonfdam.slipgate.host.graphics.backend.skia
 
 /**
- * The shared portrait uniform block. Every gate portrait shader declares exactly these
- * uniforms in exactly this order, so one packer serves them all and the quality tier
- * changes parameters, never shader variants.
+ * The shared scene uniform block. Every scene shader — a gate portrait, the attract background —
+ * declares exactly these uniforms in exactly this order, so one packer serves them all and the
+ * quality tier changes parameters, never shader variants.
  */
 @Suppress("LongParameterList") // The block is one flat set of named uniforms, by design.
-public class PortraitUniforms(
+public class SceneUniforms(
     public val widthPixels: Float,
     public val heightPixels: Float,
     public val timeSeconds: Float,
@@ -54,5 +54,5 @@ public class PortraitUniforms(
     }
 }
 
-/** Source of one gate's portrait shader, or null for gates whose portrait has not landed. */
-public fun portraitShaderSource(gateId: String): String? = skslSources["portrait_$gateId"]
+/** Source of the scene shader named [shaderName], or null when no shader of that name is embedded. */
+internal fun sceneShaderSource(shaderName: String): String? = skslSources[shaderName]

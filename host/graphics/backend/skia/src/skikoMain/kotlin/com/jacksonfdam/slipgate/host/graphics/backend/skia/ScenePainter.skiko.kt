@@ -9,21 +9,21 @@ import org.jetbrains.skia.Rect
 import org.jetbrains.skia.RuntimeEffect
 
 /** iOS and web both draw through Skia, so one painter serves them. */
-public actual fun portraitPainter(gateId: String): PortraitPainter? {
-    val source = portraitShaderSource(gateId) ?: return null
-    return SkikoPortraitPainter(source)
+public actual fun scenePainter(shaderName: String): ScenePainter? {
+    val source = sceneShaderSource(shaderName) ?: return null
+    return SkikoScenePainter(source)
 }
 
-private class SkikoPortraitPainter(
+private class SkikoScenePainter(
     source: String,
-) : PortraitPainter {
+) : ScenePainter {
     private val effect = RuntimeEffect.makeForShader(source)
     private val paint = Paint()
-    private val floats = FloatArray(PortraitUniforms.FLOAT_COUNT)
+    private val floats = FloatArray(SceneUniforms.FLOAT_COUNT)
 
     override fun draw(
         scope: DrawScope,
-        uniforms: PortraitUniforms,
+        uniforms: SceneUniforms,
     ) {
         // One packed block, in the order every portrait declares its uniforms in. Skia takes the
         // whole buffer at once, so the order is the contract rather than the names.
