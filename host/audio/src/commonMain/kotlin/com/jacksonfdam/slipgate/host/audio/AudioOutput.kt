@@ -17,6 +17,7 @@ public const val ID_TECH_1_CHANNELS: Int = 2
 public interface AudioOutput : AudioSink {
     public fun close()
 }
+
 /**
  * Opens the platform's audio output.
  *
