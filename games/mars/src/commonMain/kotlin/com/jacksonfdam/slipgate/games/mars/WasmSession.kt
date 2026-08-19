@@ -47,28 +47,58 @@ private val DOOM_DIRECTIONS =
 internal suspend fun openWasmSession(
     data: MountedGameData,
     host: GateHost,
+): GateSession = session(bootEngine(data, host), host)
+
+/**
+ * Boots the module and starts playing a demo the game data carries.
+ *
+ * Playback is started through the engine's own entry point after boot rather than with `-playdemo`,
+ * because the command-line route hands the engine a pointer into start-up's stack frame — and this
+ * port escapes that frame, which leaves the engine holding a name that is no longer there. The
+ * symptom is a demo that plays perfectly and then dies at its final tic.
+ *
+ * [untilTheEnd] decides what the end of the demo means: the session finishes, or the engine returns
+ * to its title screen, which is what an attract loop wants.
+ */
+internal suspend fun openWasmDemoSession(
+    data: MountedGameData,
+    host: GateHost,
+    demo: String,
+    untilTheEnd: Boolean = true,
 ): GateSession {
+    val engine = bootEngine(data, host)
+    check(engine.playDemo(demo, untilTheEnd)) { "the engine would not play the demo $demo" }
+    return session(engine, host)
+}
+
+private suspend fun bootEngine(
+    data: MountedGameData,
+    host: GateHost,
+): WasmEngine {
     val iwadName = data.names().firstOrNull() ?: error("no game data is mounted for the mars gate")
     val iwad = data.read(iwadName)
 
     host.logger.log(LogLevel.Info, "booting the mars gate from $iwadName")
 
-    val engine =
-        WasmEngine.start(
-            moduleBytes = marsModuleBytes(),
-            files = mapOf(iwadName to iwad),
-            arguments = listOf("slipgate", "-iwad", iwadName, "-nomusic"),
-            host = GateHostBridge(host),
-        )
+    return WasmEngine.start(
+        moduleBytes = marsModuleBytes(),
+        files = mapOf(iwadName to iwad),
+        arguments = listOf("slipgate", "-iwad", iwadName, "-nomusic"),
+        host = GateHostBridge(host),
+    )
+}
 
-    return WasmGateSession(
+private fun session(
+    engine: WasmEngine,
+    host: GateHost,
+): GateSession =
+    WasmGateSession(
         engine = engine,
         host = host,
         keyBindings = DOOM_KEYS,
         directionBindings = DOOM_DIRECTIONS,
         pixelAspect = ID_TECH_1_PIXEL_ASPECT,
     )
-}
 
 /** Lets the engine reach the host's logger without knowing what a gate host is. */
 private class GateHostBridge(
