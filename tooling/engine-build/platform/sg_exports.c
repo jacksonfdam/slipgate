@@ -17,6 +17,12 @@
 #include "i_system.h"
 #include "i_video.h"
 #include "m_argv.h"
+#include "m_misc.h"
+#include "w_wad.h"
+// Doom's own start-up and demo entry points: the platform layer calls them rather than reimplementing
+// what the game already knows how to do.
+#include "doomstat.h"
+#include "g_game.h"
 
 #include "sg_platform.h"
 
@@ -26,6 +32,10 @@ extern void D_RunFrame(void);
 #define SNAPSHOT_BYTES 8
 
 static jmp_buf boot_escape;
+// Quitting is an outcome, not a failure: the engine never returns from the frame it quits in, so the
+// only way to report it as one is to leave that frame the same way boot leaves D_DoomMain.
+static jmp_buf step_escape;
+static boolean step_escape_valid = false;
 static boolean booting = false;
 static boolean booted = false;
 static boolean finished = false;
@@ -42,6 +52,22 @@ boolean sg_take_frame_complete(void)
     boolean complete = frame_complete;
     frame_complete = false;
     return complete;
+}
+
+// Called by the engine when the player, a demo or a script asks it to stop. Reported to the host as
+// a finished session rather than as an error, because that is what it is.
+void sg_request_quit(void)
+{
+    finished = true;
+    if (step_escape_valid)
+    {
+        step_escape_valid = false;
+        longjmp(step_escape, 1);
+    }
+    if (booting)
+    {
+        longjmp(boot_escape, 1);
+    }
 }
 
 // Called at the top of every frame by the engine. During boot it is the escape hatch; afterwards
@@ -116,6 +142,36 @@ int slipgate_init(void)
     return 0;
 }
 
+#define MAX_DEMO_NAME 16
+
+// The engine keeps the pointer it is given rather than a copy of the name, and the frame that name
+// would live in during start-up is abandoned when the host escapes D_DoomMain. This buffer outlives
+// everything, which is what makes demo playback survive to the end of the demo.
+static char demo_name[MAX_DEMO_NAME];
+
+// Starts playback of a demo lump the game data carries. Also how attract mode will run one: the
+// engine's own entry point, called after boot rather than through the command line, because a name
+// on the command line is copied into start-up's stack frame and that frame does not survive.
+__attribute__((export_name("slipgate_play_demo")))
+int slipgate_play_demo(int name_pointer, int single)
+{
+    if (!booted || finished)
+    {
+        return 0;
+    }
+
+    M_StringCopy(demo_name, (const char *)(intptr_t)name_pointer, sizeof(demo_name));
+    if (W_CheckNumForName(demo_name) < 0)
+    {
+        sg_host_log("slipgate: that demo is not in the game data");
+        return 0;
+    }
+
+    singledemo = single != 0;
+    G_DeferedPlayDemo(demo_name);
+    return 1;
+}
+
 __attribute__((export_name("slipgate_step")))
 int slipgate_step(int elapsed_millis)
 {
@@ -124,9 +180,18 @@ int slipgate_step(int elapsed_millis)
         return SG_ENGINE_FINISHED;
     }
 
+    if (setjmp(step_escape) != 0)
+    {
+        // The engine quit inside this frame. Whatever it drew before asking to stop still stands.
+        step_escape_valid = false;
+        return SG_ENGINE_FINISHED;
+    }
+    step_escape_valid = true;
+
     sg_set_elapsed_millis(sg_elapsed_millis() + elapsed_millis);
     sg_audio_advance(elapsed_millis);
     D_RunFrame();
+    step_escape_valid = false;
 
     int status = 0;
     if (sg_take_frame_complete())
