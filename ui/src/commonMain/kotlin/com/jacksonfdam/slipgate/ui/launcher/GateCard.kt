@@ -1,5 +1,6 @@
 package com.jacksonfdam.slipgate.ui.launcher
 
+import com.jacksonfdam.slipgate.host.gamedata.AccentExtraction
 import com.jacksonfdam.slipgate.host.runtime.DataEntry
 import com.jacksonfdam.slipgate.host.runtime.GateDescriptor
 
@@ -28,6 +29,13 @@ public sealed interface GateAvailability {
 public data class GateCard(
     val descriptor: GateDescriptor,
     val availability: GateAvailability,
+    /**
+     * The ramp sampled from this game's own palette, or null when its data is not installed.
+     *
+     * Resolved when the rack is read rather than when it is drawn: sampling means reading the
+     * player's game files, and reading files is not something a composable should be doing.
+     */
+    val accent: AccentExtraction? = null,
 ) {
     public val id: String get() = descriptor.id.value
 
