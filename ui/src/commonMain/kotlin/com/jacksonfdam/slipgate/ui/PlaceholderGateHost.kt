@@ -1,6 +1,6 @@
 package com.jacksonfdam.slipgate.ui
 
-import com.jacksonfdam.slipgate.host.runtime.AudioSink
+import com.jacksonfdam.slipgate.host.audio.AudioOutput
 import com.jacksonfdam.slipgate.host.runtime.Clock
 import com.jacksonfdam.slipgate.host.runtime.GateHost
 import com.jacksonfdam.slipgate.host.runtime.LogLevel
@@ -13,7 +13,9 @@ import com.jacksonfdam.slipgate.host.runtime.SaveStorage
  * in its own change.
  */
 internal class PlaceholderGateHost(
-    override val audio: AudioSink,
+    // The platform's output rather than the bare sink from the contract: what the shell registers is
+    // the thing that owns a device, and asking for the narrower type is what a container cannot see.
+    override val audio: AudioOutput,
 ) : GateHost {
     override val storage: SaveStorage =
         object : SaveStorage {
