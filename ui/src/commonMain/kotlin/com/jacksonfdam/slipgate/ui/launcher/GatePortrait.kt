@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import com.jacksonfdam.slipgate.host.graphics.backend.skia.PortraitUniforms
+import com.jacksonfdam.slipgate.host.graphics.backend.skia.SceneUniforms
 import com.jacksonfdam.slipgate.host.graphics.backend.skia.portraitPainter
 import com.jacksonfdam.slipgate.ui.design.LocalReducedMotion
 import com.jacksonfdam.slipgate.ui.design.accentRamp
@@ -57,7 +57,7 @@ internal fun GatePortrait(
                 painter.draw(
                     scope = this,
                     uniforms =
-                        PortraitUniforms(
+                        SceneUniforms(
                             widthPixels = size.width,
                             heightPixels = size.height,
                             timeSeconds = seconds,

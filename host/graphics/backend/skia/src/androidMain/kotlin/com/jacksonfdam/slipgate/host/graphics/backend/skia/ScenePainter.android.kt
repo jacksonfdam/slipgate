@@ -9,22 +9,22 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 
 /** AGSL arrived in Android 13; below it there is no runtime shader and the caller draws its fallback. */
-public actual fun portraitPainter(gateId: String): PortraitPainter? {
+public actual fun scenePainter(shaderName: String): ScenePainter? {
     val source =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) portraitShaderSource(gateId) else null
-    return source?.let(::AgslPortraitPainter)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) sceneShaderSource(shaderName) else null
+    return source?.let(::AgslScenePainter)
 }
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-private class AgslPortraitPainter(
+private class AgslScenePainter(
     source: String,
-) : PortraitPainter {
+) : ScenePainter {
     private val shader = RuntimeShader(source)
     private val paint = Paint()
 
     override fun draw(
         scope: DrawScope,
-        uniforms: PortraitUniforms,
+        uniforms: SceneUniforms,
     ) {
         // Uniforms are set by name here rather than as a packed block: AGSL takes them individually,
         // and the names are the shader's own contract either way.

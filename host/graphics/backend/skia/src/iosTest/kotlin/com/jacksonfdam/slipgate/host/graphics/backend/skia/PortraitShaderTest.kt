@@ -30,7 +30,7 @@ class PortraitShaderTest {
     @Test
     fun theUniformBlockPacksInDeclarationOrder() {
         val packed =
-            PortraitUniforms(
+            SceneUniforms(
                 widthPixels = 64f,
                 heightPixels = 32f,
                 timeSeconds = 2f,
@@ -42,7 +42,7 @@ class PortraitShaderTest {
                 octaves = 4f,
             ).pack()
 
-        assertEquals(PortraitUniforms.FLOAT_COUNT, packed.size)
+        assertEquals(SceneUniforms.FLOAT_COUNT, packed.size)
         assertEquals(64f, packed[0])
         assertEquals(32f, packed[1])
         assertEquals(2f, packed[2])
@@ -55,7 +55,7 @@ class PortraitShaderTest {
 
     @Test
     fun unknownGatesHaveNoPortrait() {
-        assertNull(portraitShaderSource("no-such-gate"))
+        assertNull(sceneShaderSource("portrait_no-such-gate"))
     }
 
     @Test
@@ -74,10 +74,10 @@ class PortraitShaderTest {
         octaves: Float,
         timeSeconds: Float,
     ): Set<Int> {
-        val source = assertNotNull(portraitShaderSource("mars"))
+        val source = assertNotNull(sceneShaderSource("portrait_mars"))
         val effect = RuntimeEffect.makeForShader(source)
         val uniforms =
-            PortraitUniforms(
+            SceneUniforms(
                 widthPixels = WIDTH.toFloat(),
                 heightPixels = HEIGHT.toFloat(),
                 timeSeconds = timeSeconds,
