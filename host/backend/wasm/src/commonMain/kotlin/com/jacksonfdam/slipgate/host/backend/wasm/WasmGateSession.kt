@@ -26,6 +26,11 @@ private const val AUDIO_SLICE_FRAMES = 2048
 private const val BYTE_MASK = 0xFF
 private const val BYTE_BITS = 8
 
+// Past this much of a stick's travel a direction counts as pressed. Engines of this age know only
+// keys, so a smooth axis has to become one at some point, and a tenth of the way is early enough to
+// feel immediate without a resting thumb walking the player into a wall.
+private const val DIRECTION_THRESHOLD = 0.1f
+
 private const val PALETTE_ENTRIES = 256
 private const val PALETTE_ENTRY_BYTES = 3
 private const val CHANNEL_MAX = 0xFF
@@ -43,10 +48,12 @@ private const val GREEN_SHIFT = 8
  * engine expects, and the engine's palette becomes the 0xAARRGGBB entries the renderer wants. What
  * it does not own is policy — it steps when told and reports what happened.
  */
+@Suppress("TooManyFunctions") // Each one answers a call in the session contract or a step of one.
 public class WasmGateSession(
     private val engine: WasmEngine,
     private val host: GateHost,
     private val keyBindings: Map<GateAction, Int>,
+    private val directionBindings: DirectionBindings,
     pixelAspect: Float,
 ) : GateSession {
     override val display: DisplayFormat =
@@ -66,6 +73,7 @@ public class WasmGateSession(
     private var pendingOffset = 0
     private var frame = ByteArray(display.frameSizeBytes)
     private var heldActions = 0
+    private var heldDirections = emptySet<Direction>()
     private var finished = false
     private var paletteRead = false
 
@@ -124,6 +132,7 @@ public class WasmGateSession(
      * frame would make it think the key was struck again.
      */
     private fun sendInput(input: InputFrame) {
+        sendDirections(input)
         val actions = input.actions.mask
         val pressed = actions and heldActions.inv()
         val released = heldActions and actions.inv()
@@ -196,6 +205,29 @@ public class WasmGateSession(
             pendingOffset = 0
             drainable = flush()
         }
+    }
+
+    /**
+     * Turns the movement axis into the direction keys the engine expects.
+     *
+     * The engine has no notion of an axis: it reads keys, and a key is either down or up. Sending only
+     * the changes matters more here than for the buttons, because a thumb resting on a pad produces a
+     * new value every frame while meaning the same thing.
+     */
+    private fun sendDirections(input: InputFrame) {
+        val pressed = mutableSetOf<Direction>()
+        if (input.movement.y > DIRECTION_THRESHOLD) pressed += Direction.Forward
+        if (input.movement.y < -DIRECTION_THRESHOLD) pressed += Direction.Backward
+        if (input.movement.x < -DIRECTION_THRESHOLD) pressed += Direction.Left
+        if (input.movement.x > DIRECTION_THRESHOLD) pressed += Direction.Right
+
+        (pressed - heldDirections).forEach { direction ->
+            engine.pushEvent(EVENT_KEY_DOWN, directionBindings.codeFor(direction), 0)
+        }
+        (heldDirections - pressed).forEach { direction ->
+            engine.pushEvent(EVENT_KEY_UP, directionBindings.codeFor(direction), 0)
+        }
+        heldDirections = pressed
     }
 
     /** The engine keeps a palette of red-green-blue triples; the renderer wants opaque colours. */

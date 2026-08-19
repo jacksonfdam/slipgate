@@ -1,5 +1,6 @@
 package com.jacksonfdam.slipgate.games.mars
 
+import com.jacksonfdam.slipgate.host.backend.wasm.DirectionBindings
 import com.jacksonfdam.slipgate.host.backend.wasm.WasmEngine
 import com.jacksonfdam.slipgate.host.backend.wasm.WasmGateSession
 import com.jacksonfdam.slipgate.host.backend.wasm.WasmHost
@@ -22,6 +23,19 @@ private val DOOM_KEYS: Map<GateAction, Int> =
         GateAction.PreviousWeapon to ';'.code,
         GateAction.Map to 0x80 + 0x3B + 0x07, // KEY_F8, the automap in the default bindings
         GateAction.Menu to 27, // KEY_ESCAPE
+    )
+
+/**
+ * The arrow keys, which are what Doom reads for travel and what its menus read for a choice. Turning
+ * rather than strafing on the horizontal axis, because that is Doom's own default and a player who
+ * grew up on it expects the left edge of a pad to turn them around.
+ */
+private val DOOM_DIRECTIONS =
+    DirectionBindings(
+        forward = 0xAD, // KEY_UPARROW
+        backward = 0xAF, // KEY_DOWNARROW
+        left = 0xAC, // KEY_LEFTARROW
+        right = 0xAE, // KEY_RIGHTARROW
     )
 
 /**
@@ -51,6 +65,7 @@ internal suspend fun openWasmSession(
         engine = engine,
         host = host,
         keyBindings = DOOM_KEYS,
+        directionBindings = DOOM_DIRECTIONS,
         pixelAspect = ID_TECH_1_PIXEL_ASPECT,
     )
 }
