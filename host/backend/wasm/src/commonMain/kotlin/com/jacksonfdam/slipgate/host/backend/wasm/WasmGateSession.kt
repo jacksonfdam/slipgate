@@ -17,6 +17,15 @@ private const val ENGINE_FINISHED = 0x04
 private const val EVENT_KEY_DOWN = 1
 private const val EVENT_KEY_UP = 2
 
+// What the engine's own mixer produces. A sink that wants something else would need resampling,
+// which belongs in the sink and not in the middle of a frame.
+private const val ENGINE_SAMPLE_RATE = 44100
+private const val ENGINE_CHANNELS = 2
+private const val AUDIO_FRAME_BYTES = 4
+private const val AUDIO_SLICE_FRAMES = 2048
+private const val BYTE_MASK = 0xFF
+private const val BYTE_BITS = 8
+
 private const val PALETTE_ENTRIES = 256
 private const val PALETTE_ENTRY_BYTES = 3
 private const val CHANNEL_MAX = 0xFF
@@ -49,6 +58,12 @@ public class WasmGateSession(
         )
 
     private val colours = IntArray(PALETTE_ENTRIES)
+    private val audioBytes = ByteArray(AUDIO_SLICE_FRAMES * AUDIO_FRAME_BYTES)
+    private val audioSamples = ShortArray(AUDIO_SLICE_FRAMES * ENGINE_CHANNELS)
+    private val audioPlayable =
+        host.audio.sampleRate == ENGINE_SAMPLE_RATE && host.audio.channels == ENGINE_CHANNELS
+    private var pendingFrames = 0
+    private var pendingOffset = 0
     private var frame = ByteArray(display.frameSizeBytes)
     private var heldActions = 0
     private var finished = false
@@ -87,6 +102,7 @@ public class WasmGateSession(
         if (rendered) {
             frame = engine.framebuffer()
         }
+        pumpAudio()
         if (paletteChanged || !paletteRead) {
             readPalette()
         }
@@ -122,6 +138,64 @@ public class WasmGateSession(
         }
 
         heldActions = actions
+    }
+
+    /**
+     * Moves whatever the engine has mixed into the sink, and stops as soon as either side is empty.
+     *
+     * Audio the sink refuses stays where it is rather than being dropped: the engine keeps its own
+     * budget, so a sink that is briefly full costs a step of latency instead of a gap in the sound.
+     *
+     * Both halves are local because they are two steps of one pump and share its buffers; neither
+     * means anything to the rest of the session.
+     */
+    private fun pumpAudio() {
+        // The engine writes little-endian signed 16-bit frames; a sink wants them as samples.
+        fun decode(frames: Int) {
+            for (sample in 0 until frames * ENGINE_CHANNELS) {
+                val low = audioBytes[sample * Short.SIZE_BYTES].toInt() and BYTE_MASK
+                val high = audioBytes[sample * Short.SIZE_BYTES + 1].toInt()
+                audioSamples[sample] = ((high shl BYTE_BITS) or low).toShort()
+            }
+        }
+
+        // Whether everything buffered reached the sink.
+        fun flush(): Boolean {
+            while (pendingFrames > 0) {
+                val slice =
+                    if (pendingOffset == 0) {
+                        audioSamples
+                    } else {
+                        // Only a sink that accepted part of a slice pays for this copy.
+                        audioSamples.copyOfRange(
+                            pendingOffset * ENGINE_CHANNELS,
+                            (pendingOffset + pendingFrames) * ENGINE_CHANNELS,
+                        )
+                    }
+                val accepted = host.audio.submit(slice, pendingFrames)
+                if (accepted <= 0) {
+                    return false
+                }
+                pendingOffset += accepted
+                pendingFrames -= accepted
+            }
+            return true
+        }
+
+        if (!audioPlayable) {
+            return
+        }
+        var drainable = flush()
+        while (drainable) {
+            val drained = engine.drainAudio(audioBytes, AUDIO_SLICE_FRAMES)
+            if (drained == 0) {
+                break
+            }
+            decode(drained)
+            pendingFrames = drained
+            pendingOffset = 0
+            drainable = flush()
+        }
     }
 
     /** The engine keeps a palette of red-green-blue triples; the renderer wants opaque colours. */
