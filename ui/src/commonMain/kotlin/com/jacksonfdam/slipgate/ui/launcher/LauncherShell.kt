@@ -6,17 +6,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.jacksonfdam.slipgate.ui.design.ColorTokens
+import com.jacksonfdam.slipgate.ui.design.LocalAccentRamp
 import com.jacksonfdam.slipgate.ui.design.SlipgateWordmark
 import com.jacksonfdam.slipgate.ui.design.TypeScale
 
@@ -27,6 +28,30 @@ import com.jacksonfdam.slipgate.ui.design.TypeScale
  */
 @Composable
 public fun LauncherShell(
+    state: LauncherState,
+    section: LauncherSection,
+    onSection: (LauncherSection) -> Unit,
+    onSelect: (Int) -> Unit,
+    onEnter: (GateCard) -> Unit,
+    statusLabel: String,
+    modifier: Modifier = Modifier,
+) {
+    // The whole shell is drawn in the focused gate's own accent: rail, chips, cards and stage.
+    CompositionLocalProvider(LocalAccentRamp provides rampFor(state.current)) {
+        LauncherShellContent(
+            state = state,
+            section = section,
+            onSection = onSection,
+            onSelect = onSelect,
+            onEnter = onEnter,
+            statusLabel = statusLabel,
+            modifier = modifier,
+        )
+    }
+}
+
+@Composable
+private fun LauncherShellContent(
     state: LauncherState,
     section: LauncherSection,
     onSection: (LauncherSection) -> Unit,
@@ -104,11 +129,13 @@ private fun GatesSection(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         SlipgateWordmark(modifier = Modifier.height(WORDMARK_HEIGHT))
-        StagePanel(card = current)
         if (compact) {
+            StagePanel(card = current, fillsHeight = false)
             GateList(state, onSelect, onEnter, modifier = Modifier.weight(1f))
         } else {
-            Spacer(modifier = Modifier.weight(1f))
+            // The stage takes what the rack leaves rather than the height it would like: landscape
+            // is the primary orientation, and a rack below the fold is not a rack.
+            StagePanel(card = current, modifier = Modifier.weight(1f))
             GateRack(state, onSelect, onEnter)
             Text(
                 text = describe(current),
