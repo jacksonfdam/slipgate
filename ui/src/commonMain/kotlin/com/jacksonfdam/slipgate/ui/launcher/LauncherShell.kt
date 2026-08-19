@@ -16,10 +16,14 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.jacksonfdam.slipgate.ui.credits.CreditsScreen
 import com.jacksonfdam.slipgate.ui.design.ColorTokens
 import com.jacksonfdam.slipgate.ui.design.LocalAccentRamp
 import com.jacksonfdam.slipgate.ui.design.SlipgateWordmark
 import com.jacksonfdam.slipgate.ui.design.TypeScale
+import com.jacksonfdam.slipgate.ui.settings.GateDataStatus
+import com.jacksonfdam.slipgate.ui.settings.SettingsController
+import com.jacksonfdam.slipgate.ui.settings.SettingsScreen
 
 /**
  * The launcher shell from the layout spec: rail, stage, rack. Below [COMPACT_BREAKPOINT]
@@ -34,6 +38,7 @@ public fun LauncherShell(
     onSelect: (Int) -> Unit,
     onEnter: (GateCard) -> Unit,
     statusLabel: String,
+    settings: SettingsController,
     modifier: Modifier = Modifier,
 ) {
     // Every surface under the shell draws in the focused gate's own accent: rail, chips, cards,
@@ -44,7 +49,7 @@ public fun LauncherShell(
             if (compact) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     Box(modifier = Modifier.weight(1f)) {
-                        SectionContent(section, state, onSelect, onEnter, compact = true)
+                        SectionContent(section, state, onSelect, onEnter, settings, statusLabel, compact = true)
                     }
                     LauncherBottomBar(section, onSection, statusLabel)
                 }
@@ -52,7 +57,7 @@ public fun LauncherShell(
                 Row(modifier = Modifier.fillMaxSize()) {
                     LauncherRail(section, onSection, statusLabel)
                     Box(modifier = Modifier.weight(1f)) {
-                        SectionContent(section, state, onSelect, onEnter, compact = false)
+                        SectionContent(section, state, onSelect, onEnter, settings, statusLabel, compact = false)
                     }
                 }
             }
@@ -66,6 +71,8 @@ private fun SectionContent(
     state: LauncherState,
     onSelect: (Int) -> Unit,
     onEnter: (GateCard) -> Unit,
+    settings: SettingsController,
+    statusLabel: String,
     compact: Boolean,
 ) {
     when (section) {
@@ -74,17 +81,15 @@ private fun SectionContent(
         }
 
         LauncherSection.Settings -> {
-            SectionPlaceholder(
-                title = "Settings",
-                body = "Display, audio, controls and game files arrive with the settings build.",
+            SettingsScreen(
+                controller = settings,
+                installedGates = state.cards.map { card -> card.dataStatus() },
+                version = statusLabel,
             )
         }
 
         LauncherSection.Credits -> {
-            SectionPlaceholder(
-                title = "Credits",
-                body = "Full attribution and licence text arrive with the credits scroller.",
-            )
+            CreditsScreen()
         }
     }
 }
@@ -142,3 +147,15 @@ private fun SectionPlaceholder(
 
 private val COMPACT_BREAKPOINT = 600.dp
 private val WORDMARK_HEIGHT = 14.dp
+
+/** What Settings says about one gate's files, in the words the rack already uses. */
+private fun GateCard.dataStatus(): GateDataStatus =
+    GateDataStatus(
+        title = descriptor.title,
+        summary =
+            when (availability) {
+                GateAvailability.Installed -> "installed"
+                is GateAvailability.NeedsData -> "not installed"
+                is GateAvailability.UserSuppliedOnly -> "waiting for your files"
+            },
+    )
