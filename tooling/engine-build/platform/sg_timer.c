@@ -30,11 +30,16 @@ int I_GetTimeMS(void)
     return elapsed_millis;
 }
 
-// Sleeping inside a stepped session would stall the host's frame, and the engine only ever sleeps
-// to wait for time it has already been given.
+// The engine sleeps in a loop while it waits for the next tic — during start-up, before the host
+// has stepped it even once. With a clock only the host advances, that loop never ends, so sleeping
+// is what moves time here. It stays deterministic: the same sequence of sleeps advances the clock
+// by the same amount every run.
 void I_Sleep(int ms)
 {
-    (void)ms;
+    if (ms > 0)
+    {
+        elapsed_millis += ms;
+    }
 }
 
 void I_WaitVBL(int count)

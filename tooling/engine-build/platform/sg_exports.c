@@ -55,18 +55,53 @@ void I_StartFrame(void)
     sg_drain_events();
 }
 
+#define MAX_ARGUMENTS 32
+
+static char *arguments[MAX_ARGUMENTS];
+static int argument_count = 0;
+
+// The host allocates inside the module, writes its bytes, and hands the address back. Everything
+// the engine needs from the outside world — the command line, the game data — arrives this way,
+// because a wasm module's memory is the only place both sides can see.
+__attribute__((export_name("slipgate_alloc")))
+int slipgate_alloc(int size)
+{
+    return (int)(intptr_t)malloc((size_t)size);
+}
+
+__attribute__((export_name("slipgate_free")))
+void slipgate_free(int pointer)
+{
+    free((void *)(intptr_t)pointer);
+}
+
+// Appends one already-written, NUL-terminated argument to the command line the engine will read.
+__attribute__((export_name("slipgate_arg_push")))
+int slipgate_arg_push(int pointer)
+{
+    if (argument_count >= MAX_ARGUMENTS)
+    {
+        return 0;
+    }
+
+    arguments[argument_count] = (char *)(intptr_t)pointer;
+    argument_count++;
+    return 1;
+}
+
 __attribute__((export_name("slipgate_init")))
-int slipgate_init(int argc, char **argv)
+int slipgate_init(void)
 {
     if (booted)
     {
         return 0;
     }
 
-    myargc = argc;
-    myargv = argv;
+    myargc = argument_count;
+    myargv = arguments;
 
     booting = true;
+    sg_host_log("slipgate: entering D_DoomMain");
     if (setjmp(boot_escape) == 0)
     {
         D_DoomMain();
@@ -77,6 +112,7 @@ int slipgate_init(int argc, char **argv)
     }
     booting = false;
     booted = true;
+    sg_host_log("slipgate: engine ready");
     return 0;
 }
 

@@ -91,10 +91,9 @@ void I_Quit(void)
 {
     run_exit_functions(false);
     sg_host_fatal("the engine quit");
-    // sg_host_fatal does not return; the host tears the instance down.
-    for (;;)
-    {
-    }
+    // A host import always returns, so stopping has to be the module's own doing: trap, and the
+    // host gets an error instead of an instance spinning in a loop it can never leave.
+    __builtin_trap();
 }
 
 void I_Error(const char *error, ...)
@@ -111,9 +110,7 @@ void I_Error(const char *error, ...)
     }
 
     sg_host_fatal(last_error);
-    for (;;)
-    {
-    }
+    __builtin_trap();
 }
 
 void I_Tactile(int on, int off, int total)
