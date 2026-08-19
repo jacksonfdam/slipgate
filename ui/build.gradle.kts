@@ -29,6 +29,8 @@ kotlin {
         namespace = "com.jacksonfdam.slipgate.ui"
         compileSdk = slipgateAndroidCompileSdk.toInt()
         minSdk = slipgateAndroidMinSdk.toInt()
+        // The launcher's state model is plain Kotlin, so it is tested where a test needs no device.
+        withHostTest {}
     }
 
     @OptIn(ExperimentalWasmDsl::class)
@@ -63,6 +65,11 @@ kotlin {
             implementation(compose.material3)
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
+        }
+
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }
