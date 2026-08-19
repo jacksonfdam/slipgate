@@ -32,7 +32,8 @@ import com.jacksonfdam.slipgate.host.runtime.GateSession
 import com.jacksonfdam.slipgate.host.runtime.InputProfile
 import com.jacksonfdam.slipgate.ui.data.GameDataStage
 import com.jacksonfdam.slipgate.ui.gate.GateSurface
-import com.jacksonfdam.slipgate.ui.launcher.LauncherScreen
+import com.jacksonfdam.slipgate.ui.launcher.LauncherSection
+import com.jacksonfdam.slipgate.ui.launcher.LauncherShell
 import com.jacksonfdam.slipgate.ui.launcher.LauncherState
 import com.jacksonfdam.slipgate.ui.launcher.launcherState
 import kotlinx.coroutines.launch
@@ -75,6 +76,7 @@ public fun SlipgateApp(
     acquisition: GameDataAcquisition = koinInject(),
 ) {
     var stage by remember { mutableStateOf<Stage>(Stage.Opening) }
+    var section by remember { mutableStateOf(LauncherSection.Gates) }
     val scope = rememberCoroutineScope()
 
     suspend fun enter(gate: Gate) {
@@ -118,8 +120,10 @@ public fun SlipgateApp(
                 }
 
                 is Stage.Choosing -> {
-                    LauncherScreen(
+                    LauncherShell(
                         state = current.state,
+                        section = section,
+                        onSection = { section = it },
                         onSelect = { index ->
                             stage =
                                 Stage.Choosing(current.state.moveBy(index - current.state.selected))
@@ -131,6 +135,7 @@ public fun SlipgateApp(
                                     ?.let { gate -> enter(gate) }
                             }
                         },
+                        statusLabel = platformInfo.name,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
