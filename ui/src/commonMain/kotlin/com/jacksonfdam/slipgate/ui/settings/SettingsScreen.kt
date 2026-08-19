@@ -108,8 +108,12 @@ internal fun SettingsScreen(
     }
 }
 
+/**
+ * The controls that change what a frame looks like. Internal rather than private because the menu a
+ * player opens mid-game offers the same ones: a tube setting is worth changing while looking at it.
+ */
 @Composable
-private fun DisplaySection(controller: SettingsController) {
+internal fun DisplaySection(controller: SettingsController) {
     val settings = controller.settings
     Section(title = "Display") {
         Choice(
