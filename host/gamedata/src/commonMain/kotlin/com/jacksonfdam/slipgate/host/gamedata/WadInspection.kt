@@ -16,18 +16,21 @@ public enum class WadKind {
  * support: Freedoom and Doom share a structure, and a gate needs the structure. Anything else would
  * be a guess dressed up as identification.
  */
-public enum class GameFlavour {
+public enum class GameFlavour(
+    /** What to call this in something a player reads. */
+    public val label: String,
+) {
     /** Doom's engine, episodes and maps named `ExMy`. */
-    DoomEpisodic,
+    DoomEpisodic("Doom in episodes"),
 
     /** Doom's engine, maps named `MAPxx`. */
-    DoomMapped,
+    DoomMapped("Doom in maps"),
 
     /** Raven's Heretic: Doom's map naming with Raven's tint table. */
-    Heretic,
+    Heretic("Heretic"),
 
     /** Raven's Hexen: `MAPxx` with Raven's tint table. */
-    Hexen,
+    Hexen("Hexen"),
 }
 
 /** What a recognised file is, and how much of a game it holds. */
