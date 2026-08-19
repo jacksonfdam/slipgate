@@ -39,6 +39,22 @@ public class WasmEngine private constructor(
     /** The engine's palette as 256 red-green-blue triples. */
     public fun palette(): ByteArray = read(call(PALETTE), PALETTE_BYTES)
 
+    /**
+     * Starts playback of a demo the game data carries, and reports whether the engine took it.
+     *
+     * [untilTheEnd] decides what happens when the demo runs out: the session finishes, or the engine
+     * returns to its title screen and carries on — which is what an attract loop wants.
+     */
+    public fun playDemo(
+        name: String,
+        untilTheEnd: Boolean,
+    ): Boolean {
+        val pointer = writeString(name)
+        val accepted = call(PLAY_DEMO, pointer, if (untilTheEnd) 1 else 0) == 1
+        call(FREE, pointer)
+        return accepted
+    }
+
     /** Advances the engine by [elapsedMillis] and returns the status flags it reports. */
     public fun step(elapsedMillis: Int): Int = call(STEP, elapsedMillis)
 
@@ -128,6 +144,7 @@ public class WasmEngine private constructor(
         private const val PALETTE = "slipgate_palette"
         private const val PUSH_EVENT = "slipgate_push_event"
         private const val AUDIO_DRAIN = "slipgate_audio_drain"
+        private const val PLAY_DEMO = "slipgate_play_demo"
 
         private const val PALETTE_BYTES = 768
         private const val AUDIO_FRAME_BYTES = 4
