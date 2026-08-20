@@ -212,6 +212,9 @@ private fun StageSurface(
         }
 
         is Stage.Playing -> {
+            // Back opens the menu over the game, and closes it again: the same thing the PAUSE button
+            // does, on the gesture a player already has. Leaving the gate stays a deliberate choice.
+            SystemBack(enabled = true) { onStage(stage.copy(menuOpen = !stage.menuOpen)) }
             PlayingStage(
                 stage = stage,
                 settings = shell.settings,
