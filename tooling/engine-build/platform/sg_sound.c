@@ -63,9 +63,14 @@ int snd_maxslicetime_ms = 28;
 char *snd_musiccmd = "";
 int snd_pitchshift = 0;
 
+// Whether this game's sound lumps carry the "ds" prefix. Doom and Strife name them dsposit and
+// dspistol; Raven's engines name theirs plainly, and asking for dsdorcls in Heretic is a lump that
+// does not exist. Upstream makes the same decision from the same value in i_sdlsound.c.
+static boolean sfx_prefixed = true;
+
 void I_InitSound(GameMission_t mission)
 {
-    (void)mission;
+    sfx_prefixed = (mission == doom || mission == strife);
     sg_audio_reset();
 }
 
@@ -150,7 +155,14 @@ int I_GetSfxLumpNum(sfxinfo_t *sfxinfo)
 {
     char name[9];
 
-    M_snprintf(name, sizeof(name), "ds%s", sfxinfo->name);
+    if (sfx_prefixed)
+    {
+        M_snprintf(name, sizeof(name), "ds%s", sfxinfo->name);
+    }
+    else
+    {
+        M_snprintf(name, sizeof(name), "%s", sfxinfo->name);
+    }
     return W_GetNumForName(name);
 }
 
