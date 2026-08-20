@@ -109,7 +109,8 @@ launcher          gate registry, select screen, navigation, in-game overlay
 ui                shared Compose shell and theme
 games/*           one module per gate
 android, web, ios platform entry points
-tooling/*         engine build scripts and CI helpers
+tooling/*         engine build scripts, the home library server, CI helpers
+site              the beacon a home library publishes itself to, deployed to Vercel
 ```
 
 Two dependency rules hold the design together:
@@ -200,6 +201,30 @@ does not is an add-on loaded over a game already installed. That is how the engi
 decide it, and it gets the two famous exceptions right — Chex Quest is a whole game under a
 `PWAD` header, and Hexen's Deathkings expansion is an add-on under an `IWAD` one.
 
+### Your own files, from your own machine
+
+A player who owns the games and keeps them on a NAS should supply them once rather than once per
+device. So a third route sits beside the two above: a library the player runs themselves.
+
+```
+tooling/library/slipgate-library.sh    # serves a directory, opens a tunnel, publishes where it went
+```
+
+The server is Python's standard library, listens on localhost, and refuses every request that does
+not carry its key. A `cloudflared` or `ngrok` tunnel puts it on the web over TLS, and because a quick
+tunnel's hostname changes on every restart, the script publishes where it landed to a beacon — the
+`site/` project on Vercel — so that each device is configured with one address that never changes.
+Settings → Home library takes that address, and a gate that needs data then offers **Install *file*
+from my library** above its other routes. Files from a library are inspected and refused exactly like
+files picked by hand.
+
+The whole of it is optional and none of it is a mirror: the key is not optional, the beacon id is a
+credential, and serving commercial IWADs to strangers is redistribution however brief the tunnel is.
+Setup, including the NAS side and the Vercel side, is [docs/home-library.md](docs/home-library.md).
+
+A library also serves the web build, which the free downloads cannot: it sends the cross-origin
+header that GitHub's release assets do not.
+
 ### Custom maps
 
 Thirty years of map packs are the reason most people still install Doom, so a gate's shelf
@@ -217,7 +242,7 @@ Rogue's own translucency table, so it is refused by name rather than mistaken fo
 **The web cannot download either replacement.** GitHub's release assets send no
 `Access-Control-Allow-Origin`, so a browser refuses the request before it starts; the app says
 so plainly and the player supplies their own file instead. Serving the data from an origin that
-allows it would fix this, and that is a hosting decision rather than a code one.
+allows it fixes this, which is what a home library does.
 
 ## Licensing
 
@@ -253,6 +278,9 @@ Requires JDK 21 and, per target, the Android SDK (`compileSdk` 37) or Xcode.
 
 The web distribution lands in `web/build/dist/wasmJs/productionExecutable` and can be
 served with any static file server.
+
+`site/` is not part of the Gradle build. It is a Vercel project of its own, deployed with
+`vercel deploy --prod` from that directory; see [site/README.md](site/README.md).
 
 It also publishes to GitHub Pages, by hand rather than on every push: run the **Pages**
 workflow from the Actions tab. The repository's Pages source has to be set to GitHub
