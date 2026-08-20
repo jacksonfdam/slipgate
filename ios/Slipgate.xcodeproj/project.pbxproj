@@ -8,11 +8,13 @@
 
 /* Begin PBXBuildFile section */
 		A10000000000000000000101 /* SlipgateApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000201 /* SlipgateApp.swift */; };
+		A10000000000000000000102 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000203 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		A10000000000000000000201 /* SlipgateApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlipgateApp.swift; sourceTree = "<group>"; };
 		A10000000000000000000202 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A10000000000000000000203 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000000000000000000301 /* Slipgate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Slipgate.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -40,6 +42,7 @@
 			children = (
 				A10000000000000000000201 /* SlipgateApp.swift */,
 				A10000000000000000000202 /* Info.plist */,
+				A10000000000000000000203 /* Assets.xcassets */,
 			);
 			path = Slipgate;
 			sourceTree = "<group>";
@@ -111,6 +114,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10000000000000000000102 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -194,7 +198,7 @@
 		A10000000000000000001003 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				FRAMEWORK_SEARCH_PATHS = (
@@ -224,7 +228,7 @@
 		A10000000000000000001004 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				FRAMEWORK_SEARCH_PATHS = (
