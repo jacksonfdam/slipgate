@@ -4,6 +4,7 @@ import com.jacksonfdam.slipgate.host.backend.wasm.DirectionBindings
 import com.jacksonfdam.slipgate.host.backend.wasm.WasmEngine
 import com.jacksonfdam.slipgate.host.backend.wasm.WasmGateSession
 import com.jacksonfdam.slipgate.host.backend.wasm.WasmHost
+import com.jacksonfdam.slipgate.host.backend.wasm.keptSaves
 import com.jacksonfdam.slipgate.host.runtime.GateAction
 import com.jacksonfdam.slipgate.host.runtime.GateHost
 import com.jacksonfdam.slipgate.host.runtime.GateSession
@@ -84,6 +85,8 @@ internal suspend fun openWasmSession(
             files = mapOf(iwadName to iwad),
             arguments = listOf("slipgate", "-iwad", iwadName, "-nomusic"),
             host = GateHostBridge(host),
+            // Whatever the player saved last time, back in the engine's own filesystem before it looks.
+            saves = keptSaves(host),
         )
 
     return WasmGateSession(
