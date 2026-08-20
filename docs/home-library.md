@@ -174,6 +174,14 @@ it the largest dependency in `host/gamedata`. A format a `split` can read is als
 cannot half-parse, and it can be written by hand with `printf` when something has gone wrong at two
 in the morning.
 
+## Where this sits in the specification
+
+[docs/specification/09-addendum-07.md](specification/09-addendum-07.md) is the decision record for
+this, including the three places it deliberately differs from
+[addendum 06](specification/08-addendum-06.md), which describes the hosted `slipgate-server` origin.
+A hosted origin has a stable address; a NAS behind a home tunnel does not, and the beacon is the
+difference.
+
 ## What is not built yet
 
 - Installing add-ons from the library. The manifest already lists them and the launcher already
