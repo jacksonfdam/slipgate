@@ -48,6 +48,9 @@ reads as a row of places to go rather than a list of products:
   player is whichever one they choose.
 - **`chthon`** — Quake's first boss, the lava thing under Shub-Niggurath's dimension shard.
   Its art is committed; the gate is not built yet.
+- **`eidolon`** — Hexen II's last Serpent Rider, the one who sent Korax and his brother. Planned,
+  with its plan written up in
+  [docs/specification/07-addendum-05.md](docs/specification/07-addendum-05.md); no art yet.
 - **`macil`** — Strife's rebel leader, who runs the Front against the Order from under a
   town the Order already owns. Android and iOS only: the gate has no wasmJs target, for the
   reason `corvus` and `korax` have none.
