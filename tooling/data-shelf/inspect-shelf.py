@@ -217,8 +217,16 @@ def read_pak(handle: BinaryIO, size: int) -> Reading | Unreadable | None:
     episodes = sorted({match.group(1) for match in (QUAKE_MAP.match(name) for name in names) if match})
     if episodes or "maps/start.bsp" in names:
         # Episode 1 alone is what pak0 holds in both the shareware and the registered release, so
-        # this says where the rest are rather than guessing which release this came from.
-        note = "the other episodes are in pak1" if episodes == ["1"] else None
+        # this says where the rest are rather than guessing which release this came from. All four
+        # in one pak is the 2021 re-release, which repacks everything the two 1996 paks held and
+        # adds its own — mapdb.json and the weapon wheel are its fingerprints.
+        remaster = "mapdb.json" in names or "wwheel.txt" in names
+        if remaster:
+            note = "2021 re-release: everything the two 1996 paks held, in one file, plus its own additions"
+        elif episodes == ["1"]:
+            note = "the other episodes are in pak1"
+        else:
+            note = None
         return Reading("PACK", role, "Quake", episodes=len(episodes), maps=maps, files=count, note=note)
 
     return Reading("PACK", role, None, maps=maps, files=count, note=f"crc {crc}: no engine's fingerprints in it", usable=False)
@@ -273,6 +281,20 @@ REQUIRED = {
     "eidolon": ["data1/pak0.pak", "data1/pak1.pak"],
 }
 
+
+def missing_for(gate: str, directory: Path, readings: dict[str, Reading]) -> list[str]:
+    missing = [pattern for pattern in REQUIRED[gate] if not any(True for _ in directory.glob(pattern))]
+
+    # Quake's registered game is two paks in 1996 and one in the 2021 re-release, so what decides
+    # whether the data is complete is the four episodes rather than the file count. A pak0 carrying
+    # all four does not need a pak1 beside it, and saying otherwise would send a player looking for
+    # a file their own copy does not have.
+    if gate == "chthon" and missing == ["id1/pak1.pak"]:
+        pak0 = readings.get("chthon/id1/pak0.pak")
+        if pak0 is not None and pak0.episodes == 4:
+            return []
+    return missing
+
 SKIP = {"README.md", "NOTES.txt", "manifest.json", ".DS_Store"}
 
 
@@ -291,6 +313,7 @@ def main() -> int:
     print(f"Shelf: {shelf}\n")
     unusable = 0
     entries = []
+    readings: dict[str, Reading] = {}
 
     for path in sorted(shelf.rglob("*")):
         if not path.is_file() or path.name in SKIP:
@@ -308,13 +331,14 @@ def main() -> int:
             unusable += 1
         elif isinstance(reading, Reading):
             entries.append(reading.entry(relative.parts[0], path, "/" + relative.as_posix()))
+            readings[relative.as_posix()] = reading
 
     print()
-    for gate, patterns in REQUIRED.items():
+    for gate in REQUIRED:
         directory = shelf / gate
         if not directory.is_dir():
             continue
-        missing = [pattern for pattern in patterns if not any(True for _ in directory.glob(pattern))]
+        missing = missing_for(gate, directory, readings)
         print(f"  {gate}: " + (f"still needs {', '.join(missing)}" if missing else "complete"))
 
     if arguments.manifest:
