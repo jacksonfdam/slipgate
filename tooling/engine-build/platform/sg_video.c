@@ -32,8 +32,20 @@ static byte palette_rgb[SG_PALETTE_BYTES];
 static grabmouse_callback_t grabmouse_callback = NULL;
 static int palette_generation = 0;
 
+// Whether the screen has already been set up. Hexen re-enters its own main loop once per step, and
+// that loop calls I_InitGraphics on the way in — so this runs every frame there, not once. Repeating
+// the palette seed below would then overwrite every palette flash the game asked for: the red of
+// being hit, the gold of picking something up, gone before it could be drawn.
+static boolean graphics_ready = false;
+
 void I_InitGraphics(void)
 {
+    if (graphics_ready)
+    {
+        return;
+    }
+    graphics_ready = true;
+
     sg_host_log("slipgate: initialising graphics");
     if (I_VideoBuffer == NULL)
     {
@@ -52,7 +64,9 @@ void I_InitGraphics(void)
 
 void I_ShutdownGraphics(void)
 {
-    // The buffer outlives the engine: the host may still be presenting the last frame.
+    // The buffer outlives the engine: the host may still be presenting the last frame. The flag does
+    // not, so an engine that starts its screen again gets it set up again.
+    graphics_ready = false;
     screenvisible = false;
 }
 
