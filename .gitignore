@@ -14,9 +14,10 @@ local.properties
 node_modules/
 
 # Engine sources fetched by tooling/engine-build (never vendored)
-tooling/engine-build/.sources/
-tooling/engine-build/.toolchain/
-tooling/engine-build/.build/
+tooling/engine-build/.sources
+tooling/engine-build/.toolchain
+tooling/engine-build/.build
+tooling/engine-build-native/.build
 
 # Game data must never be committed
 *.wad
