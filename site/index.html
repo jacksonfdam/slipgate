@@ -299,9 +299,9 @@
           <img src="assets/cover_macil.webp" alt="Macil gate cover — a cloaked rebel before the Order's iron gates" loading="lazy">
           <div class="body">
             <div class="name"><h3>Macil</h3><span class="game">Strife · 1996</span></div>
-            <p>Strife's rebel leader, who runs the Front against the Order from under a town the Order already owns. The same engine tree that builds the first three gates builds this one too.</p>
+            <p>Strife's rebel leader, who runs the Front against the Order from under a town the Order already owns. The same engine tree that builds the first three gates builds this one too — and it did: dialogue, shops and all.</p>
             <div class="meta">
-              <span class="tag">Planned</span>
+              <span class="tag live">Playable</span>
               <span class="tag">Chocolate Doom</span>
               <span class="tag">Own IWAD required</span>
             </div>
@@ -317,7 +317,7 @@
       <h2>Game data</h2>
       <div class="two-col">
         <div>
-          <p><strong>No game data ships with Slipgate.</strong> Not in the repository, not in releases, not in CI caches. Acquisition is a first-run flow inside the app: Doom offers a Freedoom download, Heretic offers Blasphemer, and Hexen takes your own IWAD — its gate card says so instead of showing a download button that cannot work.</p>
+          <p><strong>No game data ships with Slipgate.</strong> Not in the repository, not in releases, not in CI caches. Acquisition is a first-run flow inside the app: Doom offers a Freedoom download, Heretic offers Blasphemer, and Hexen and Strife take your own IWAD — their gate cards say so instead of showing a download button that cannot work.</p>
           <p>Both free options are named as what they are: a replacement rather than the original. Freedoom is not Doom and Blasphemer is not Heretic — different levels and art, the same game to play — and the data screen says so before you download half a gigabyte expecting otherwise.</p>
         </div>
         <div>
@@ -334,10 +334,9 @@
       <h2>The LAN shelf</h2>
       <div class="two-col">
         <div>
-          <p>Game data you own can live on a machine you own. The shelf is a folder tree on your NAS or desktop — one folder per gate — served over plain HTTP on the local network. Any static file server works:</p>
-          <pre><code>cd slipgate-server
-python3 -m http.server 8600 --bind 0.0.0.0</code></pre>
-          <p class="footnote">Your phone then pulls files straight from the shelf — e.g. <code>http://192.168.0.10:8600/mars/doomu.wad</code> — through the same downloader that fetches Freedoom. No cloud, no account, no upload of purchased data to anyone else's server.</p>
+          <p>Game data you own can live on a machine you own. The shelf is a folder tree on your NAS or desktop — one folder per gate — served on the local network by a small script from the repository:</p>
+          <pre><code>./tooling/data-shelf/serve-shelf.py</code></pre>
+          <p class="footnote">It prints the address to point a device at, answers with the CORS and Range headers a browser and a resumed download need, and your phone pulls files straight from it — through the same downloader that fetches Freedoom. No cloud, no account, no upload of purchased data to anyone else's server. Away from home, a companion script puts the same shelf behind a tunnel your own devices can find.</p>
           <p class="footnote">A <code>manifest.json</code> catalogues every file the way the app itself reads it — kind, role, flavour, episode and map counts, size and sha256 — produced by the same content-based rules, never by filename.</p>
         </div>
         <div>
@@ -347,8 +346,10 @@ python3 -m http.server 8600 --bind 0.0.0.0</code></pre>
               <tr><td>mars/</td><td>Ultimate Doom, Doom II, Final Doom, Chex Quest</td></tr>
               <tr><td>corvus/</td><td>Heretic: Shadow of the Serpent Riders</td></tr>
               <tr><td>korax/</td><td>Hexen: Beyond Heretic</td></tr>
-              <tr><td>addons/</td><td>Deathkings of the Dark Citadel — loads over Hexen, never boots alone</td></tr>
-              <tr><td>unsupported/</td><td>Strife — recognised and named, waiting for its gate</td></tr>
+              <tr><td>macil/</td><td>Strife: Quest for the Sigil, and its voices</td></tr>
+              <tr><td>chthon/</td><td>Quake — the registered paks, laid out as the engine expects</td></tr>
+              <tr><td>eidolon/</td><td>Hexen II at 1.11, and Portal of Praevus beside it</td></tr>
+              <tr><td>addons/</td><td>Deathkings, and thirty years of map packs sorted per gate</td></tr>
             </tbody>
           </table>
         </div>
@@ -362,7 +363,7 @@ python3 -m http.server 8600 --bind 0.0.0.0</code></pre>
       <h2>Engines &amp; architecture</h2>
       <div class="two-col">
         <div>
-          <p>The three playable gates are built from the <strong>Chocolate Doom</strong> tree, which carries Doom, Heretic and Hexen behind one platform abstraction — the reason a single port effort yields three gates, and the reason Strife is a fourth rather than a rewrite. The Quake gate is built from <strong>Mark&nbsp;V WinQuake</strong>, the lineage behind QuakeDroid.</p>
+          <p>The four playable gates are built from the <strong>Chocolate Doom</strong> tree, which carries Doom, Heretic, Hexen and Strife behind one platform abstraction — the reason a single port effort yields four gates. The Quake gate is built from <strong>Mark&nbsp;V WinQuake</strong>, the lineage behind QuakeDroid; behind it wait Hexen&nbsp;II through <strong>uHexen2</strong> and Wolfenstein&nbsp;3D through <strong>Wolf4SDL</strong>, each planned in the open before a line of its port is written.</p>
           <p>Each engine is compiled to <strong>WebAssembly</strong> from a pinned upstream revision and executed by <strong>Chasm</strong>, a Kotlin Multiplatform wasm runtime. The host feeds a palette-indexed framebuffer to the GPU as an R8 texture with the palette as a 256-entry lookup, and resolves colour in the fragment shader — so palette effects like the damage flash and the Tome of Power come for free.</p>
         </div>
         <div>
