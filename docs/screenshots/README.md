@@ -15,3 +15,7 @@ driver exists.
 build at the Minimal tier — the tier that is given no noise octaves at all, so what is visible there
 is the shape the fire keeps when it cannot afford to burn.
 
+`web-needs-data-mask.png` shows the rack with one gate installed and one not: the Doom card keeps its
+portrait behind a wash and a still speckle, and the test pattern beside it is clean. No game data is
+in the picture — the portrait is a shader, and that build had no IWAD.
+
