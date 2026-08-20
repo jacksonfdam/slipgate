@@ -8,6 +8,7 @@ directory holds the specification it is built against, in the order it was writt
 | [01-foundation.md](01-foundation.md) | Project definition, module layout, gate contract, engine-to-wasm pipeline, graphics, CI gates, delivery plan |
 | [02-addendum-01.md](02-addendum-01.md) | iOS as a first-class target, the Skia backend, the backend axis, additional labels and CI gates, plan deltas |
 | [03-addendum-02.md](03-addendum-02.md) | The shader path: why WebGPU is out and one SkSL/AGSL pipeline inside Compose is in |
+| [05-strife-gate.md](05-strife-gate.md) | Working notes for a fourth gate: what Strife needs that the other three did not, and its art |
 
 Later documents amend earlier ones rather than replacing them. Where an amendment conflicts
 with something already merged, the pull request that resolves it says so explicitly and
