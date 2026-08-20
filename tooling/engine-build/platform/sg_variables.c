@@ -18,6 +18,8 @@ int mouse_threshold = 10;
 int use_analog = 0;
 int joystick_turn_sensitivity = 10;
 int joystick_move_sensitivity = 10;
+// Raven's engines have a look axis of their own; Doom does not, and reads none of this either way.
+int joystick_look_sensitivity = 10;
 unsigned int joywait = 0;
 
 // Network launch waits for other players to be ready. A gate has none.

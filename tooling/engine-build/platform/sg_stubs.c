@@ -38,10 +38,18 @@ int I_CDMusStop(void) { return -1; }
 int I_CDMusResume(void) { return -1; }
 int I_CDMusSetVolume(int volume) { (void)volume; return -1; }
 int I_CDMusFirstTrack(void) { return -1; }
+void I_CDMusPrintStartup(void) {}
 int I_CDMusLastTrack(void) { return -1; }
 int I_CDMusTrackLength(int track) { (void)track; return -1; }
 
 // High resolution text mode, used only by the setup tool
+// The 640x480 planar mode Hexen shows its loading bar in. Reporting failure is a path the engine
+// already handles: st_start.c skips the graphical startup and loads with nothing on screen.
+boolean I_SetVideoModeHR(void) { return false; }
+void I_UnsetVideoModeHR(void) {}
+void I_SetWindowTitleHR(const char *title) { (void)title; }
+// Nothing can abort a screen that was never shown.
+boolean I_CheckAbortHR(void) { return false; }
 void I_InitGraphicsHR(void) {}
 void I_ShutdownGraphicsHR(void) {}
 void I_SetScreenHR(void) {}
