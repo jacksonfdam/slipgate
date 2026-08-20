@@ -431,6 +431,17 @@ const char *sg_file_name(int index)
     return file < 0 ? NULL : files[file].path + strlen(SAVE_ROOT);
 }
 
+const char *sg_file_path(int index)
+{
+    int file = nth_used(index);
+    return file < 0 ? NULL : files[file].path;
+}
+
+boolean sg_path_is_ours(const char *path)
+{
+    return ours(path);
+}
+
 long sg_file_size(int index)
 {
     int file = nth_used(index);

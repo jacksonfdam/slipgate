@@ -92,6 +92,13 @@ long sg_file_size(int index);
 long sg_file_read(int index, unsigned char *destination, long capacity);
 boolean sg_file_write(const char *name, const unsigned char *data, long size);
 
+// The same file by its whole path rather than the name the host keeps it under. Directory walking
+// needs it: what a glob compares against and hands back is a path, not a save slot's name.
+const char *sg_file_path(int index);
+
+// Whether a path belongs to the module's own filesystem rather than to whatever is underneath.
+boolean sg_path_is_ours(const char *path);
+
 int sg_audio_drain(int16_t *destination, int frames);
 void sg_audio_advance(int elapsed_millis);
 void sg_request_quit(void);
