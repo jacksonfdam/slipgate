@@ -28,3 +28,8 @@ boolean sg_engine_play_demo(const char *name, boolean single)
     G_DeferedPlayDemo(name);
     return true;
 }
+
+// Doom's frame is a call, so there is nothing to escape from and no boundary to watch.
+void sg_engine_frame_boundary(void)
+{
+}

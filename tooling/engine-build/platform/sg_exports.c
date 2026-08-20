@@ -74,6 +74,8 @@ void I_StartFrame(void)
     {
         longjmp(boot_escape, 1);
     }
+    // May not return: an engine whose frame is its own loop leaves that loop from here.
+    sg_engine_frame_boundary();
     sg_drain_events();
 }
 
