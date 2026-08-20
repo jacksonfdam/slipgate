@@ -6,5 +6,7 @@
 void TXT_PutChar(int c);
 void TXT_Puts(const char *s);
 void TXT_GotoXY(int x, int y);
+// Strife reads the cursor back where the other engines only ever set it.
+void TXT_GetXY(int *x, int *y);
 void TXT_FGColor(txt_color_t color);
 void TXT_BGColor(int color, int blinking);
