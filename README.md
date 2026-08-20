@@ -32,6 +32,7 @@ A gate is one game plus the engine that runs it.
 | `mars` | Doom | `:games:mars` | Yes — Freedoom |
 | `corvus` | Heretic | `:games:corvus` | Yes — Blasphemer |
 | `korax` | Hexen | `:games:korax` | No — user-supplied IWAD only |
+| `macil` | Strife | `:games:macil` | No — user-supplied IWAD only |
 
 Each gate is named for the game behind it rather than for the game itself, so the rack
 reads as a row of places to go rather than a list of products:
@@ -48,17 +49,16 @@ reads as a row of places to go rather than a list of products:
 - **`chthon`** — Quake's first boss, the lava thing under Shub-Niggurath's dimension shard.
   Its art is committed; the gate is not built yet.
 - **`macil`** — Strife's rebel leader, who runs the Front against the Order from under a
-  town the Order already owns. Planned, with its art committed and its plan written up in
-  [docs/specification/05-strife-gate.md](docs/specification/05-strife-gate.md).
+  town the Order already owns. Android and iOS only: the gate has no wasmJs target, for the
+  reason `corvus` and `korax` have none.
 
-The three built modules come from the
+All four built modules come from the
 [Chocolate Doom](https://github.com/chocolate-doom/chocolate-doom) tree, which carries Doom,
-Heretic and Hexen behind one platform abstraction. That shared `i_*` layer is the reason a
-single port effort yields three gates — and the reason Strife is a fourth rather than a
-rewrite, since the same tree builds it too.
+Heretic, Hexen and Strife behind one platform abstraction. That shared `i_*` layer is the
+reason a single port effort yields four gates.
 
-Doom and Heretic have been run against real data; Hexen has not, because there is no freely
-licensed IWAD to run it against.
+Doom, Heretic and Strife have been run against real data; Hexen has not, because there is no
+freely licensed IWAD to run it against.
 
 ## Architecture
 
