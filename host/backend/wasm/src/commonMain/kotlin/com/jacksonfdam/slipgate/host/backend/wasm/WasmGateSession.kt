@@ -55,7 +55,7 @@ private const val GREEN_SHIFT = 8
  */
 @Suppress("TooManyFunctions") // Each one answers a call in the session contract or a step of one.
 public class WasmGateSession(
-    private val engine: WasmEngine,
+    private val engine: EngineInstance,
     private val host: GateHost,
     private val keyBindings: Map<GateAction, Int>,
     private val directionBindings: DirectionBindings,
