@@ -1,0 +1,109 @@
+// The corvus gate portrait: a gothic arch seen through drifting mist, gold at its keystone and
+// green in the depths behind it. It reads as Heretic without depicting anything from it.
+//
+// Written in the dialect Skia runtime effects and AGSL share, and declaring the shared scene uniform
+// block — the same fifteen floats every scene shader takes, in the same order.
+//
+// Where the mars portrait rises, this one turns: the field drifts sideways rather than upward, which
+// is the difference between a fire and a censer. Zero octaves must still compose a readable still
+// (the Minimal tier and the reduced-motion frame, with timeSeconds frozen by the host).
+
+uniform float widthPixels;
+uniform float heightPixels;
+uniform float timeSeconds;
+uniform float accentDimR;
+uniform float accentDimG;
+uniform float accentDimB;
+uniform float accentBaseR;
+uniform float accentBaseG;
+uniform float accentBaseB;
+uniform float accentHotR;
+uniform float accentHotG;
+uniform float accentHotB;
+uniform float focusAmount;
+uniform float audioLevel;
+uniform float octaves;
+
+const float MAX_OCTAVES = 6.0;
+const float DRIFT = 0.035;
+const float WARP_STRENGTH = 1.1;
+const float ARCH_WIDTH = 0.62;
+const float ARCH_SPRING = 0.44;
+const float KEYSTONE_GLOW = 0.55;
+
+float hash(float2 p) {
+    return fract(sin(dot(p, float2(127.1, 311.7))) * 43758.5453);
+}
+
+float valueNoise(float2 p) {
+    float2 cell = floor(p);
+    float2 inside = fract(p);
+    float2 eased = inside * inside * (3.0 - 2.0 * inside);
+    float a = hash(cell);
+    float b = hash(cell + float2(1.0, 0.0));
+    float c = hash(cell + float2(0.0, 1.0));
+    float d = hash(cell + float2(1.0, 1.0));
+    return mix(mix(a, b, eased.x), mix(c, d, eased.x), eased.y);
+}
+
+float fbm(float2 p) {
+    float sum = 0.0;
+    float amplitude = 0.5;
+    float weight = 0.0;
+    for (float octave = 0.0; octave < MAX_OCTAVES; octave += 1.0) {
+        if (octave >= octaves) { break; }
+        sum += amplitude * valueNoise(p);
+        weight += amplitude;
+        amplitude *= 0.5;
+        p = p * 2.11 + float2(31.0, 7.0);
+    }
+    return weight > 0.0 ? sum / weight : 0.5;
+}
+
+// Distance to the arch: a vertical pair of jambs closed by a semicircle at the spring line. Written
+// as a signed field so the edge can glow and the inside can stay dark.
+float archDistance(float2 uv) {
+    float centred = (uv.x - 0.5) / (ARCH_WIDTH * 0.5);
+    float springHeight = ARCH_SPRING;
+    if (uv.y > springHeight) {
+        // The jambs: two straight edges.
+        return abs(centred) - 1.0;
+    }
+    // The head: a semicircle whose radius is the half width, in the same normalised space.
+    float2 head = float2(centred, (springHeight - uv.y) / (ARCH_WIDTH * 0.5));
+    return length(head) - 1.0;
+}
+
+half4 main(float2 coord) {
+    float2 uv = coord / float2(widthPixels, heightPixels);
+
+    // The mist drifts across rather than up, and the warp keeps it from reading as a scroll.
+    float2 field = float2(uv.x * 2.4 + timeSeconds * DRIFT, uv.y * 3.0);
+    float2 warp = float2(fbm(field), fbm(field + float2(9.1, 2.7)));
+    float mist = fbm(field + WARP_STRENGTH * (warp - 0.5));
+
+    float distance = archDistance(uv);
+    // Inside the arch is depth; the edge is where the gold sits.
+    float inside = smoothstep(0.02, -0.18, distance);
+    float edge = exp(-abs(distance) * 14.0);
+
+    // The keystone: brightest at the top of the head, falling away down the jambs.
+    float keystone = edge * KEYSTONE_GLOW * smoothstep(0.55, 0.0, uv.y);
+
+    float depth = inside * (0.35 + 0.65 * mist);
+    depth *= 0.7 + 0.3 * focusAmount + 0.3 * audioLevel;
+
+    half3 dim = half3(half(accentDimR), half(accentDimG), half(accentDimB));
+    half3 base = half3(half(accentBaseR), half(accentBaseG), half(accentBaseB));
+    half3 hot = half3(half(accentHotR), half(accentHotG), half(accentHotB));
+
+    // Green in the depths, gold along the stone: the ramp's dim end fills the opening and its hot end
+    // draws the edge, which is what keeps a Heretic palette reading as Heretic.
+    half3 colour = mix(half3(0.0), dim, half(smoothstep(0.05, 0.6, depth)));
+    colour = mix(colour, base, half(smoothstep(0.5, 0.95, depth)));
+    colour += hot * half(clamp(edge * 0.5 + keystone, 0.0, 1.0));
+
+    // The frame fade, so the portrait sits in its card rather than filling it to the corners.
+    float frame = smoothstep(0.0, 0.10, uv.y) * smoothstep(1.0, 0.90, uv.y);
+    return half4(colour * half(frame), 1.0);
+}
