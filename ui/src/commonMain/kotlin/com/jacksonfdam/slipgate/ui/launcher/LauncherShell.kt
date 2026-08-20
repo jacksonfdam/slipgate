@@ -1,5 +1,7 @@
 package com.jacksonfdam.slipgate.ui.launcher
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,14 +15,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.jacksonfdam.slipgate.ui.credits.CreditsScreen
+import com.jacksonfdam.slipgate.ui.design.Backdrops
 import com.jacksonfdam.slipgate.ui.design.ColorTokens
 import com.jacksonfdam.slipgate.ui.design.LocalAccentRamp
 import com.jacksonfdam.slipgate.ui.design.SlipgateWordmark
 import com.jacksonfdam.slipgate.ui.design.TypeScale
+import com.jacksonfdam.slipgate.ui.design.rememberBackdrop
 import com.jacksonfdam.slipgate.ui.settings.GateDataStatus
 import com.jacksonfdam.slipgate.ui.settings.SettingsController
 import com.jacksonfdam.slipgate.ui.settings.SettingsScreen
@@ -45,9 +52,44 @@ public fun LauncherShell(
     // portraits. One provider, so the whole interface recolours with the selection.
     CompositionLocalProvider(LocalAccentRamp provides rampFor(state.current)) {
         BoxWithConstraints(modifier = modifier.fillMaxSize().background(ColorTokens.Void)) {
-            // The fire is the shell's ground. Everything below draws on top of it, which is why it
-            // burns low: the rail and the panels have to stay readable over it.
-            AttractBackground(modifier = Modifier.matchParentSize())
+            // The painted backdrop is the shell's ground: the focused gate's own scene behind the
+            // rack, and a scene of its own behind Settings and Credits. Width leads and height
+            // crops, centred, so the art survives every aspect. Until the image is decoded the
+            // attract fire holds the ground, so the shell never sits on flat void.
+            val backdropName =
+                when (section) {
+                    LauncherSection.Gates -> Backdrops.forGate(state.current?.id)
+                    LauncherSection.Settings -> Backdrops.SETTINGS
+                    LauncherSection.Credits -> Backdrops.CREDITS
+                }
+            Crossfade(targetState = backdropName, modifier = Modifier.matchParentSize()) { name ->
+                val backdrop = rememberBackdrop(name)
+                if (backdrop == null) {
+                    AttractBackground(modifier = Modifier.fillMaxSize())
+                } else {
+                    Image(
+                        bitmap = backdrop,
+                        contentDescription = null,
+                        contentScale = ContentScale.FillWidth,
+                        alignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+            // The panels and the rail have to stay readable over the art, so it sinks toward the
+            // void at the bottom where the text lives.
+            Box(
+                modifier =
+                    Modifier.matchParentSize().background(
+                        Brush.verticalGradient(
+                            colors =
+                                listOf(
+                                    ColorTokens.Void.copy(alpha = SCRIM_TOP_ALPHA),
+                                    ColorTokens.Void.copy(alpha = SCRIM_BOTTOM_ALPHA),
+                                ),
+                        ),
+                    ),
+            )
             val compact = maxWidth < COMPACT_BREAKPOINT
             if (compact) {
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -150,6 +192,8 @@ private fun SectionPlaceholder(
 
 private val COMPACT_BREAKPOINT = 600.dp
 private val WORDMARK_HEIGHT = 14.dp
+private const val SCRIM_TOP_ALPHA = 0.35f
+private const val SCRIM_BOTTOM_ALPHA = 0.72f
 
 /** What Settings says about one gate's files, in the words the rack already uses. */
 private fun GateCard.dataStatus(): GateDataStatus =
