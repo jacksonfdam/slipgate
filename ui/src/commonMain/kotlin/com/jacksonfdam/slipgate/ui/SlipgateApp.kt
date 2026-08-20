@@ -35,6 +35,7 @@ import com.jacksonfdam.slipgate.host.runtime.Gate
 import com.jacksonfdam.slipgate.host.runtime.GateRegistry
 import com.jacksonfdam.slipgate.host.runtime.GateSession
 import com.jacksonfdam.slipgate.host.runtime.InputProfile
+import com.jacksonfdam.slipgate.host.runtime.SessionSaves
 import com.jacksonfdam.slipgate.ui.audio.InterfaceAudio
 import com.jacksonfdam.slipgate.ui.audio.ambientKeyOf
 import com.jacksonfdam.slipgate.ui.data.GameDataStage
@@ -217,6 +218,9 @@ private fun StageSurface(
                 onMenu = { open -> onStage(stage.copy(menuOpen = open)) },
                 onLeave = {
                     scope.launch {
+                        // Before closing: what the engine wrote is only the player's once it is out of
+                        // the module, and the module goes with the session.
+                        (stage.session as? SessionSaves)?.keepSaves()
                         stage.session.close()
                         onSection(LauncherSection.Gates)
                         onStage(Stage.Choosing(launcherState(shell.gates.registry.gates, shell.gates.store)))

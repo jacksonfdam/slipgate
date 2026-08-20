@@ -45,6 +45,35 @@ internal class CountingAudioSink : AudioSink {
     }
 }
 
+/** Save storage that keeps what it is given, which is what a mirror test needs. */
+internal class InMemorySaveStorage : SaveStorage {
+    private val slots = mutableMapOf<String, MutableMap<String, ByteArray>>()
+
+    override suspend fun slots(): List<String> = slots.keys.toList()
+
+    override suspend fun files(slot: String): List<String> = slots[slot]?.keys?.toList() ?: emptyList()
+
+    override suspend fun read(
+        slot: String,
+        name: String,
+    ): ByteArray? = slots[slot]?.get(name)
+
+    override suspend fun write(
+        slot: String,
+        name: String,
+        bytes: ByteArray,
+    ) {
+        slots.getOrPut(slot) { mutableMapOf() }[name] = bytes
+    }
+
+    override suspend fun delete(
+        slot: String,
+        name: String?,
+    ) {
+        if (name == null) slots.remove(slot) else slots[slot]?.remove(name)
+    }
+}
+
 internal class RecordingHost : GateHost {
     val lines: MutableList<String> = mutableListOf()
 
@@ -53,28 +82,7 @@ internal class RecordingHost : GateHost {
 
     override val audio: CountingAudioSink = CountingAudioSink()
 
-    override val storage: SaveStorage =
-        object : SaveStorage {
-            override suspend fun slots(): List<String> = emptyList()
-
-            override suspend fun files(slot: String): List<String> = emptyList()
-
-            override suspend fun read(
-                slot: String,
-                name: String,
-            ): ByteArray? = null
-
-            override suspend fun write(
-                slot: String,
-                name: String,
-                bytes: ByteArray,
-            ) = Unit
-
-            override suspend fun delete(
-                slot: String,
-                name: String?,
-            ) = Unit
-        }
+    override val storage: InMemorySaveStorage = InMemorySaveStorage()
 
     override val logger: Logger =
         object : Logger {
