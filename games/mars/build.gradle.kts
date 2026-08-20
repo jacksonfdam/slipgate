@@ -19,6 +19,12 @@ tasks.withType<Test>().configureEach {
     environment("SLIPGATE_IWAD", suppliedIwad.getOrElse(""))
 }
 
+// The simulator's own environment, which is not the test runner's: simctl forwards a variable to
+// the process it launches only when it is prefixed, and without the prefix the test sees nothing.
+tasks.withType<org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest>().configureEach {
+    environment("SIMCTL_CHILD_SLIPGATE_IWAD", suppliedIwad.getOrElse(""))
+}
+
 // Compose resources are not packaged for the Android target of the Android KMP library plugin, so
 // the engine module is also staged as a plain java resource, which an AAR does carry. One committed
 // file, two ways of reaching it: the alternative is a second copy of a binary in the repository.
