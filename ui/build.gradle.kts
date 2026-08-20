@@ -81,6 +81,7 @@ kotlin {
             implementation(compose.foundation)
             implementation(compose.material3)
             implementation(compose.components.resources)
+            implementation(libs.androidx.lifecycle.runtime.compose)
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
         }
