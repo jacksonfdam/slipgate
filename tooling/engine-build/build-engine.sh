@@ -39,38 +39,15 @@ fi
 # shellcheck disable=SC1091
 source "${EMSDK_DIR}/emsdk_env.sh" > /dev/null 2>&1
 
-# The files that talk to SDL, a window system, a sound card or the text-mode setup screen. Each has
-# either a replacement in platform/ or no place in a gate, and leaving them out is what makes the
-# port a layer rather than a fork. d_dedicated.c is the standalone server's entry point and brings
-# its own D_DoomMain and zone stubs, which is why it cannot be in a build that has the game's.
-# z_native.c is the malloc-backed zone, an alternative to z_zone.c rather than a companion, and
-# w_file_win32.c is the Windows file backend, and w_file_stdc.c is replaced by the memory-backed
-# one in platform/, because a wasm module's filesystem is inside the module and the host cannot put
-# a file into it from outside.
-REPLACED_SOURCES=(
-    d_dedicated.c
-    i_cdmus.c
-    i_endoom.c
-    i_flmusic.c
-    i_input.c
-    i_joystick.c
-    i_main.c
-    i_musicpack.c
-    i_oplmusic.c
-    i_pcsound.c
-    i_sdlmusic.c
-    i_sdlsound.c
-    i_sound.c
-    i_system.c
-    i_timer.c
-    i_video.c
-    i_videohr.c
-    net_gui.c
-    net_sdl.c
-    w_file_stdc.c
-    w_file_win32.c
-    z_native.c
-)
+# The list of upstream files the platform layer replaces lives in replaced-sources.txt, shared
+# with the native build so the two can never disagree about it.
+REPLACED_SOURCES=()
+while read -r line; do
+    case "${line}" in
+        ''|'#'*) continue ;;
+    esac
+    REPLACED_SOURCES+=("${line}")
+done < "${WORKDIR}/replaced-sources.txt"
 
 is_replaced() {
     local candidate="$1"
