@@ -7,6 +7,9 @@ import com.jacksonfdam.slipgate.host.backend.wasm.WasmHost
 import com.jacksonfdam.slipgate.host.backend.wasm.engineArguments
 import com.jacksonfdam.slipgate.host.backend.wasm.keptSaves
 import com.jacksonfdam.slipgate.host.backend.wasm.startEngine
+import com.jacksonfdam.slipgate.host.gamedata.GameFlavour
+import com.jacksonfdam.slipgate.host.gamedata.WadInspection
+import com.jacksonfdam.slipgate.host.gamedata.WadInspector
 import com.jacksonfdam.slipgate.host.runtime.GateAction
 import com.jacksonfdam.slipgate.host.runtime.GateHost
 import com.jacksonfdam.slipgate.host.runtime.GateSession
@@ -75,6 +78,28 @@ internal suspend fun openWasmDemoSession(
     return session(engine, host)
 }
 
+/** What Doom II's maps are called, which is also what the engine expects its file to be called. */
+private const val DOOM_II_IWAD = "doom2.wad"
+
+/**
+ * The name the module is handed the IWAD under, which is not cosmetic.
+ *
+ * Chocolate Doom decides which game it is running from the filename: `d_iwad.c` holds a table mapping
+ * `doom.wad` to retail Doom, `doom2.wad` to Doom II, and everything downstream follows from it — the
+ * map names the engine looks for, the intermission it draws, the text at the end. Hand it Doom II's
+ * lumps under `doom.wad` and it goes looking for `E1M1` in a file full of `MAPxx` and dies in
+ * start-up, which is what a player who owns Doom II rather than Doom got.
+ *
+ * The launcher already inspects what it stores, so the flavour decides the name. Plutonia and TNT are
+ * Doom II as far as this is concerned: they differ from it by name alone in that table, and the shelf
+ * keeps the gate's key rather than the filename the player's copy had.
+ */
+internal fun mountName(iwad: ByteArray): String {
+    val inspection = WadInspector.inspect(iwad)
+    val flavour = (inspection as? WadInspection.Recognised)?.identity?.flavour
+    return if (flavour == GameFlavour.DoomMapped) DOOM_II_IWAD else MARS_IWAD
+}
+
 private suspend fun bootEngine(
     data: MountedGameData,
     host: GateHost,
@@ -82,8 +107,8 @@ private suspend fun bootEngine(
     // The IWAD by the name the gate asked for, not whichever file the store happens to list first:
     // the launcher caches a palette sidecar beside the game data, and mounting 768 bytes of colours
     // as an IWAD is a gate that will not boot.
-    val iwadName = MARS_IWAD
-    val iwad = data.read(iwadName)
+    val iwad = data.read(MARS_IWAD)
+    val iwadName = mountName(iwad)
     val addOns = data.addOnNames()
 
     host.logger.log(LogLevel.Info, "booting the mars gate from $iwadName")
