@@ -21,6 +21,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -33,7 +37,9 @@ import com.jacksonfdam.slipgate.host.runtime.InputProfile
 
 private val PAD_SIZE = 160.dp
 private val EDGE_PADDING = 20.dp
-private val EXTENSION_HEIGHT = 44.dp
+
+// The platform minimum for something a finger has to hit; the drawing inside it can be smaller.
+private val EXTENSION_HEIGHT = 48.dp
 private val EXTENSION_SPACING = 8.dp
 
 // Clear of the movement wheel's arc and of the diagnostics label under it, so a row of five still
@@ -173,6 +179,8 @@ private fun MovementPad(
         modifier =
             modifier
                 .background(Color.White.copy(alpha = if (active) PRESSED_ALPHA else IDLE_ALPHA), CircleShape)
+                // A thumb wheel has no words of its own, so it says what it is for.
+                .semantics { contentDescription = "Movement" }
                 .pointerInput(state) {
                     detectDragGestures(
                         onDragStart = { active = true },
@@ -265,7 +273,10 @@ private fun ActionButton(
                 .background(
                     Color.White.copy(alpha = if (pressed) PRESSED_ALPHA else IDLE_ALPHA),
                     CircleShape,
-                ).pointerInput(action, state) {
+                ).semantics {
+                    contentDescription = placement.label
+                    role = Role.Button
+                }.pointerInput(action, state) {
                     // A press has to survive the finger sliding: releasing on drag would make firing
                     // while turning impossible.
                     awaitPointerEventScope {
