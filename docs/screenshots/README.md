@@ -15,3 +15,8 @@ driver exists.
 build at the Minimal tier — the tier that is given no noise octaves at all, so what is visible there
 is the shape the fire keeps when it cannot afford to burn.
 
+`web-launch-warp.png` is the launch transition: streaks pulling toward the centre, the tear walking
+down the frame, and the rack still behind it being drawn in. Captured with the transition held far
+longer than it ships at — it runs for 900 ms, which is too fast to photograph through a debugging
+protocol.
+
