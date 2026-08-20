@@ -81,14 +81,14 @@ reason a single port effort yields four gates.
 ### What has actually been run
 
 Every gate has been booted against real data, and the table says with which rather than
-claiming "supported". A platform is listed only where a gate has actually been entered on it,
-which is why `korax` names none: Hexen has run in the harness, not yet on a device.
+claiming "supported". A platform is listed only where a gate has actually been entered on
+it, with a player's own data on the device rather than a harness feeding it bytes.
 
 | Gate | Data it has booted and drawn | Where it has run |
 |---|---|---|
 | `mars` | Freedoom Phase 1, Doom shareware, Doom, Ultimate Doom, Doom II, Plutonia, TNT: Evilution, Chex Quest | Android phone, iPhone, iOS simulator, browser, JVM harness |
 | `corvus` | Blasphemer, Heretic: Shadow of the Serpent Riders | Android phone, iPhone, JVM harness |
-| `korax` | Hexen, with Deathkings of the Dark Citadel loaded over it | JVM harness |
+| `korax` | Hexen, with Deathkings of the Dark Citadel loaded over it | Android phone, JVM harness |
 
 Doom II, Plutonia, TNT and Chex Quest matter more than the row suggests: the engine decides
 which game it is running from the filename it is handed, so a mapped IWAD has to arrive as
