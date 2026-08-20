@@ -129,9 +129,16 @@ Both free options are named as what they are: a replacement rather than the orig
 is not Doom and Blasphemer is not Heretic — different levels and art, the same game to play —
 and the data screen says so before a player downloads half a gigabyte expecting otherwise.
 
-Supplied files are validated by IWAD header and lump signature, never by filename. A file that
-is game data for the wrong game is refused by name: "that is Doom data and this gate needs
-Hexen".
+Supplied files are validated by contents, never by filename. A file that is game data for the
+wrong game is refused by name: "that is Doom data and this gate needs Hexen". What a file can
+be used for is decided by whether it carries a palette: one that does can boot a gate, one that
+does not is an add-on loaded over a game already installed. That is how the engines themselves
+decide it, and it gets the two famous exceptions right — Chex Quest is a whole game under a
+`PWAD` header, and Hexen's Deathkings expansion is an add-on under an `IWAD` one.
+
+Custom maps are installed per gate from Settings and loaded over the game with `-file`, in
+name order. A gate with no game installed does not offer to add maps, because there would be
+nothing to load them over.
 
 **The web cannot download either replacement.** GitHub's release assets send no
 `Access-Control-Allow-Origin`, so a browser refuses the request before it starts; the app says
