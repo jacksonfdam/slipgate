@@ -36,6 +36,9 @@ import kotlinx.coroutines.isActive
  * [focus] is how selected this portrait is, from 0 to 1: the shader uses it to tighten its core, and
  * the painted cover dims toward the void as it loses it, so a resting card is calmer than the stage
  * above it.
+ *
+ * A gate whose data is not installed keeps whichever cover it has and gets a mask over it — painted or
+ * shaded, the card that cannot be entered says so by how it looks.
  */
 @Composable
 internal fun GatePortrait(
@@ -59,6 +62,9 @@ internal fun GatePortrait(
                         .fillMaxSize()
                         .background(ColorTokens.Void.copy(alpha = (1f - effective) * COVER_REST_DIM)),
             )
+            if (!card.isPlayable) {
+                NeedsDataMask()
+            }
         }
         return
     }
@@ -95,6 +101,9 @@ internal fun GatePortrait(
                         ),
                 )
             }
+        }
+        if (!card.isPlayable) {
+            NeedsDataMask()
         }
     }
 }
