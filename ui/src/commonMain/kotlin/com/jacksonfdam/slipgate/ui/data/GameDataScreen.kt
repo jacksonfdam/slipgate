@@ -57,6 +57,13 @@ internal fun GameDataScreen(
             text = entry.displayName,
             style = MaterialTheme.typography.titleMedium,
         )
+        Text(
+            text = explain(entry, engine),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.widthIn(max = EXPLANATION_WIDTH.dp),
+        )
 
         entry.sources.forEach { source ->
             when (source) {
@@ -118,7 +125,33 @@ private fun Progress(state: AcquisitionState) {
     }
 }
 
+private const val EXPLANATION_WIDTH = 460
 private const val BYTES_PER_MEGABYTE = 1024 * 1024
+
+/**
+ * Why this screen offers what it offers.
+ *
+ * A gate with a free replacement says that the replacement is a replacement — Freedoom is not Doom and
+ * Blasphemer is not Heretic, and a player who thinks they downloaded the original will wonder why the
+ * levels are unfamiliar. A gate without one says so outright: Hexen has no free equivalent, and an
+ * honest dead end reads better than a button that could never work.
+ *
+ * Decided from the sources the gate declared rather than from its name, so a gate that gains or loses a
+ * replacement changes this line by changing its own requirements.
+ */
+internal fun explain(
+    entry: DataEntry,
+    engine: String,
+): String {
+    val free = entry.sources.filterIsInstance<DataSource.FreeDownload>().firstOrNull()
+    return if (free == null) {
+        "$engine has no freely licensed replacement, so it runs from your own copy. " +
+            "Point Slipgate at the ${entry.displayName} from a copy you own; it stays on this device."
+    } else {
+        "${free.displayName} is a freely licensed replacement rather than $engine itself: " +
+            "different levels and art, the same game to play. Your own ${entry.displayName} also works."
+    }
+}
 
 /** Megabytes, because a byte count of a 40 megabyte download tells a player nothing. */
 private fun describe(state: AcquisitionState.Working): String {
