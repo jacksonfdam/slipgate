@@ -14,6 +14,8 @@ public data class AcquisitionRequest(
      * Freedoom and Blasphemer both publish their WADs inside a zip.
      */
     val archiveEntry: String? = null,
+    /** Whether this is the game the gate boots, or maps to load over one it already has. */
+    val role: WadRole = WadRole.Bootable,
 )
 
 /** What became of an attempt to install game data. */
@@ -64,13 +66,35 @@ public class GameDataAcquisition(
         name: String,
         bytes: ByteArray,
         accepts: Set<GameFlavour>,
+        role: WadRole = WadRole.Bootable,
     ): AcquisitionResult {
-        val verdict = verdict(name, WadInspector.inspect(bytes), accepts)
+        val verdict = verdict(name, WadInspector.inspect(bytes), accepts, role)
         if (verdict is AcquisitionResult.Stored) {
-            store.write(gate, name, bytes)
+            store.write(gate, verdict.name, bytes)
         }
         return verdict
     }
+
+    /**
+     * Stores maps a player supplied to load over the game [gate] already has.
+     *
+     * The name is kept, marked as an add-on, because a shelf holding four of these is only navigable
+     * if each one is still called what the player downloaded.
+     */
+    public suspend fun installAddOn(
+        gate: String,
+        name: String,
+        bytes: ByteArray,
+    ): AcquisitionResult =
+        install(
+            gate = gate,
+            name = addOnStorageName(name),
+            bytes = bytes,
+            // An add-on names no engine, so there is nothing for a flavour to be checked against; what
+            // makes it acceptable is that it is an add-on at all, which the role below decides.
+            accepts = GameFlavour.entries.toSet(),
+            role = WadRole.AddOn,
+        )
 
     private suspend fun unpack(
         request: AcquisitionRequest,
@@ -78,7 +102,7 @@ public class GameDataAcquisition(
     ): AcquisitionResult {
         val entryName =
             request.archiveEntry
-                ?: return install(request.gate, request.name, fetched, request.accepts)
+                ?: return install(request.gate, request.name, fetched, request.accepts, request.role)
 
         return try {
             val archive = ZipArchive(fetched)
@@ -86,7 +110,7 @@ public class GameDataAcquisition(
             if (entry == null) {
                 AcquisitionResult.Failed("the archive holds no $entryName")
             } else {
-                install(request.gate, request.name, archive.read(entry), request.accepts)
+                install(request.gate, request.name, archive.read(entry), request.accepts, request.role)
             }
         } catch (damaged: ZipException) {
             AcquisitionResult.Failed(damaged.message ?: "the archive is damaged")
@@ -99,6 +123,7 @@ public class GameDataAcquisition(
         name: String,
         inspection: WadInspection,
         accepts: Set<GameFlavour>,
+        role: WadRole,
     ): AcquisitionResult =
         when {
             inspection is WadInspection.Rejected -> {
@@ -109,13 +134,13 @@ public class GameDataAcquisition(
                 AcquisitionResult.Failed("the file was not inspected")
             }
 
-            inspection.identity.kind != WadKind.Iwad -> {
-                AcquisitionResult.Failed("that is a patch, not a game; a gate needs an IWAD to boot")
+            inspection.identity.role != role -> {
+                AcquisitionResult.Failed(wrongRole(inspection.identity.role))
             }
 
-            inspection.identity.flavour !in accepts -> {
+            role == WadRole.Bootable && inspection.identity.flavour !in accepts -> {
                 AcquisitionResult.Failed(
-                    "that is ${inspection.identity.flavour.label} data and this gate needs " +
+                    "that is ${inspection.identity.flavour?.label} data and this gate needs " +
                         accepts.joinToString(" or ") { it.label },
                 )
             }
@@ -123,5 +148,18 @@ public class GameDataAcquisition(
             else -> {
                 AcquisitionResult.Stored(name, inspection.identity)
             }
+        }
+
+    /**
+     * Both directions are worth a sentence of their own.
+     *
+     * A player choosing a map pack where the game belongs and a player choosing a game where the maps
+     * belong have made opposite mistakes, and "wrong kind of file" would leave either of them guessing
+     * which one.
+     */
+    private fun wrongRole(found: WadRole): String =
+        when (found) {
+            WadRole.AddOn -> "that is an add-on, not a game; a gate needs a game to boot before maps can load over it"
+            WadRole.Bootable -> "that is a whole game rather than maps to add; install it as this gate's game instead"
         }
 }

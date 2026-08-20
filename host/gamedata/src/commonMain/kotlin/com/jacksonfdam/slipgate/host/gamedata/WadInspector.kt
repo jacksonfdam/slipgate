@@ -10,6 +10,10 @@ private const val PALETTE_LUMP = "PLAYPAL"
 // the two families apart without trusting a filename.
 private const val RAVEN_LUMP = "TINTTAB"
 
+// Rogue built Strife on Doom's engine and gave it a translucency table under its own name, so the
+// same trick separates it from the Doom it otherwise looks exactly like.
+private const val STRIFE_LUMP = "XLATAB"
+
 // A directory larger than this is not a game, and reading it would only waste a phone's memory.
 private const val MAX_LUMPS = 65_536
 
@@ -17,6 +21,33 @@ private const val BYTE_MASK = 0xFF
 private const val EPISODE_LIMIT = 9
 private const val MAP_LIMIT = 99
 private const val HEX = 16
+
+/** Every name a map lump can have, so a file's own maps can be picked out of its directory. */
+private val EPISODE_SLOTS: Set<String> =
+    (1..EPISODE_LIMIT).flatMap { episode -> (1..EPISODE_LIMIT).map { "E${episode}M$it" } }.toSet()
+
+private val MAP_SLOTS: Set<String> = (1..MAP_LIMIT).map { "MAP${it.toString().padStart(2, '0')}" }.toSet()
+
+/**
+ * Which engine's data this is, from the tables each one carries and how its maps are named.
+ *
+ * Null means the contents name no engine, which for a bootable file is a rejection and for an add-on
+ * is the normal case: a map replacement holding `MAP01` is a Doom add-on, a Hexen add-on or a Strife
+ * add-on, and nothing inside it decides which.
+ */
+private fun flavourOf(
+    names: Set<String>,
+    episodes: Int,
+    maps: Int,
+): GameFlavour? =
+    when {
+        RAVEN_LUMP in names && maps > 0 -> GameFlavour.Hexen
+        RAVEN_LUMP in names && episodes > 0 -> GameFlavour.Heretic
+        STRIFE_LUMP in names -> GameFlavour.Strife
+        maps > 0 -> GameFlavour.DoomMapped
+        episodes > 0 -> GameFlavour.DoomEpisodic
+        else -> null
+    }
 
 /**
  * Decides what a supplied file is by reading it, never by its name.
@@ -62,7 +93,7 @@ public object WadInspector {
             )
         }
 
-        val names = mutableSetOf<String>()
+        val names = mutableListOf<String>()
         val truncated = collectNames(bytes, directoryOffset, lumpCount, names)
 
         return if (truncated == null) {
@@ -85,14 +116,15 @@ public object WadInspector {
     }
 
     /**
-     * Collects every lump name, and returns a description of the first lump that reaches past the
-     * end of the file — which is what a download that stopped halfway looks like from the inside.
+     * Collects every lump name in directory order, and returns a description of the first lump that
+     * reaches past the end of the file — which is what a download that stopped halfway looks like
+     * from the inside.
      */
     private fun collectNames(
         bytes: ByteArray,
         directoryOffset: Int,
         lumpCount: Int,
-        names: MutableSet<String>,
+        names: MutableList<String>,
     ): String? {
         for (index in 0 until lumpCount) {
             val entry = directoryOffset + index * DIRECTORY_ENTRY_BYTES
@@ -108,38 +140,44 @@ public object WadInspector {
 
     private fun identify(
         kind: WadKind,
-        names: Set<String>,
+        ordered: List<String>,
         lumpCount: Int,
     ): WadInspection {
+        val names = ordered.toSet()
+        val mapNames = ordered.filter { it in EPISODE_SLOTS || it in MAP_SLOTS }.distinct()
         val episodes = (1..EPISODE_LIMIT).count { "E${it}M1" in names }
-        val maps = (1..MAP_LIMIT).count { "MAP${it.toString().padStart(2, '0')}" in names }
-        val raven = RAVEN_LUMP in names
-        val flavour =
-            when {
-                raven && maps > 0 -> GameFlavour.Hexen
-                raven && episodes > 0 -> GameFlavour.Heretic
-                maps > 0 -> GameFlavour.DoomMapped
-                episodes > 0 -> GameFlavour.DoomEpisodic
-                else -> null
-            }
+        val maps = MAP_SLOTS.count { it in names }
+
+        // A palette is what lets a file stand on its own: an add-on borrows the colours of whatever
+        // it loads over, and a game has to supply every one of them itself.
+        val role = if (PALETTE_LUMP in names) WadRole.Bootable else WadRole.AddOn
+        val flavour = flavourOf(names, episodes, maps)
 
         return when {
-            PALETTE_LUMP !in names -> {
-                rejected(RejectionReason.NoPalette, "the file has no $PALETTE_LUMP lump")
+            mapNames.isEmpty() -> {
+                rejected(RejectionReason.UnknownGame, "the file holds no maps this app can run")
             }
 
-            flavour == null -> {
-                rejected(RejectionReason.UnknownGame, "the file holds no maps this app can run")
+            role == WadRole.Bootable && flavour == null -> {
+                rejected(
+                    RejectionReason.UnknownGame,
+                    "the file has a palette but no episode or map an engine would start from",
+                )
             }
 
             else -> {
                 WadInspection.Recognised(
                     WadIdentity(
                         kind = kind,
-                        flavour = flavour,
+                        role = role,
+                        // An add-on is left unattributed even when its lumps hint at an engine: the
+                        // hint comes from resources it happens to override, and the gate it was
+                        // installed on is better evidence than a guess.
+                        flavour = flavour.takeIf { role == WadRole.Bootable },
                         lumpCount = lumpCount,
                         episodes = episodes,
                         maps = maps,
+                        mapNames = mapNames,
                     ),
                 )
             }

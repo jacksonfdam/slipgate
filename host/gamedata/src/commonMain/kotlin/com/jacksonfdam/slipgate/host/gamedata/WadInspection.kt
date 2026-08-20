@@ -10,6 +10,23 @@ public enum class WadKind {
 }
 
 /**
+ * What a file can be used for, which is not always what its signature claims.
+ *
+ * The two are separate because the signature lies often enough to matter. Chex Quest ships a whole
+ * game under a `PWAD` signature, and Hexen's Deathkings expansion ships an add-on under an `IWAD`
+ * one; the engines ignore the claim and look at the contents, so this does too. What decides it is
+ * the palette: a file carrying one supplies every colour the screen needs and can stand alone,
+ * and a file without one is borrowing the colours of whatever it is loaded on top of.
+ */
+public enum class WadRole {
+    /** Carries its own palette, so a gate can boot from it. */
+    Bootable,
+
+    /** Maps and resources meant to load over a game that is already there. */
+    AddOn,
+}
+
+/**
  * What the file's contents say it is.
  *
  * Named for the layout rather than for a brand, because that is all the contents can honestly
@@ -31,15 +48,26 @@ public enum class GameFlavour(
 
     /** Raven's Hexen: `MAPxx` with Raven's tint table. */
     Hexen("Hexen"),
+
+    /** Rogue's Strife: `MAPxx` with a translucency table of its own. */
+    Strife("Strife"),
 }
 
-/** What a recognised file is, and how much of a game it holds. */
+/**
+ * What a recognised file is, and how much of a game it holds.
+ *
+ * [flavour] is null only for an add-on whose contents name no engine — a map replacement carries
+ * maps and little else, and which game those maps are for is not written anywhere inside them.
+ */
 public data class WadIdentity(
     val kind: WadKind,
-    val flavour: GameFlavour,
+    val role: WadRole,
+    val flavour: GameFlavour?,
     val lumpCount: Int,
     val episodes: Int,
     val maps: Int,
+    /** The map lumps this file holds, in the order the engine would find them. */
+    val mapNames: List<String> = emptyList(),
 )
 
 /** Why a file cannot be used. Each reason is something a person can act on. */
@@ -56,10 +84,7 @@ public enum class RejectionReason {
     /** A lump claims bytes the file does not contain, which is what a truncated download looks like. */
     LumpOutOfRange,
 
-    /** A WAD without a palette cannot be a game, only a patch. */
-    NoPalette,
-
-    /** A valid WAD whose contents match no engine this app runs. */
+    /** A valid WAD holding no maps: nothing here is a game, and nothing here adds one. */
     UnknownGame,
 }
 
