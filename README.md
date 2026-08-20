@@ -83,6 +83,38 @@ The framebuffer is uploaded as an R8 texture with the palette as a 256-entry loo
 texture, and colour is resolved in the fragment shader. Palette effects — damage flash,
 item pickup tint, the Tome of Power — are then free.
 
+### Frame budget
+
+A tic is 28.6 ms at 35 Hz, and one host frame steps one tic.
+
+| Gate | Engine step, JVM host | Whole frame, phone |
+|---|---|---|
+| Doom | 4.0 ms median, 11.0 ms worst | ~38 ms, so ~26 fps |
+| Heretic | 4.8 ms median, 35.1 ms worst | not measured |
+| Hexen | 5.0 ms median, 156.1 ms worst | not measured |
+
+The two columns measure different things and are not comparable as they stand. The JVM
+column is `FrameBudgetTest`: 1,500 steps after a 200-frame warmup, timing the engine step
+and nothing else. The phone column is every frame the app produced — the step, the
+recomposition and the present — counted from the outside.
+
+JVM host: Chasm interpreter, Apple silicon, `./gradlew :games:<gate>:jvmTest --tests
+'*FrameBudgetTest*' -Pslipgate.iwad=…`. Phone: the same Chasm interpreter on a Galaxy A34
+5G (Dimensity 1080, Android 16), counted with `dumpsys gfxinfo` over 20 seconds of play at
+maximum detail.
+
+Two things follow. The interpreter holds its tic comfortably on a desktop, and it does not
+on a mid-range phone — which is the case for a native backend rather than a tuning pass,
+because the gap is a factor of ten and not a percentage. The GPU is not the problem: the
+same `gfxinfo` run reports a 3 ms GPU frame, so the time is being spent on the CPU
+stepping the module.
+
+The worst column is there because a median hides the frame a player actually notices.
+Hexen's is the outlier and the cause has not been traced yet.
+
+The web figure is not measured yet: it needs a browser holding the player's own game data,
+which is a manual session rather than a harness.
+
 ## Game data
 
 **No game data ships with this project.** Not in the repository, not in releases, not in CI
