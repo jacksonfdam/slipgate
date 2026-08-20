@@ -9,7 +9,7 @@ Vercel as its own project with the root directory set to `site`. The full setup 
 ```bash
 cd site
 vercel link
-vercel blob store add slipgate-beacon
+vercel blob create-store slipgate-beacon
 vercel env add SLIPGATE_BEACON_TOKEN production
 vercel deploy --prod
 ```
