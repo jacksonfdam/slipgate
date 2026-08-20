@@ -26,6 +26,12 @@ import kotlin.test.assertTrue
  * ./gradlew :games:corvus:jvmTest -Pslipgate.iwad=/path/to/heretic.wad
  * ```
  */
+private const val TIC_MILLIS = 29L
+private const val TICS_PER_SECOND = 35
+
+/** Comfortably past the seven seconds it took an imp to make a linked sound in the title demo. */
+private const val SECONDS_OF_ATTRACT = 30
+
 class CorvusGateTest {
     private val gate = CorvusGate()
     private val iwad: File? = System.getenv("SLIPGATE_IWAD")?.takeIf { it.isNotBlank() }?.let(::File)
@@ -158,6 +164,27 @@ class CorvusGateTest {
 
             assertTrue(host.audio.frames > 0, "no audio was drained at all")
             assertTrue(host.audio.heardSomething, "every drained frame was silent")
+        }
+
+    /**
+     * The gate has to survive its own attract loop, which is where a linked sound comes from.
+     *
+     * Heretic's sound table names some entries "-impact" or "-mumact": the dash says the lump belongs
+     * to the sound they link to, and asking the wad for the dashed name is fatal. Nothing plays one
+     * until an imp is idling somewhere in the demo the title screen runs, which took about seven
+     * seconds of stepping to reach — long after every boot test had passed.
+     */
+    @Test
+    fun aLinkedSoundDoesNotKillTheGate() =
+        runTest {
+            val host = RecordingHost()
+            val session = openSession(host) ?: return@runTest
+            repeat(SECONDS_OF_ATTRACT * TICS_PER_SECOND) { tic ->
+                val result =
+                    runCatching { session.step(InputFrame.Idle, elapsedMillis = TIC_MILLIS) }
+                        .getOrElse { failure -> error("the gate died at tic $tic: ${failure.message}\n${host.tail()}") }
+                assertEquals(SessionStatus.Running, result.status, "the gate stopped at tic $tic")
+            }
         }
 
     private suspend fun openSession(host: RecordingHost = RecordingHost()) =
