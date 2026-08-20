@@ -6,12 +6,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class GameLibraryTest {
+class RemoteShelfTest {
     @Test
-    fun `follows a beacon to the library it points at`() =
+    fun `follows a beacon to the shelf it points at`() =
         runTest {
-            val library =
-                GameLibrary(
+            val shelf =
+                RemoteShelf(
                     FakeDownload(
                         BEACON to
                             """
@@ -20,13 +20,13 @@ class GameLibraryTest {
                             key${'\t'}abc123
                             updated${'\t'}2026-08-20T18:22:41Z
                             """.trimIndent(),
-                        "https://tunnel.example/manifest?key=abc123" to MANIFEST,
+                        "https://tunnel.example/shelf.index?key=abc123" to INDEX,
                     ),
                 )
 
-            val listing = library.open(BEACON)
+            val listing = shelf.open(BEACON)
 
-            assertTrue(listing is LibraryListing.Open, "expected the beacon to be followed, got $listing")
+            assertTrue(listing is ShelfListing.Open, "expected the beacon to be followed, got $listing")
             assertEquals("https://tunnel.example", listing.base)
             assertEquals("abc123", listing.key)
             assertEquals("2026-08-20T18:22:41Z", listing.publishedAt)
@@ -34,25 +34,25 @@ class GameLibraryTest {
         }
 
     @Test
-    fun `reads a library asked for directly with the key from the address`() =
+    fun `reads a shelf asked for directly with the key from the address`() =
         runTest {
-            val library = GameLibrary(FakeDownload("https://nas.local:8099/manifest?key=abc123" to MANIFEST))
+            val shelf = RemoteShelf(FakeDownload("https://nas.local:8099/shelf.index?key=abc123" to INDEX))
 
-            val listing = library.open("https://nas.local:8099/?key=abc123")
+            val listing = shelf.open("https://nas.local:8099/?key=abc123")
 
-            assertTrue(listing is LibraryListing.Open, "expected the library to answer, got $listing")
+            assertTrue(listing is ShelfListing.Open, "expected the shelf to answer, got $listing")
             assertEquals("https://nas.local:8099", listing.base)
             assertEquals("abc123", listing.key)
         }
 
     @Test
-    fun `reads a library whose address already names the manifest`() =
+    fun `reads a shelf whose address already names the index`() =
         runTest {
-            val library = GameLibrary(FakeDownload("https://nas.local:8099/manifest" to MANIFEST))
+            val shelf = RemoteShelf(FakeDownload("https://nas.local:8099/shelf.index" to INDEX))
 
-            val listing = library.open("https://nas.local:8099/manifest")
+            val listing = shelf.open("https://nas.local:8099/shelf.index")
 
-            assertTrue(listing is LibraryListing.Open, "expected the manifest to be read, got $listing")
+            assertTrue(listing is ShelfListing.Open, "expected the index to be read, got $listing")
             assertEquals("https://nas.local:8099", listing.base)
             assertNull(listing.key)
         }
@@ -60,9 +60,9 @@ class GameLibraryTest {
     @Test
     fun `separates what a gate can boot from the maps loaded over it`() =
         runTest {
-            val library = GameLibrary(FakeDownload("https://nas.local/manifest" to MANIFEST))
+            val shelf = RemoteShelf(FakeDownload("https://nas.local/shelf.index" to INDEX))
 
-            val listing = library.open("https://nas.local") as LibraryListing.Open
+            val listing = shelf.open("https://nas.local") as ShelfListing.Open
 
             assertEquals(listOf("doom.wad"), listing.bootable("mars").map { it.name })
             assertEquals(listOf("sunlust.wad"), listing.addOns("mars").map { it.name })
@@ -72,12 +72,12 @@ class GameLibraryTest {
     @Test
     fun `carries the key into every file it offers`() =
         runTest {
-            val library = GameLibrary(FakeDownload("https://nas.local/manifest?key=abc123" to MANIFEST))
+            val shelf = RemoteShelf(FakeDownload("https://nas.local/shelf.index?key=abc123" to INDEX))
 
-            val listing = library.open("https://nas.local?key=abc123") as LibraryListing.Open
+            val listing = shelf.open("https://nas.local?key=abc123") as ShelfListing.Open
 
             assertEquals(
-                "https://nas.local/files/mars/doom.wad?key=abc123",
+                "https://nas.local/mars/doom.wad?key=abc123",
                 listing.urlFor(listing.bootable("mars").single()),
             )
         }
@@ -85,30 +85,30 @@ class GameLibraryTest {
     @Test
     fun `says what went wrong when nothing answers`() =
         runTest {
-            val listing = GameLibrary(FakeDownload()).open("https://nas.local")
+            val listing = RemoteShelf(FakeDownload()).open("https://nas.local")
 
-            assertTrue(listing is LibraryListing.Unreachable, "expected an unreachable library, got $listing")
+            assertTrue(listing is ShelfListing.Unreachable, "expected an unreachable shelf, got $listing")
             assertTrue(listing.message.isNotEmpty())
         }
 
     @Test
     fun `refuses an address that answers with something else`() =
         runTest {
-            val library = GameLibrary(FakeDownload("https://nas.local/manifest" to "<html>hello</html>"))
+            val shelf = RemoteShelf(FakeDownload("https://nas.local/shelf.index" to "<html>hello</html>"))
 
-            val listing = library.open("https://nas.local")
+            val listing = shelf.open("https://nas.local")
 
-            assertTrue(listing is LibraryListing.Unreachable, "expected a refusal, got $listing")
-            assertTrue(listing.message.contains("not with a library manifest"))
+            assertTrue(listing is ShelfListing.Unreachable, "expected a refusal, got $listing")
+            assertTrue(listing.message.contains("not with a shelf index"))
         }
 
     @Test
-    fun `keeps the entries of a manifest that lost a line and drops the line`() {
+    fun `keeps the entries of an index that lost a line and drops the line`() {
         val files =
-            parseManifest(
+            parseIndex(
                 """
-                slipgate-library 1
-                file${'\t'}mars${'\t'}doom.wad${'\t'}game${'\t'}14604584${'\t'}/files/mars/doom.wad
+                slipgate-shelf 1
+                file${'\t'}mars${'\t'}doom.wad${'\t'}game${'\t'}14604584${'\t'}/mars/doom.wad
                 file${'\t'}mars${'\t'}truncated
                 note${'\t'}something a later version added
                 """.trimIndent(),
@@ -120,7 +120,7 @@ class GameLibraryTest {
     @Test
     fun `is not a pointer when the header is missing`() {
         assertNull(parsePointer("url${'\t'}https://tunnel.example"))
-        assertNull(parseManifest("file${'\t'}mars${'\t'}doom.wad${'\t'}game${'\t'}1${'\t'}/files/mars/doom.wad"))
+        assertNull(parseIndex("file${'\t'}mars${'\t'}doom.wad${'\t'}game${'\t'}1${'\t'}/mars/doom.wad"))
     }
 
     @Test
@@ -131,11 +131,11 @@ class GameLibraryTest {
     private companion object {
         const val BEACON = "https://slipgate.example/beacon/deadbeefdeadbeefdeadbeef"
 
-        val MANIFEST =
+        val INDEX =
             """
-            slipgate-library 1
-            file${'\t'}mars${'\t'}doom.wad${'\t'}game${'\t'}14604584${'\t'}/files/mars/doom.wad
-            file${'\t'}mars${'\t'}sunlust.wad${'\t'}addon${'\t'}18324${'\t'}/files/mars/addons/sunlust.wad
+            slipgate-shelf 1
+            file${'\t'}mars${'\t'}doom.wad${'\t'}game${'\t'}14604584${'\t'}/mars/doom.wad
+            file${'\t'}mars${'\t'}sunlust.wad${'\t'}addon${'\t'}18324${'\t'}/addons/sunlust.wad
             """.trimIndent()
     }
 }
