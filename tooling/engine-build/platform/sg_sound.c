@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "config.h"
+#include "deh_str.h"
 #include "doomtype.h"
 #include "i_sound.h"
 #include "m_misc.h"
@@ -155,13 +156,22 @@ int I_GetSfxLumpNum(sfxinfo_t *sfxinfo)
 {
     char name[9];
 
+    // A linked sound is not a lump of its own: Heretic's table names one "-impact" and points it at
+    // the imp's own sit sound, and the leading dash says so. Asking the wad for "-impact" is a fatal
+    // error, which is what killed the gate a few seconds into its own attract loop.
+    if (sfxinfo->link != NULL)
+    {
+        sfxinfo = sfxinfo->link;
+    }
+
+    // Dehacked can rename a sound, and every other lookup in the engine goes through DEH_String.
     if (sfx_prefixed)
     {
-        M_snprintf(name, sizeof(name), "ds%s", sfxinfo->name);
+        M_snprintf(name, sizeof(name), "ds%s", DEH_String(sfxinfo->name));
     }
     else
     {
-        M_snprintf(name, sizeof(name), "%s", sfxinfo->name);
+        M_StringCopy(name, DEH_String(sfxinfo->name), sizeof(name));
     }
     return W_GetNumForName(name);
 }
