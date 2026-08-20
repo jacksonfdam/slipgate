@@ -21,7 +21,7 @@ slipgate-server/
 ├── macil/             strife1.wad, voices.wad — once the Strife gate exists
 ├── chthon/id1/        pak0.pak, pak1.pak
 ├── eidolon/
-│   ├── data1/         pak0.pak, pak1.pak
+│   ├── data1/         pak0.pak, pak1.pak, demo1.dem …
 │   └── portals/       pak3.pak — Portal of Praevus
 ├── addons/            files that load over a game rather than booting one: hexdd.wad
 └── unsupported/       valid data no gate runs yet
@@ -77,9 +77,13 @@ What each family gives away:
 - **Hexen II paks** get an exact release: uHexen2 identifies them by the number of files in the
   pak directory and a CRC-16 of it, and that table is in the port's own `quakefs.c`. Anything not
   in the table is reported as unrecorded rather than guessed at.
-- **Quake paks** are named by the episodes they carry. Episode 1 alone is what `pak0` holds in
-  both the shareware and the registered release, so that reading says where the rest are instead
-  of claiming to know which disc it came from.
+- **Quake paks** are named by the episodes they carry, because that is what decides whether the
+  data is complete — the file count does not. The registered game is `pak0` plus `pak1` in 1996
+  and a single repacked `pak0` in the 2021 re-release, which holds everything the two old paks did
+  and adds its own; `mapdb.json` and the weapon wheel are its fingerprints, and a `pak0` carrying
+  all four episodes is reported as complete with no `pak1` beside it. Episode 1 alone is what
+  `pak0` holds in both 1996 releases, so that reading says where the rest are rather than claiming
+  to know which disc it came from.
 
 It exits non-zero when a file is present but unusable, so it fits in a script.
 
@@ -117,3 +121,9 @@ a merged gate. Give them a path from the shelf:
 
 The Quake and Hexen II gates take `-Pslipgate.pak` the same way once they exist, pointing at
 `chthon/id1` and `eidolon/data1`.
+
+Hexen II's determinism harness wants `demo1.dem` beside the paks. It is not inside them — a
+uHexen2 installation carries `demo1.dem`, `demo2.dem` and `demo3.dem` as loose files in `data1/`,
+and `hexen.rc` ships a commented-out `startdemos demo1 demo2 demo3` for them. Copy them in with
+the paks: a demo replayed against itself is a stronger proof than a map run on a fixed clock, and
+cheaper to write.
