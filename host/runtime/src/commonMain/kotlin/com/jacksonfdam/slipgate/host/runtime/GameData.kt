@@ -38,6 +38,24 @@ public data class DataRequirements(
 }
 
 /**
+ * Marks a stored name as an add-on rather than the game itself.
+ *
+ * A shelf is one flat namespace — no platform here allows a separator in a stored name — so what
+ * separates the game from the maps loaded over it has to live in the name. A prefix does it without
+ * a second store or an index file that could drift out of step with what is actually on disk.
+ *
+ * It lives beside the mount rather than beside the storage code because a gate reads it at boot to
+ * decide what to hand the engine, and a gate cannot see the storage layer.
+ */
+public const val ADD_ON_PREFIX: String = "addon."
+
+/** Whether a stored name belongs to an add-on. */
+public fun isAddOnName(name: String): Boolean = name.startsWith(ADD_ON_PREFIX)
+
+/** The name an add-on was supplied under, with the marker taken back off for a player to read. */
+public fun addOnDisplayName(name: String): String = name.removePrefix(ADD_ON_PREFIX)
+
+/**
  * Read-only view of the data a user supplied for one gate. Backed by app-private storage on
  * every platform; sessions see names, never paths.
  */
@@ -62,3 +80,12 @@ public interface MountedGameData {
             }
     }
 }
+
+/**
+ * The add-ons on this mount, in the order the engine should load them.
+ *
+ * Sorted by name, because load order decides which of two add-ons wins when both replace the same
+ * lump, and a set's iteration order is not something a player could predict or a bug report could
+ * describe. Alphabetical is arbitrary but it is the same every time.
+ */
+public fun MountedGameData.addOnNames(): List<String> = names().filter(::isAddOnName).sorted()

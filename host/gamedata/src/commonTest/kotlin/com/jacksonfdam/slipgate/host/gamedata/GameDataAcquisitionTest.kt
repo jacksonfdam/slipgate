@@ -63,14 +63,55 @@ class GameDataAcquisitionTest {
         }
 
     @Test
-    fun aPatchIsRefusedBecauseAGateCannotBootFromOne() =
+    fun anAddOnIsRefusedWhereTheGameBelongs() =
         runTest {
             val acquisition =
-                GameDataAcquisition(store, download = ServesOnce(syntheticWad("PWAD", listOf("PLAYPAL", "MAP01"))))
+                GameDataAcquisition(store, download = ServesOnce(syntheticWad("PWAD", listOf("MAP01"))))
 
             val result = acquisition.acquire(request())
 
-            assertTrue("patch" in assertIs<AcquisitionResult.Failed>(result).message)
+            assertTrue("add-on" in assertIs<AcquisitionResult.Failed>(result).message)
+            assertTrue(store.names("mars").isEmpty())
+        }
+
+    @Test
+    fun anAddOnIsStoredUnderItsOwnNameWithTheMarkerOnIt() =
+        runTest {
+            val maps = syntheticWad("PWAD", listOf("MAP01", "MAP02"))
+            val acquisition = GameDataAcquisition(store, download = Fails("no download should happen"))
+
+            val result = acquisition.installAddOn("mars", "Sunder.wad", maps)
+
+            val stored = assertIs<AcquisitionResult.Stored>(result)
+            assertEquals(WadRole.AddOn, stored.identity.role)
+            assertEquals(listOf("MAP01", "MAP02"), stored.identity.mapNames)
+            assertEquals(setOf("addon.Sunder.wad"), store.names("mars"))
+            assertContentEquals(maps, store.read("mars", "addon.Sunder.wad"))
+        }
+
+    /** The opposite mistake, which needs its own sentence rather than the same one back. */
+    @Test
+    fun aWholeGameIsRefusedWhereAnAddOnBelongs() =
+        runTest {
+            val acquisition = GameDataAcquisition(store, download = Fails("no download should happen"))
+
+            val result =
+                acquisition.installAddOn("mars", "doom2.wad", syntheticWad("IWAD", listOf("PLAYPAL", "MAP01")))
+
+            assertTrue("whole game" in assertIs<AcquisitionResult.Failed>(result).message)
+            assertTrue(store.names("mars").isEmpty())
+        }
+
+    /** Strife is Doom's engine with a table of its own, and the mars gate must not take it for Doom. */
+    @Test
+    fun strifeDataIsRefusedByADoomGate() =
+        runTest {
+            val strife = syntheticWad("IWAD", listOf("PLAYPAL", "XLATAB", "MAP01"))
+
+            val result = GameDataAcquisition(store, download = ServesOnce(strife)).acquire(request())
+
+            val message = assertIs<AcquisitionResult.Failed>(result).message
+            assertTrue("Strife" in message, message)
             assertTrue(store.names("mars").isEmpty())
         }
 

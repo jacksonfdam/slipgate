@@ -3,6 +3,7 @@ package com.jacksonfdam.slipgate.host.gamedata
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 
 /**
  * Every fixture is assembled here rather than read from a file, because no game data may live in
@@ -52,9 +53,67 @@ class WadInspectorTest {
 
     @Test
     fun aPatchWadIsRecognisedAsOne() {
-        val inspection = WadInspector.inspect(syntheticWad("PWAD", listOf("PLAYPAL", "MAP01")))
+        val inspection = WadInspector.inspect(syntheticWad("PWAD", listOf("MAP01")))
 
         assertEquals(WadKind.Pwad, assertIs<WadInspection.Recognised>(inspection).identity.kind)
+    }
+
+    /**
+     * Rogue built Strife on Doom's engine, so nothing but its own translucency table separates the
+     * two. Without this the mars gate accepts `strife1.wad` as Doom data and then cannot boot it.
+     */
+    @Test
+    fun strifeIsToldApartFromTheDoomItLooksLike() {
+        val inspection =
+            WadInspector.inspect(syntheticWad("IWAD", listOf("PLAYPAL", "XLATAB", "MAP01", "MAP02")))
+
+        assertEquals(GameFlavour.Strife, assertIs<WadInspection.Recognised>(inspection).identity.flavour)
+    }
+
+    /** A palette is what lets a file stand alone, whatever its signature claims. */
+    @Test
+    fun aFileWithoutAPaletteIsAnAddOnRatherThanAGame() {
+        val inspection = WadInspector.inspect(syntheticWad("PWAD", listOf("MAP01", "MAP02")))
+
+        val identity = assertIs<WadInspection.Recognised>(inspection).identity
+        assertEquals(WadRole.AddOn, identity.role)
+        assertNull(identity.flavour)
+    }
+
+    /**
+     * Hexen's Deathkings expansion ships this way: an `IWAD` signature over what is really an add-on,
+     * which the engines resolve by looking for a palette rather than believing the header.
+     */
+    @Test
+    fun anIwadSignatureWithoutAPaletteIsStillAnAddOn() {
+        val inspection = WadInspector.inspect(syntheticWad("IWAD", listOf("MAP33", "MAP34")))
+
+        val identity = assertIs<WadInspection.Recognised>(inspection).identity
+        assertEquals(WadKind.Iwad, identity.kind)
+        assertEquals(WadRole.AddOn, identity.role)
+    }
+
+    /** Chex Quest ships the other way round: a whole game under a `PWAD` signature. */
+    @Test
+    fun aPwadSignatureWithAPaletteIsStillBootable() {
+        val inspection = WadInspector.inspect(syntheticWad("PWAD", listOf("PLAYPAL", "E1M1")))
+
+        val identity = assertIs<WadInspection.Recognised>(inspection).identity
+        assertEquals(WadKind.Pwad, identity.kind)
+        assertEquals(WadRole.Bootable, identity.role)
+        assertEquals(GameFlavour.DoomEpisodic, identity.flavour)
+    }
+
+    /** Which maps an add-on replaces is the one thing a player wants to read off it. */
+    @Test
+    fun theMapsAFileHoldsAreListedInTheOrderTheEngineFindsThem() {
+        val inspection =
+            WadInspector.inspect(syntheticWad("PWAD", listOf("MAP03", "THINGS", "MAP01", "LINEDEFS")))
+
+        assertEquals(
+            listOf("MAP03", "MAP01"),
+            assertIs<WadInspection.Recognised>(inspection).identity.mapNames,
+        )
     }
 
     @Test
@@ -97,13 +156,6 @@ class WadInspectorTest {
             RejectionReason.LumpOutOfRange,
             assertIs<WadInspection.Rejected>(inspection).reason,
         )
-    }
-
-    @Test
-    fun aWadWithoutAPaletteIsRejected() {
-        val inspection = WadInspector.inspect(syntheticWad("IWAD", listOf("MAP01")))
-
-        assertEquals(RejectionReason.NoPalette, assertIs<WadInspection.Rejected>(inspection).reason)
     }
 
     @Test

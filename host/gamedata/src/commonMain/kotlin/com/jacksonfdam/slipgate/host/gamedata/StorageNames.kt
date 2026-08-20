@@ -1,5 +1,7 @@
 package com.jacksonfdam.slipgate.host.gamedata
 
+import com.jacksonfdam.slipgate.host.runtime.ADD_ON_PREFIX
+
 private const val MAX_NAME_LENGTH = 64
 private val SAFE_CHARACTERS = ('a'..'z') + ('A'..'Z') + ('0'..'9') + listOf('.', '-', '_')
 
@@ -17,3 +19,11 @@ public fun safeStorageName(name: String): String {
     val trimmed = kept.takeLast(MAX_NAME_LENGTH)
     return trimmed.ifBlank { "data" }
 }
+
+/**
+ * The name an add-on supplied as [name] is stored under.
+ *
+ * The marker is [ADD_ON_PREFIX], which lives with the mount rather than here because a gate reads it
+ * at boot and cannot see this layer.
+ */
+public fun addOnStorageName(name: String): String = ADD_ON_PREFIX + safeStorageName(name).removePrefix(ADD_ON_PREFIX)
