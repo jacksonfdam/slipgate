@@ -53,6 +53,10 @@ boolean sg_engine_play_demo(const char *name, boolean single);
 // with a frame function of their own do nothing here, and this returns.
 void sg_engine_frame_boundary(void);
 
+// Binds the weapon cycle to the codes the gates send. Called once, after the engine has loaded its
+// own defaults, because that is what would otherwise overwrite it.
+void sg_bind_weapon_cycle(void);
+
 int sg_audio_drain(int16_t *destination, int frames);
 void sg_audio_advance(int elapsed_millis);
 void sg_request_quit(void);
