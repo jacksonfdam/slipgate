@@ -33,6 +33,25 @@ public class PadDecor(
 /** What the default decor writes on a button: the label the placement table already carries. */
 internal fun labelFor(action: GateAction): String = placements[action]?.label ?: ""
 
+/**
+ * What a screen reader says for a control, which is not always what the button shows.
+ *
+ * Drawn labels are short because a button is small — and two of them are bare chevrons, which read
+ * aloud as nothing at all. A listener needs the words: "previous weapon", not "‹".
+ */
+public fun spokenName(action: GateAction): String =
+    when (action) {
+        GateAction.Fire -> "Fire"
+        GateAction.Use -> "Use"
+        GateAction.Jump -> "Jump"
+        GateAction.Crouch -> "Crouch"
+        GateAction.NextWeapon -> "Next weapon"
+        GateAction.PreviousWeapon -> "Previous weapon"
+        GateAction.Map -> "Map"
+        GateAction.Menu -> "Game menu"
+        GateAction.Confirm -> "Confirm"
+    }
+
 internal val labelStyle =
     TextStyle(
         color = Color.White.copy(alpha = LABEL_ALPHA),
