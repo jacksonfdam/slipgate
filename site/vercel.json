@@ -1,0 +1,20 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/beacon/:id",
+      "destination": "/api/beacon/:id"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(api/beacon|beacon)/:id",
+      "headers": [
+        {
+          "key": "cache-control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    }
+  ]
+}
