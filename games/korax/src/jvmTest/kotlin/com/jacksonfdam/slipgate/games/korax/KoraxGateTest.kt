@@ -118,6 +118,24 @@ class KoraxGateTest {
             assertTrue(results.count { it.frameRendered } > 40, "only ${results.count { it.frameRendered }} frames")
         }
 
+    /**
+     * Hexen re-enters its own main loop once per step, and that loop sets the screen up on the way in.
+     * When that setup was not idempotent it re-seeded the palette every frame, which would have wiped
+     * out every palette flash the game asks for — the red of being hit, the gold of picking something
+     * up — before it could be drawn.
+     *
+     * A palette that changes on every single frame is that bug. This is what noticed it.
+     */
+    @Test
+    fun thePaletteIsNotReSeededOnEveryFrame() =
+        runTest {
+            val session = openSession() ?: return@runTest
+
+            val changes = (1..60).count { session.step(InputFrame.Idle, elapsedMillis = 29).paletteChanged }
+
+            assertTrue(changes < 30, "the palette changed on $changes of 60 frames")
+        }
+
     @Test
     fun anInventoryPressReachesTheEngine() =
         runTest {
