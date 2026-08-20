@@ -160,7 +160,7 @@ class KoraxGateTest {
             ?.takeIf { it.isFile }
             ?.let { file ->
                 val factory = assertNotNull(gate.sessionFactories()[BackendId.Wasm])
-                factory.create(SingleFileData(file.name, file.readBytes()), host)
+                factory.create(SingleFileData(KORAX_IWAD, file.readBytes()), host)
             }
             ?: null.also { println("skipping: set -Pslipgate.iwad to a hexen IWAD to run the boot tests") }
 }

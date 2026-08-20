@@ -1,10 +1,11 @@
 package com.jacksonfdam.slipgate.games.mars
 
 import com.jacksonfdam.slipgate.host.backend.wasm.DirectionBindings
-import com.jacksonfdam.slipgate.host.backend.wasm.WasmEngine
+import com.jacksonfdam.slipgate.host.backend.wasm.EngineInstance
 import com.jacksonfdam.slipgate.host.backend.wasm.WasmGateSession
 import com.jacksonfdam.slipgate.host.backend.wasm.WasmHost
 import com.jacksonfdam.slipgate.host.backend.wasm.keptSaves
+import com.jacksonfdam.slipgate.host.backend.wasm.startEngine
 import com.jacksonfdam.slipgate.host.runtime.GateAction
 import com.jacksonfdam.slipgate.host.runtime.GateHost
 import com.jacksonfdam.slipgate.host.runtime.GateSession
@@ -78,13 +79,16 @@ internal suspend fun openWasmDemoSession(
 private suspend fun bootEngine(
     data: MountedGameData,
     host: GateHost,
-): WasmEngine {
-    val iwadName = data.names().firstOrNull() ?: error("no game data is mounted for the mars gate")
+): EngineInstance {
+    // The IWAD by the name the gate asked for, not whichever file the store happens to list first:
+    // the launcher caches a palette sidecar beside the game data, and mounting 768 bytes of colours
+    // as an IWAD is a gate that will not boot.
+    val iwadName = MARS_IWAD
     val iwad = data.read(iwadName)
 
     host.logger.log(LogLevel.Info, "booting the mars gate from $iwadName")
 
-    return WasmEngine.start(
+    return startEngine(
         moduleBytes = marsModuleBytes(),
         files = mapOf(iwadName to iwad),
         arguments = listOf("slipgate", "-iwad", iwadName, "-nomusic"),
@@ -95,7 +99,7 @@ private suspend fun bootEngine(
 }
 
 private fun session(
-    engine: WasmEngine,
+    engine: EngineInstance,
     host: GateHost,
 ): GateSession =
     WasmGateSession(

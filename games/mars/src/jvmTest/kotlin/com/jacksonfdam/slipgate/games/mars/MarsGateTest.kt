@@ -128,12 +128,40 @@ class MarsGateTest {
             assertTrue(host.audio.heardSomething, "every drained frame was silent")
         }
 
+    /**
+     * The store keeps a palette sidecar beside the game data, so a mount holds more than the IWAD.
+     * Booting from whichever file came first is how a gate ends up handing the engine 768 bytes of
+     * colours and failing on its first frame — which is what happened in the browser, where the
+     * sidecar outlives the session.
+     */
+    @Test
+    fun aPaletteCachedBesideTheDataDoesNotGetBootedInstead() =
+        runTest {
+            val file =
+                iwad?.takeIf { it.isFile } ?: return@runTest run {
+                    println("skipping: set -Pslipgate.iwad to run the boot tests")
+                }
+            val factory = assertNotNull(gate.sessionFactories()[BackendId.Wasm])
+            val mounted =
+                MountedFiles(
+                    mapOf(
+                        "palette.bin" to ByteArray(768),
+                        MARS_IWAD to file.readBytes(),
+                    ),
+                )
+
+            val session = factory.create(mounted, RecordingHost())
+            val results = (1..4).map { session.step(InputFrame.Idle, elapsedMillis = 29) }
+
+            assertTrue(results.all { it.status == SessionStatus.Running }, "the gate booted the wrong file")
+        }
+
     private suspend fun openSession(host: RecordingHost = RecordingHost()) =
         iwad
             ?.takeIf { it.isFile }
             ?.let { file ->
                 val factory = assertNotNull(gate.sessionFactories()[BackendId.Wasm])
-                factory.create(SingleFileData(file.name, file.readBytes()), host)
+                factory.create(SingleFileData(MARS_IWAD, file.readBytes()), host)
             }
             ?: null.also { println("skipping: set -Pslipgate.iwad to run the boot tests") }
 }

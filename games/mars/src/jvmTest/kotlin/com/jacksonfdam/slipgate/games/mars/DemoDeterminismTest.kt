@@ -138,7 +138,7 @@ class DemoDeterminismTest {
         host: RecordingHost = RecordingHost(),
     ): GateSession? {
         val file = iwad ?: return null.also { println("skipping: set -Pslipgate.iwad to run the harness") }
-        val data = SingleFileData(file.name, file.readBytes())
+        val data = SingleFileData(MARS_IWAD, file.readBytes())
         return if (demo == null) {
             openWasmSession(data = data, host = host)
         } else {
