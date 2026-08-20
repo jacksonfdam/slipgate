@@ -10,6 +10,7 @@
 // sg_engine_run_frame is for.
 
 #include <setjmp.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -24,6 +25,43 @@
 #include "sg_platform.h"
 
 extern void D_DoomMain(void);
+
+#if !defined(__wasm__)
+// The native library is loadable before the host has spoken to it, so logging starts at stderr
+// and the bridge swaps in its own pair once it is ready. On wasm the same two names are imports
+// and none of this exists.
+static void (*host_log)(const char *message) = NULL;
+static void (*host_fatal)(const char *message) = NULL;
+
+void sg_host_log(const char *message)
+{
+    if (host_log != NULL)
+    {
+        host_log(message);
+        return;
+    }
+    fputs(message, stderr);
+    fputc('\n', stderr);
+}
+
+void sg_host_fatal(const char *message)
+{
+    if (host_fatal != NULL)
+    {
+        host_fatal(message);
+    }
+    fputs(message, stderr);
+    fputc('\n', stderr);
+    abort();
+}
+
+SG_EXPORT("slipgate_set_host")
+void slipgate_set_host(void (*log_fn)(const char *), void (*fatal_fn)(const char *))
+{
+    host_log = log_fn;
+    host_fatal = fatal_fn;
+}
+#endif
 
 #define SNAPSHOT_BYTES 8
 
@@ -87,21 +125,21 @@ static int argument_count = 0;
 // The host allocates inside the module, writes its bytes, and hands the address back. Everything
 // the engine needs from the outside world — the command line, the game data — arrives this way,
 // because a wasm module's memory is the only place both sides can see.
-__attribute__((export_name("slipgate_alloc")))
-int slipgate_alloc(int size)
+SG_EXPORT("slipgate_alloc")
+sg_ptr slipgate_alloc(int size)
 {
-    return (int)(intptr_t)malloc((size_t)size);
+    return (sg_ptr)(intptr_t)malloc((size_t)size);
 }
 
-__attribute__((export_name("slipgate_free")))
-void slipgate_free(int pointer)
+SG_EXPORT("slipgate_free")
+void slipgate_free(sg_ptr pointer)
 {
     free((void *)(intptr_t)pointer);
 }
 
 // Appends one already-written, NUL-terminated argument to the command line the engine will read.
-__attribute__((export_name("slipgate_arg_push")))
-int slipgate_arg_push(int pointer)
+SG_EXPORT("slipgate_arg_push")
+int slipgate_arg_push(sg_ptr pointer)
 {
     if (argument_count >= MAX_ARGUMENTS)
     {
@@ -113,7 +151,7 @@ int slipgate_arg_push(int pointer)
     return 1;
 }
 
-__attribute__((export_name("slipgate_init")))
+SG_EXPORT("slipgate_init")
 int slipgate_init(void)
 {
     if (booted)
@@ -152,8 +190,8 @@ static char demo_name[MAX_DEMO_NAME];
 // Starts playback of a demo lump the game data carries. Also how attract mode will run one: the
 // engine's own entry point, called after boot rather than through the command line, because a name
 // on the command line is copied into start-up's stack frame and that frame does not survive.
-__attribute__((export_name("slipgate_play_demo")))
-int slipgate_play_demo(int name_pointer, int single)
+SG_EXPORT("slipgate_play_demo")
+int slipgate_play_demo(sg_ptr name_pointer, int single)
 {
     if (!booted || finished)
     {
@@ -170,7 +208,7 @@ int slipgate_play_demo(int name_pointer, int single)
     return sg_engine_play_demo(demo_name, single != 0) ? 1 : 0;
 }
 
-__attribute__((export_name("slipgate_step")))
+SG_EXPORT("slipgate_step")
 int slipgate_step(int elapsed_millis)
 {
     if (!booted || finished)
@@ -204,52 +242,52 @@ int slipgate_step(int elapsed_millis)
     return status;
 }
 
-__attribute__((export_name("slipgate_framebuffer")))
-int slipgate_framebuffer(void)
+SG_EXPORT("slipgate_framebuffer")
+sg_ptr slipgate_framebuffer(void)
 {
-    return (int)(intptr_t)I_VideoBuffer;
+    return (sg_ptr)(intptr_t)I_VideoBuffer;
 }
 
-__attribute__((export_name("slipgate_framebuffer_size")))
+SG_EXPORT("slipgate_framebuffer_size")
 int slipgate_framebuffer_size(void)
 {
     return SCREENWIDTH * SCREENHEIGHT;
 }
 
-__attribute__((export_name("slipgate_framebuffer_width")))
+SG_EXPORT("slipgate_framebuffer_width")
 int slipgate_framebuffer_width(void)
 {
     return SCREENWIDTH;
 }
 
-__attribute__((export_name("slipgate_framebuffer_height")))
+SG_EXPORT("slipgate_framebuffer_height")
 int slipgate_framebuffer_height(void)
 {
     return SCREENHEIGHT;
 }
 
-__attribute__((export_name("slipgate_palette")))
-int slipgate_palette(void)
+SG_EXPORT("slipgate_palette")
+sg_ptr slipgate_palette(void)
 {
-    return (int)(intptr_t)sg_palette_bytes();
+    return (sg_ptr)(intptr_t)sg_palette_bytes();
 }
 
-__attribute__((export_name("slipgate_push_event")))
+SG_EXPORT("slipgate_push_event")
 void slipgate_push_event(int type, int code, int value)
 {
     sg_push_event(type, code, value);
 }
 
-__attribute__((export_name("slipgate_audio_drain")))
-int slipgate_audio_drain(int destination, int frames)
+SG_EXPORT("slipgate_audio_drain")
+int slipgate_audio_drain(sg_ptr destination, int frames)
 {
     return sg_audio_drain((int16_t *)(intptr_t)destination, frames);
 }
 
 // Suspend and resume land later; the export exists so the host's contract does not change when
 // they do, and reports honestly that it has nothing to give yet.
-__attribute__((export_name("slipgate_save_state")))
-int slipgate_save_state(int destination, int capacity)
+SG_EXPORT("slipgate_save_state")
+int slipgate_save_state(sg_ptr destination, int capacity)
 {
     (void)destination;
     (void)capacity;

@@ -66,6 +66,9 @@ typedef struct
 static sg_file_t files[MAX_FILES];
 static sg_stream_t streams[MAX_STREAMS];
 
+#if defined(__wasm__)
+// The wasm link reroutes the engine's calls here with --wrap, so the real calls keep their
+// __real_ names.
 extern FILE *__real_fopen(const char *path, const char *mode);
 extern int __real_fclose(FILE *stream);
 extern size_t __real_fread(void *buffer, size_t size, size_t count, FILE *stream);
@@ -77,6 +80,22 @@ extern int __real_fgetc(FILE *stream);
 extern int __real_remove(const char *path);
 extern int __real_rename(const char *from, const char *to);
 extern int __real_mkdir(const char *path, mode_t mode);
+#else
+// The native build reroutes by macro instead — Mach-O's linker has no --wrap — so every other
+// compilation unit is force-fed a header that renames the ten calls, this file is compiled
+// without it, and the real calls are the C library's own.
+#define __real_fopen fopen
+#define __real_fclose fclose
+#define __real_fread fread
+#define __real_fwrite fwrite
+#define __real_fseek fseek
+#define __real_ftell ftell
+#define __real_feof feof
+#define __real_fgetc fgetc
+#define __real_remove remove
+#define __real_rename rename
+#define __real_mkdir mkdir
+#endif
 
 static boolean ours(const char *path)
 {
@@ -86,7 +105,9 @@ static boolean ours(const char *path)
 static int stream_index(FILE *stream)
 {
     uintptr_t handle = (uintptr_t)stream;
-    if ((handle & 0xFFF00000u) != (uintptr_t)STREAM_TAG)
+    // Compared at full pointer width: on a 64-bit target a real FILE * has high bits set, and
+    // matching only the low word could mistake one for a tagged handle.
+    if ((handle & ~(uintptr_t)0xFFFFFu) != (uintptr_t)STREAM_TAG)
     {
         return -1;
     }

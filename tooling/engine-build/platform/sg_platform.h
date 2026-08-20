@@ -4,6 +4,8 @@
 // headers stay untouched and the exports file has one place to look.
 #pragma once
 
+#include <stdint.h>
+
 #include "doomtype.h"
 
 #define SG_PALETTE_ENTRIES 256
@@ -21,6 +23,18 @@
 #define SG_EVENT_MOUSE_MOVE 3
 #define SG_EVENT_MOUSE_BUTTONS 4
 
+// The same platform layer serves two targets: compiled to wasm it is the module Chasm and the
+// browser run, compiled natively it is the shared library the JNI bridge and cinterop load. The
+// exported surface stays one shape either way; only how a symbol crosses the boundary differs.
+//
+// sg_ptr is how a pointer crosses it. A wasm host reads the module's 32-bit addresses as plain
+// ints; a native host gets the pointer itself, which does not fit in an int on arm64.
+#if defined(__wasm__)
+
+typedef int sg_ptr;
+
+#define SG_EXPORT(name) __attribute__((export_name(name)))
+
 // Imported from the host. Declaring the module and name explicitly is what turns an undefined
 // symbol into a wasm import rather than a link error.
 #define SG_HOST_IMPORT(name) \
@@ -28,6 +42,19 @@
 
 SG_HOST_IMPORT("fatal") void sg_host_fatal(const char *message);
 SG_HOST_IMPORT("log") void sg_host_log(const char *message);
+
+#else
+
+typedef intptr_t sg_ptr;
+
+#define SG_EXPORT(name) __attribute__((visibility("default")))
+
+// Provided by sg_exports.c natively: stderr until the host registers its own pair through
+// slipgate_set_host, because a library must be loadable before anyone has spoken to it.
+void sg_host_fatal(const char *message);
+void sg_host_log(const char *message);
+
+#endif
 
 const byte *sg_palette_bytes(void);
 int sg_palette_generation(void);
