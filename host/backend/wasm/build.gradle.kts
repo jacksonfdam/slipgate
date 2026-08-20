@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.kmp.library)
@@ -20,8 +22,9 @@ tasks.withType<Test>().configureEach {
 }
 
 // Chasm publishes JVM and native artifacts, not wasmJs — and a browser already has a WebAssembly
-// engine of its own, which is what addendum 01's resolution table says the web should use. So this
-// module is the Chasm-backed driver, and the web driver is its own piece of work.
+// engine of its own, which is what addendum 01's resolution table says the web should use. So both
+// drivers live here behind one interface: Chasm under chasmMain, the browser's own engine under
+// wasmJsMain, and nothing above this module knows which one it got.
 kotlin {
     explicitApi()
     jvmToolchain(slipgateJvmToolchain.toInt())
@@ -39,10 +42,35 @@ kotlin {
     iosArm64()
     iosSimulatorArm64()
 
+    @OptIn(ExperimentalWasmDsl::class)
+    wasmJs {
+        browser()
+    }
+
     sourceSets {
         commonMain.dependencies {
             api(project(":host:runtime"))
-            implementation(libs.chasm)
+        }
+
+        // Everything that is not the web runs the module through Chasm, so that driver is written
+        // once and the three targets that can use it share the source set. Declared by hand rather
+        // than through the hierarchy template, which has no name for this plugin's android target.
+        val chasmMain by creating {
+            dependsOn(commonMain.get())
+            dependencies {
+                implementation(libs.chasm)
+            }
+        }
+        // Attached target by target: the intermediate iOS source set is not what the compilations
+        // read from, and an actual the compiler cannot see is an actual that does not exist.
+        androidMain.get().dependsOn(chasmMain)
+        jvmMain.get().dependsOn(chasmMain)
+        iosArm64Main.get().dependsOn(chasmMain)
+        iosSimulatorArm64Main.get().dependsOn(chasmMain)
+
+        wasmJsMain.dependencies {
+            implementation(libs.kotlinx.browser)
+            implementation(libs.kotlinx.coroutines.core)
         }
 
         jvmTest.dependencies {

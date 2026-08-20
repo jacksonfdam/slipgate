@@ -25,19 +25,19 @@ public class WasmEngine private constructor(
     private val store: Store,
     private val instance: Instance,
     private val memory: Memory,
-) {
+) : EngineInstance {
     private var audioPointer = 0
     private var audioCapacityFrames = 0
 
     /** Bytes of the most recent frame, in the engine's own pixel format. */
-    public fun framebuffer(): ByteArray = read(call(FRAMEBUFFER), call(FRAMEBUFFER_SIZE))
+    override fun framebuffer(): ByteArray = read(call(FRAMEBUFFER), call(FRAMEBUFFER_SIZE))
 
-    public fun framebufferWidth(): Int = call(FRAMEBUFFER_WIDTH)
+    override fun framebufferWidth(): Int = call(FRAMEBUFFER_WIDTH)
 
-    public fun framebufferHeight(): Int = call(FRAMEBUFFER_HEIGHT)
+    override fun framebufferHeight(): Int = call(FRAMEBUFFER_HEIGHT)
 
     /** The engine's palette as 256 red-green-blue triples. */
-    public fun palette(): ByteArray = read(call(PALETTE), PALETTE_BYTES)
+    override fun palette(): ByteArray = read(call(PALETTE), PALETTE_BYTES)
 
     /**
      * Starts playback of a demo the game data carries, and reports whether the engine took it.
@@ -45,7 +45,7 @@ public class WasmEngine private constructor(
      * [untilTheEnd] decides what happens when the demo runs out: the session finishes, or the engine
      * returns to its title screen and carries on — which is what an attract loop wants.
      */
-    public fun playDemo(
+    override fun playDemo(
         name: String,
         untilTheEnd: Boolean,
     ): Boolean {
@@ -63,7 +63,7 @@ public class WasmEngine private constructor(
      * catch those writes would have to reimplement enough of stdio to fool it; reading the directory
      * afterwards is the same information for none of the risk.
      */
-    public fun savedFiles(): Map<String, ByteArray> {
+    override fun savedFiles(): Map<String, ByteArray> {
         val count = call(SAVE_SCAN)
         if (count <= 0) {
             return emptyMap()
@@ -90,7 +90,7 @@ public class WasmEngine private constructor(
     }
 
     /** Writes one file the host kept back into the engine's filesystem. Returns whether it landed. */
-    public fun putSavedFile(
+    override fun putSavedFile(
         name: String,
         bytes: ByteArray,
     ): Boolean {
@@ -105,9 +105,9 @@ public class WasmEngine private constructor(
     }
 
     /** Advances the engine by [elapsedMillis] and returns the status flags it reports. */
-    public fun step(elapsedMillis: Int): Int = call(STEP, elapsedMillis)
+    override fun step(elapsedMillis: Int): Int = call(STEP, elapsedMillis)
 
-    public fun pushEvent(
+    override fun pushEvent(
         type: Int,
         code: Int,
         value: Int,
@@ -121,7 +121,7 @@ public class WasmEngine private constructor(
      * The buffer inside the engine is allocated once and kept: this runs every frame, and asking a
      * WebAssembly heap for the same block sixty times a second fragments it for no gain.
      */
-    public fun drainAudio(
+    override fun drainAudio(
         destination: ByteArray,
         frames: Int,
     ): Int {
@@ -265,3 +265,19 @@ public class WasmEngine private constructor(
         }
     }
 }
+
+/** Chasm runs the module everywhere but the web, where the browser has an engine of its own. */
+public actual suspend fun startEngine(
+    moduleBytes: ByteArray,
+    files: Map<String, ByteArray>,
+    arguments: List<String>,
+    host: WasmHost,
+    saves: Map<String, ByteArray>,
+): EngineInstance =
+    WasmEngine.start(
+        moduleBytes = moduleBytes,
+        files = files,
+        arguments = arguments,
+        host = host,
+        saves = saves,
+    )
