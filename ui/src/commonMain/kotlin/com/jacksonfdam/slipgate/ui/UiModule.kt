@@ -8,8 +8,6 @@ import com.jacksonfdam.slipgate.host.graphics.backend.classic.ClassicBackend
 import com.jacksonfdam.slipgate.host.graphics.backend.skia.skiaBackend
 import com.jacksonfdam.slipgate.host.graphics.core.BackendSelector
 import com.jacksonfdam.slipgate.host.graphics.core.CrtSettings
-import com.jacksonfdam.slipgate.host.runtime.BackendId
-import com.jacksonfdam.slipgate.host.runtime.BackendResolver
 import com.jacksonfdam.slipgate.host.runtime.Gate
 import com.jacksonfdam.slipgate.host.runtime.GateRegistry
 import com.jacksonfdam.slipgate.ui.audio.InterfaceAudio
@@ -28,7 +26,6 @@ internal fun uiModule(gates: List<Gate>): Module =
         single { GameDataAcquisition(store = get<GameDataStore>()) }
         single { SettingsController(store = get<SettingsStore>()) }
         single { InterfaceAudio(output = get<AudioOutput>()) }
-        single { BackendResolver(supported = listOf(BackendId.Wasm)) }
         // Candidates are listed in preference order; the classic path always works and so
         // always comes last. The shader backends are appended as they land.
         // Preference order: the shader path where it exists, the classic path everywhere else.

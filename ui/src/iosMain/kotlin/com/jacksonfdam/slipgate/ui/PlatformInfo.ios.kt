@@ -2,6 +2,8 @@ package com.jacksonfdam.slipgate.ui
 
 import com.jacksonfdam.slipgate.host.gamedata.DocumentsGameDataStore
 import com.jacksonfdam.slipgate.host.gamedata.GameDataStore
+import com.jacksonfdam.slipgate.host.runtime.BackendId
+import com.jacksonfdam.slipgate.host.runtime.BackendResolver
 import com.jacksonfdam.slipgate.ui.settings.DefaultsSettingsStore
 import com.jacksonfdam.slipgate.ui.settings.SettingsStore
 import org.koin.core.module.Module
@@ -18,4 +20,6 @@ public actual val platformModule: Module =
         single<GameDataStore> { DocumentsGameDataStore() }
         single<SettingsStore> { DefaultsSettingsStore() }
         single<PlatformInfo> { IosPlatformInfo() }
+        // Which engine backends this platform can run, in preference order.
+        single { BackendResolver(supported = listOf(BackendId.Wasm)) }
     }
