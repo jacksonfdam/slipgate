@@ -17,19 +17,19 @@ flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sST
 
 [mars]
 artifact = games/mars/src/commonMain/composeResources/files/mars.wasm
-sha256 = 7a8998d272bfbfd2a857f9260153ee237c44db3e4d93240740a51ebf659f11b7
+sha256 = 859d7c01aa335679ee19c844c3362e338d4c26c1569ef35f2a8dc3c2e0fbecaf
 emscripten = 6.0.7
-flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=1 -Wl,--wrap=M_FileCaseExists --no-entry -Oz
+flags = -ffile-prefix-map=<workdir>=slipgate -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=1 -Wl,--wrap=M_FileCaseExists --no-entry -Oz
 
 [corvus]
 artifact = games/corvus/src/commonMain/composeResources/files/corvus.wasm
-sha256 = 2cbe9a818457b897607dcd49e9114f2e383db29b18ba949fe9c3785e813cb4a3
+sha256 = 56078b6b071334652e049c7cb9c97c10edd9d8febc90d7afac07427afa2c63bd
 emscripten = 6.0.7
-flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=1 -Wl,--wrap=M_FileCaseExists --no-entry -Oz
+flags = -ffile-prefix-map=<workdir>=slipgate -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=1 -Wl,--wrap=M_FileCaseExists --no-entry -Oz
 
 [korax]
 artifact = games/korax/src/commonMain/composeResources/files/korax.wasm
-sha256 = 823fc46e136aafffe035b8d8826845d00e8fbbe59375e32fd003213b1f078d1b
+sha256 = 11a2777216f4b6313392cfa5121b63636db6b59b9b420563dd874f79761a83fa
 emscripten = 6.0.7
-flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=100663296 -sALLOW_MEMORY_GROWTH=1 -Wl,--wrap=M_FileCaseExists --no-entry -Oz
+flags = -ffile-prefix-map=<workdir>=slipgate -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=100663296 -sALLOW_MEMORY_GROWTH=1 -Wl,--wrap=M_FileCaseExists --no-entry -Oz
 
