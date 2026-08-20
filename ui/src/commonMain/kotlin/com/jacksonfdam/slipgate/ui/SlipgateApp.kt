@@ -42,6 +42,7 @@ import com.jacksonfdam.slipgate.ui.data.GameDataStage
 import com.jacksonfdam.slipgate.ui.gate.GateMenu
 import com.jacksonfdam.slipgate.ui.gate.GateMenuButton
 import com.jacksonfdam.slipgate.ui.gate.GateSurface
+import com.jacksonfdam.slipgate.ui.gate.LaunchWarp
 import com.jacksonfdam.slipgate.ui.launcher.GateCard
 import com.jacksonfdam.slipgate.ui.launcher.LauncherSection
 import com.jacksonfdam.slipgate.ui.launcher.LauncherShell
@@ -51,6 +52,9 @@ import com.jacksonfdam.slipgate.ui.launcher.LocalQualityTier
 import com.jacksonfdam.slipgate.ui.launcher.launcherState
 import com.jacksonfdam.slipgate.ui.settings.SettingsController
 import com.jacksonfdam.slipgate.ui.splash.SplashScreen
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -63,6 +67,15 @@ private sealed interface Stage {
 
     /** The rack. Where the app starts and, once a session can be left, where it returns to. */
     data class Choosing(
+        val state: LauncherState,
+    ) : Stage
+
+    /**
+     * The warp, over the rack the player just left. It lasts as long as the motion tokens allow the
+     * launch transition, and the session opens behind it — which is the point: the one animation with
+     * real time budgeted for it is also the one that has work to hide.
+     */
+    data class Launching(
         val state: LauncherState,
     ) : Stage
 
@@ -190,15 +203,13 @@ private fun StageSurface(
                 audio = shell.audio,
                 onSection = onSection,
                 onMove = { next -> onStage(Stage.Choosing(next)) },
-                onEnter = { card ->
-                    scope.launch {
-                        shell.gates.registry.gates
-                            .firstOrNull { gate -> gate.descriptor.id.value == card.id }
-                            ?.let { gate -> onStage(shell.gates.openedStage(gate)) }
-                    }
-                },
+                onEnter = { card -> scope.launch { shell.enter(card, stage.state, onStage) } },
                 statusLabel = "$platformName · ${shell.settings.activeTier.name}",
             )
+        }
+
+        is Stage.Launching -> {
+            LaunchingStage(stage.state, section, shell, platformName)
         }
 
         is Stage.NeedsData -> {
@@ -231,6 +242,34 @@ private fun StageSurface(
                 },
             )
         }
+    }
+}
+
+/**
+ * The rack the player just left, with the warp closing over it.
+ *
+ * The rack is still drawn because the warp is what ends it: a screen that replaced it would lose the
+ * card the player was looking at, which is the thing being pulled toward.
+ */
+@Composable
+private fun LaunchingStage(
+    state: LauncherState,
+    section: LauncherSection,
+    shell: Shell,
+    platformName: String,
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        ChoosingStage(
+            state = state,
+            section = section,
+            settings = shell.settings,
+            audio = shell.audio,
+            onSection = {},
+            onMove = {},
+            onEnter = {},
+            statusLabel = platformName,
+        )
+        LaunchWarp()
     }
 }
 
@@ -375,6 +414,24 @@ private fun ChoosingStage(
     )
 }
 
+/**
+ * Launches a gate: the warp goes up, the session opens behind it, and the shell moves on when both are
+ * done. Whichever is slower is what the player waits for, and neither is hidden behind the other.
+ */
+private suspend fun Shell.enter(
+    card: GateCard,
+    from: LauncherState,
+    onStage: (Stage) -> Unit,
+) {
+    val gate = gates.registry.gates.firstOrNull { entry -> entry.descriptor.id.value == card.id } ?: return
+    coroutineScope {
+        onStage(Stage.Launching(from))
+        val opened = async { gates.openedStage(gate) }
+        delay(settings.launchDurationMillis.toLong())
+        onStage(opened.await())
+    }
+}
+
 /** Everything a chosen gate resolves to: missing data, a running session, or the reason. */
 private suspend fun Gates.openedStage(gate: Gate): Stage {
     val gateId = gate.descriptor.id.value
@@ -391,35 +448,4 @@ private suspend fun Gates.openedStage(gate: Gate): Stage {
                 title = gate.descriptor.title,
             ) as Stage
         }.getOrElse { failure -> Stage.Stuck(failure.message ?: "the gate did not open") }
-}
-
-@Composable
-private fun BootScreen(
-    message: String,
-    platformName: String,
-) {
-    Box(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = "SLIPGATE",
-                style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                text = platformName,
-                style = MaterialTheme.typography.labelLarge,
-            )
-        }
-    }
 }
