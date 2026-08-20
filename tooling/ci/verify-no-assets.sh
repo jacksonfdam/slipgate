@@ -6,7 +6,9 @@
 #
 # The exceptions, each a deliberate decision rather than a loophole:
 #   docs/screenshots/                                   device captures documenting the running app;
-#                                                       nothing in the build may reference it
+#                                                       no built app may reference it — the Pages
+#                                                       workflow copies it beside the web build for
+#                                                       the gallery page, which is not part of a build
 #   ui/src/commonMain/composeResources/files/backdrops/ the painted interface: backdrops and covers
 #   android/src/main/res/mipmap*                        the launcher icon, rendered per density
 #   ios/Slipgate/Assets.xcassets/                       the same icon for the iOS bundle

@@ -24,3 +24,40 @@ down the frame, and the rack still behind it being drawn in. Captured with the t
 longer than it ships at — it runs for 900 ms, which is too fast to photograph through a debugging
 protocol.
 
+
+## The launcher and the gates
+
+The eight captures below were taken from the Android build on an emulated Pixel 6 Pro running
+API 36, in landscape, with the tube effect on and the detail tier left on Automatic. The game data
+in them is Freedoom and Blasphemer, downloaded by the app's own first-run flow — the same data the
+`android-mars-running.jpg` photo above shows, and the only kind that may be pictured here.
+
+`android-rack.jpg` is the rack with two gates ready and two waiting: Mars and Corvus carry their
+portraits at full strength, while Korax and Macil sit behind the wash and speckle a gate wears when
+it has no data. The banner above the row belongs to whichever card holds the focus.
+
+`android-mars-freedoom.jpg` is Freedoom running under the `mars` gate, with the virtual pad around
+it — the stick to the left, the two turn buttons and fire to the right, and the utility row at the
+top for use, map and the automap toggle.
+
+`android-corvus-blasphemer.jpg` is Blasphemer running under the `corvus` gate. Heretic's status bar
+is a different shape from Doom's, which is one reason the pad is laid out around the picture rather
+than over it.
+
+`android-gate-menu.jpg` is the menu a player opens over a running gate: resume, leave, and the
+display settings that are worth changing while a game is in front of them. The gate behind it has
+stopped stepping and holds the frame it stopped on.
+
+`android-settings.jpg` is the Settings screen, coloured by the gate the player last had focus on.
+Detail is the measured tier and the four it can be overridden to; picture shape is how a 320 by 200
+frame meets a modern screen; the tube effect and its curvature follow.
+
+`android-credits.jpg` is the Credits screen, which names the architecture, the engines, the freely
+licensed data and the licences all of them carry.
+
+`android-free-replacement.jpg` is the data screen for a gate that has a free replacement to offer —
+Doom, here — with the download and the file picker side by side and the replacement named as a
+replacement.
+
+`android-own-copy-only.jpg` is the same screen for Hexen, which has no free replacement: one route
+in, and a sentence saying why.

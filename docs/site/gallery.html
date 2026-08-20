@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slipgate — screenshots</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --ink: #e8eaf2;
+    --dim: #9aa1b4;
+    --ground: #0b0d14;
+    --panel: #141824;
+    --edge: #232838;
+    --accent: #e2703a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 3rem 1.5rem 5rem;
+    background: var(--ground);
+    color: var(--ink);
+    font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 68rem; margin: 0 auto; }
+  h1 {
+    margin: 0 0 .25rem;
+    font-size: clamp(1.9rem, 4vw, 2.6rem);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .lede { margin: 0 0 2.5rem; max-width: 46rem; color: var(--dim); }
+  .lede a, footer a { color: var(--accent); }
+  figure {
+    margin: 0 0 2.5rem;
+    background: var(--panel);
+    border: 1px solid var(--edge);
+    border-radius: .6rem;
+    overflow: hidden;
+  }
+  figure img { display: block; width: 100%; height: auto; }
+  figcaption { padding: .9rem 1.1rem; color: var(--dim); font-size: .95rem; }
+  figcaption b { color: var(--ink); font-weight: 600; }
+  .pair { display: grid; gap: 1.5rem; grid-template-columns: 1fr; }
+  @media (min-width: 52rem) { .pair { grid-template-columns: 1fr 1fr; } }
+  h2 {
+    margin: 3rem 0 1.25rem;
+    font-size: .85rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  footer { max-width: 68rem; margin: 4rem auto 0; color: var(--dim); font-size: .9rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Slipgate</h1>
+  <p class="lede">
+    A console-style game select screen that boots classic id Tech 1 games. These are captures of the
+    running app — the Android build on an emulated Pixel 6 Pro, and the web build in a browser. The
+    game data in them is Freedoom and Blasphemer, the freely licensed replacements the app offers to
+    download; no game data ships with the project.
+    <a href="../">Open the web build</a> ·
+    <a href="https://github.com/jacksonfdam/slipgate">Source</a>
+  </p>
+
+  <h2>The rack</h2>
+  <figure>
+    <img src="shots/android-rack.jpg" alt="The Slipgate rack with four gate cards, two of them masked">
+    <figcaption><b>Two gates ready, two waiting.</b> Mars and Corvus carry their portraits at full
+    strength; Korax and Macil sit behind the wash and speckle a gate wears when it has no data. The
+    banner above the row belongs to whichever card holds the focus.</figcaption>
+  </figure>
+
+  <h2>Games</h2>
+  <div class="pair">
+    <figure>
+      <img src="shots/android-mars-freedoom.jpg" alt="Freedoom running with the virtual gamepad around it">
+      <figcaption><b>Freedoom under <code>mars</code>.</b> The stick to the left, turn and fire to
+      the right, and the utility row at the top for use, map and automap.</figcaption>
+    </figure>
+    <figure>
+      <img src="shots/android-corvus-blasphemer.jpg" alt="Blasphemer running under the corvus gate">
+      <figcaption><b>Blasphemer under <code>corvus</code>.</b> Heretic's status bar is a different
+      shape from Doom's, which is why the pad is laid out around the picture rather than over
+      it.</figcaption>
+    </figure>
+  </div>
+
+  <h2>Options</h2>
+  <div class="pair">
+    <figure>
+      <img src="shots/android-settings.jpg" alt="The Settings screen showing detail tier and picture shape">
+      <figcaption><b>Settings.</b> Coloured by the gate the player last had focus on. Detail is the
+      measured tier and the four it can be overridden to; picture shape is how a 320 by 200 frame
+      meets a modern screen; the tube effect and its curvature follow.</figcaption>
+    </figure>
+    <figure>
+      <img src="shots/android-gate-menu.jpg" alt="The menu opened over a paused gate">
+      <figcaption><b>The menu over a running gate.</b> Resume, leave, and the display settings worth
+      changing with a game in front of them. The gate behind it has stopped stepping and holds the
+      frame it stopped on.</figcaption>
+    </figure>
+  </div>
+
+  <h2>Game data</h2>
+  <div class="pair">
+    <figure>
+      <img src="shots/android-free-replacement.jpg" alt="The Doom data screen offering a Freedoom download">
+      <figcaption><b>A gate with a free replacement.</b> The download and the file picker side by
+      side, and the replacement named as a replacement rather than as the original.</figcaption>
+    </figure>
+    <figure>
+      <img src="shots/android-own-copy-only.jpg" alt="The Hexen data screen with only a file picker">
+      <figcaption><b>A gate without one.</b> Hexen has no freely licensed replacement, so there is
+      one route in and a sentence saying why.</figcaption>
+    </figure>
+  </div>
+  <figure>
+    <img src="shots/android-credits.jpg" alt="The Credits screen">
+    <figcaption><b>Credits.</b> The architecture this host is modelled on, the engines behind the
+    gates, the freely licensed data, and the licences all of them carry.</figcaption>
+  </figure>
+
+  <h2>The web build</h2>
+  <div class="pair">
+    <figure>
+      <img src="shots/web-attract-background.png" alt="The attract background behind the rack">
+      <figcaption><b>Attract background.</b> A palette-derived fire simulation, captured at the
+      Minimal tier — the one given no noise octaves at all, so what is visible is the shape the fire
+      keeps when it cannot afford to burn.</figcaption>
+    </figure>
+    <figure>
+      <img src="shots/web-launch-warp.png" alt="The launch transition pulling toward the centre">
+      <figcaption><b>Launch warp.</b> Streaks pulling toward the centre and the tear walking down the
+      frame. Held far longer than it ships at: it runs for 900 ms.</figcaption>
+    </figure>
+    <figure>
+      <img src="shots/web-gate-menu.png" alt="The gate menu in the web build">
+      <figcaption><b>The same menu on the web.</b> The gate behind it is the test pattern, which is
+      what that build ships until a browser-side engine driver exists.</figcaption>
+    </figure>
+    <figure>
+      <img src="shots/web-needs-data-mask.png" alt="The rack with one gate installed and one not">
+      <figcaption><b>Installed beside not installed.</b> No game data is in the picture — the
+      portrait is a shader, and that build had no IWAD.</figcaption>
+    </figure>
+  </div>
+</main>
+<footer>
+  Freedoom is distributed by the Freedoom project under a three-clause BSD licence; Blasphemer by its
+  own project. Doom, Heretic and Hexen are id Software and Raven Software works, and no data from
+  them is part of this project or anything it publishes.
+</footer>
+</body>
+</html>

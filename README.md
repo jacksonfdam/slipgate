@@ -10,6 +10,24 @@ and the game takes over the surface.
 Targets: **Android**, **Web (wasmJs)** and **iOS**. All three are first-class — a feature
 that works on two of them is not finished.
 
+## Screenshots
+
+The rack, with two gates ready and two waiting on data the player has not supplied yet:
+
+![The Slipgate rack on Android](docs/screenshots/android-rack.jpg)
+
+| | |
+|---|---|
+| ![Freedoom running under the mars gate](docs/screenshots/android-mars-freedoom.jpg) | ![Blasphemer running under the corvus gate](docs/screenshots/android-corvus-blasphemer.jpg) |
+| Freedoom under `mars`, with the virtual pad | Blasphemer under `corvus` |
+| ![The menu over a running gate](docs/screenshots/android-gate-menu.jpg) | ![The Settings screen](docs/screenshots/android-settings.jpg) |
+| The menu over a paused gate | Settings, coloured by the focused gate |
+
+The game data in these is Freedoom and Blasphemer, downloaded by the app's own first-run flow.
+More captures, including the data screens and the web build, are in
+[docs/screenshots](docs/screenshots/README.md), and the same set is published as a gallery
+beside the web build when Pages is deployed.
+
 ## Prior art
 
 Slipgate exists because of [mood](https://github.com/CharlieTap/mood) by Charlie Tapping,
