@@ -33,3 +33,25 @@ sha256 = 11a2777216f4b6313392cfa5121b63636db6b59b9b420563dd874f79761a83fa
 emscripten = 6.0.7
 flags = -ffile-prefix-map=<workdir>=slipgate -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=100663296 -sALLOW_MEMORY_GROWTH=1 -Wl,--wrap=M_FileCaseExists --no-entry -Oz
 
+
+# Native libraries, built by tooling/engine-build-native from the same pinned sources and the
+# same platform layer as the modules above. ndk is the exact NDK release; the host library is
+# what the JVM parity tests load, built by the recorded Apple clang.
+
+[mars-native-arm64]
+artifact = games/mars/src/androidMain/jniLibs/arm64-v8a/libmars.so
+sha256 = f1dc387c01b2cec0dcf1682029cc24e78f9ddbe6e4f3b631036ccfde7786b181
+ndk = 28.0.12916984
+flags = -DSLIPGATE=1 -fvisibility=hidden -fPIC -Oz -Wl,-z,max-page-size=16384
+
+[mars-native-x86_64]
+artifact = games/mars/src/androidMain/jniLibs/x86_64/libmars.so
+sha256 = 1ec41feb5813a29617cfec670dd54c71a109a9b0bddeca4b16bf1110a5ffacdb
+ndk = 28.0.12916984
+flags = -DSLIPGATE=1 -fvisibility=hidden -fPIC -Oz -Wl,-z,max-page-size=16384
+
+[mars-native-host]
+artifact = games/mars/src/jvmTest/resources/native/libmars-darwin-arm64.dylib
+sha256 = 6c8b17fa815cb9b58596ce0bdfdf2c57c1ee06043923f096d743a441cc2ded04
+compiler = Apple clang 21.0.0 (clang-2100.1.1.101), darwin-arm64
+flags = -DSLIPGATE=1 -fvisibility=hidden -fPIC -Oz
