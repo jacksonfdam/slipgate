@@ -1,23 +1,28 @@
 #!/usr/bin/env bash
-# Boots a Slipgate library on a NAS and tells the app where it went.
+# Puts the local data shelf on the public web and tells the app where it went.
 #
 # Three things happen here, in this order, and the order is the whole design:
 #
-#   1. The file server comes up on localhost. It never listens on the network directly, because the
-#      thing that should be reachable from outside is the tunnel and not the NAS.
+#   1. serve-shelf.py comes up on localhost, with a key. It never listens on the network directly,
+#      because the thing that should be reachable from outside is the tunnel and not the NAS. The
+#      key is what makes that safe: a tunnel hostname is the only thing between the public web and
+#      a directory of retail game data, and a hostname is not a secret.
 #   2. A tunnel is opened in front of it, and its public hostname is read back out. A quick tunnel
 #      gets a different hostname every time it starts, which is exactly why step 3 exists.
-#   3. The hostname and the library key are published to the beacon on the site. That is the one
-#      address the app is configured with, and it is the reason a player never has to retype a
-#      hostname after a power cut.
+#   3. The hostname and the key are published to the beacon on the site. That is the one address
+#      the app is configured with, and it is the reason a player never has to retype a hostname
+#      after a power cut.
+#
+# On a LAN none of this is needed: serve-shelf.py on its own is the shelf, and the network is the
+# authentication. This is the same shelf reached from outside it.
 #
 # Configuration is environment variables, optionally read from a file, so the same script runs from a
 # terminal, from a systemd unit and from a Synology scheduled task without arguments.
 #
-# Usage: slipgate-library.sh [--config path/to/library.env]
+# Usage: publish-shelf.sh [--config path/to/shelf.env]
 set -euo pipefail
 
-CONFIG="${SLIPGATE_LIBRARY_CONFIG:-}"
+CONFIG="${SLIPGATE_SHELF_CONFIG:-}"
 if [ "${1:-}" = "--config" ]; then
     CONFIG="${2:?--config needs a path}"
 fi
@@ -28,28 +33,28 @@ fi
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-ROOT="${SLIPGATE_LIBRARY_ROOT:?SLIPGATE_LIBRARY_ROOT must name the directory holding the game data}"
-PORT="${SLIPGATE_LIBRARY_PORT:-8099}"
-KEY="${SLIPGATE_LIBRARY_KEY:-}"
+ROOT="${SLIPGATE_SHELF_ROOT:-$(cd "${HERE}/../.." && pwd)/slipgate-server}"
+PORT="${SLIPGATE_SHELF_PORT:-8600}"
+KEY="${SLIPGATE_SHELF_KEY:-}"
 TUNNEL="${SLIPGATE_TUNNEL:-cloudflared}"
 PUBLIC_URL="${SLIPGATE_PUBLIC_URL:-}"
 BEACON_URL="${SLIPGATE_BEACON_URL:-}"
 BEACON_TOKEN="${SLIPGATE_BEACON_TOKEN:-}"
 REPUBLISH_SECONDS="${SLIPGATE_REPUBLISH_SECONDS:-900}"
-STATE_DIR="${SLIPGATE_STATE_DIR:-${TMPDIR:-/tmp}/slipgate-library}"
+STATE_DIR="${SLIPGATE_STATE_DIR:-${TMPDIR:-/tmp}/slipgate-shelf}"
 
 mkdir -p "${STATE_DIR}"
 SERVER_LOG="${STATE_DIR}/server.log"
 TUNNEL_LOG="${STATE_DIR}/tunnel.log"
 
 if [ -z "${KEY}" ]; then
-    # A library with no key would be an open directory of game data behind a public hostname, so one
+    # A shelf with no key would be an open directory of game data behind a public hostname, so one
     # is generated and kept. Kept rather than regenerated per boot, because the app holds it too.
     KEY_FILE="${STATE_DIR}/key"
     if [ ! -s "${KEY_FILE}" ]; then
         python3 -c 'import secrets; print(secrets.token_hex(16))' > "${KEY_FILE}"
         chmod 600 "${KEY_FILE}"
-        echo "generated a library key in ${KEY_FILE}"
+        echo "generated a shelf key in ${KEY_FILE}"
     fi
     KEY="$(cat "${KEY_FILE}")"
 fi
@@ -71,23 +76,23 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 start_server() {
-    SLIPGATE_LIBRARY_KEY="${KEY}" python3 "${HERE}/slipgate-library.py" \
-        --root "${ROOT}" --host 127.0.0.1 --port "${PORT}" > "${SERVER_LOG}" 2>&1 &
+    python3 "${HERE}/serve-shelf.py" "${ROOT}" \
+        --bind 127.0.0.1 --port "${PORT}" --key "${KEY}" > "${SERVER_LOG}" 2>&1 &
     SERVER_PID=$!
 
     for _ in $(seq 1 40); do
         if curl -fsS "http://127.0.0.1:${PORT}/health" > /dev/null 2>&1; then
-            echo "library up on http://127.0.0.1:${PORT} (pid ${SERVER_PID})"
+            echo "shelf up on http://127.0.0.1:${PORT} (pid ${SERVER_PID})"
             return 0
         fi
         if ! kill -0 "${SERVER_PID}" 2>/dev/null; then
-            echo "the library did not start:" >&2
+            echo "the shelf did not start:" >&2
             cat "${SERVER_LOG}" >&2
             return 1
         fi
         sleep 0.5
     done
-    echo "the library did not answer /health within 20 seconds" >&2
+    echo "the shelf did not answer /health within 20 seconds" >&2
     return 1
 }
 
@@ -165,7 +170,7 @@ open_tunnel() {
         ngrok) start_ngrok ;;
         none)
             if [ -z "${PUBLIC_URL}" ]; then
-                echo "SLIPGATE_TUNNEL=none needs SLIPGATE_PUBLIC_URL to say where the library is reachable" >&2
+                echo "SLIPGATE_TUNNEL=none needs SLIPGATE_PUBLIC_URL to say where the shelf is reachable" >&2
                 return 1
             fi
             TUNNEL_URL="${PUBLIC_URL}"
@@ -178,7 +183,7 @@ open_tunnel() {
 }
 
 # The document the app reads. Lines rather than JSON, because the app parses it with a split and no
-# JSON parser exists in the host; see tooling/library/README.md for the format.
+# JSON parser exists in the host; see docs/data-shelf.md for the format.
 pointer() {
     printf 'slipgate-beacon 1\nurl\t%s\nkey\t%s\nupdated\t%s\n' \
         "$1" "${KEY}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -187,7 +192,7 @@ pointer() {
 publish() {
     local url="$1"
     if [ -z "${BEACON_URL}" ]; then
-        echo "no SLIPGATE_BEACON_URL set, so nothing was published; point the app at ${url} by hand"
+        echo "no SLIPGATE_BEACON_URL set, so nothing was published; point the app at ${url}?key=${KEY} by hand"
         return 0
     fi
     if [ -z "${BEACON_TOKEN}" ]; then
@@ -200,16 +205,16 @@ publish() {
         --data-binary @- "${BEACON_URL}" > /dev/null; then
         echo "published ${url} to the beacon"
     else
-        # Not fatal: the library is up and reachable, and the next republish may well succeed. A
-        # boot that died here would take working game data down with an unreachable website.
-        echo "could not publish to the beacon; the library is still serving on ${url}" >&2
+        # Not fatal: the shelf is up and reachable, and the next republish may well succeed. A boot
+        # that died here would take working game data down with an unreachable website.
+        echo "could not publish to the beacon; the shelf is still serving on ${url}" >&2
     fi
 }
 
 start_server
 open_tunnel
 URL="${TUNNEL_URL}"
-echo "library reachable at ${URL}"
+echo "shelf reachable at ${URL}"
 publish "${URL}"
 
 # The loop is the only thing that keeps the script in the foreground, which is what a supervisor
@@ -220,7 +225,7 @@ while true; do
     wait $! || true
 
     if [ -n "${SERVER_PID}" ] && ! kill -0 "${SERVER_PID}" 2>/dev/null; then
-        echo "the library stopped; exiting so the supervisor can restart it" >&2
+        echo "the shelf stopped; exiting so the supervisor can restart it" >&2
         exit 1
     fi
     if [ -n "${TUNNEL_PID}" ] && ! kill -0 "${TUNNEL_PID}" 2>/dev/null; then
