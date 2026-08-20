@@ -333,7 +333,7 @@ private fun ActionButton(
                     Color.White.copy(alpha = if (pressed) PRESSED_ALPHA else IDLE_ALPHA),
                     CircleShape,
                 ).semantics {
-                    contentDescription = placement.label
+                    contentDescription = spokenName(action)
                     role = Role.Button
                 }.pointerInput(action, state) {
                     // A press has to survive the finger sliding: releasing on drag would make firing
