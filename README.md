@@ -93,7 +93,18 @@ caches. Acquisition is a first-run flow inside the app:
 - Hexen is user-supplied only, and its gate card says so rather than showing a download
   button that cannot work.
 
-Supplied files are validated by IWAD header and lump signature, never by filename.
+Both free options are named as what they are: a replacement rather than the original. Freedoom
+is not Doom and Blasphemer is not Heretic — different levels and art, the same game to play —
+and the data screen says so before a player downloads half a gigabyte expecting otherwise.
+
+Supplied files are validated by IWAD header and lump signature, never by filename. A file that
+is game data for the wrong game is refused by name: "that is Doom data and this gate needs
+Hexen".
+
+**The web cannot download either replacement.** GitHub's release assets send no
+`Access-Control-Allow-Origin`, so a browser refuses the request before it starts; the app says
+so plainly and the player supplies their own file instead. Serving the data from an origin that
+allows it would fix this, and that is a hosting decision rather than a code one.
 
 ## Licensing
 
