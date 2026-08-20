@@ -5,6 +5,8 @@ import com.jacksonfdam.slipgate.host.gamedata.storedAccent
 import com.jacksonfdam.slipgate.host.gamedata.unmet
 import com.jacksonfdam.slipgate.host.runtime.DataSource
 import com.jacksonfdam.slipgate.host.runtime.Gate
+import com.jacksonfdam.slipgate.host.runtime.addOnDisplayName
+import com.jacksonfdam.slipgate.host.runtime.isAddOnName
 
 /**
  * Reads the rack from the gates the entry point registered and the files already stored.
@@ -19,13 +21,28 @@ public suspend fun launcherState(
     LauncherState(
         cards =
             gates.map { gate ->
+                val gateId = gate.descriptor.id.value
                 GateCard(
                     descriptor = gate.descriptor,
                     availability = availabilityOf(gate, store),
-                    accent = storedAccent(store, gate.descriptor.id.value),
+                    accent = storedAccent(store, gateId),
+                    // Sorted the way the gate will load them, so what Settings lists top to bottom is
+                    // the order in which two add-ons replacing the same map override each other.
+                    addOns = addOnsOn(store, gateId),
                 )
             },
     )
+
+/** One gate's add-ons, named as the player supplied them, in the order the engine will load them. */
+private suspend fun addOnsOn(
+    store: GameDataStore,
+    gateId: String,
+): List<String> =
+    store
+        .names(gateId)
+        .filter(::isAddOnName)
+        .sorted()
+        .map(::addOnDisplayName)
 
 /** Reads one gate's availability, which is what changes after an install. */
 public suspend fun availabilityOf(

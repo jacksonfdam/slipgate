@@ -39,7 +39,10 @@ import com.jacksonfdam.slipgate.host.runtime.InputProfile
 import com.jacksonfdam.slipgate.host.runtime.SessionSaves
 import com.jacksonfdam.slipgate.ui.audio.InterfaceAudio
 import com.jacksonfdam.slipgate.ui.audio.ambientKeyOf
+import com.jacksonfdam.slipgate.ui.data.AddOnShelf
 import com.jacksonfdam.slipgate.ui.data.GameDataStage
+import com.jacksonfdam.slipgate.ui.data.StoredAddOnShelf
+import com.jacksonfdam.slipgate.ui.data.rememberFilePicker
 import com.jacksonfdam.slipgate.ui.gate.GateMenu
 import com.jacksonfdam.slipgate.ui.gate.GateMenuButton
 import com.jacksonfdam.slipgate.ui.gate.GateSurface
@@ -62,7 +65,7 @@ import org.koin.compose.koinInject
 private const val NANOS_PER_MILLI = 1_000_000L
 
 /** What the shell is showing. */
-private sealed interface Stage {
+internal sealed interface Stage {
     /** The cold-start splash, which doubles as the benchmark window. */
     data object Splash : Stage
 
@@ -122,6 +125,7 @@ public fun SlipgateApp(
             Shell(
                 gates = Gates(registry, resolver, hosts, store),
                 acquisition = acquisition,
+                shelf = StoredAddOnShelf(store, acquisition),
                 settings = settings,
                 audio = audio,
             )
@@ -156,18 +160,11 @@ public fun SlipgateApp(
     }
 }
 
-/** What it takes to open a gate: the registry to find it, and the three services it runs on. */
-private class Gates(
-    val registry: GateRegistry,
-    val resolver: BackendResolver,
-    val hosts: SessionHosts,
-    val store: GameDataStore,
-)
-
 /** What the shell needs beyond the gates themselves, kept together so a stage reads in one breath. */
 private class Shell(
     val gates: Gates,
     val acquisition: GameDataAcquisition,
+    val shelf: AddOnShelf,
     val settings: SettingsController,
     val audio: InterfaceAudio,
 )
@@ -202,9 +199,13 @@ private fun StageSurface(
                 section = section,
                 settings = shell.settings,
                 audio = shell.audio,
+                shelf = shell.shelf,
                 onSection = onSection,
                 onMove = { next -> onStage(Stage.Choosing(next)) },
                 onEnter = { card -> scope.launch { shell.enter(card, stage.state, onStage) } },
+                // The rack is read once rather than watched, so installing or removing an add-on has
+                // to say so; otherwise Settings lists a shelf that is no longer there.
+                onShelfChanged = { scope.launch { onStage(shell.gates.reread(stage.state.selected)) } },
                 statusLabel = "$platformName · ${shell.settings.activeTier.name}",
             )
         }
@@ -265,9 +266,13 @@ private fun LaunchingStage(
             section = section,
             settings = shell.settings,
             audio = shell.audio,
+            shelf = shell.shelf,
             onSection = {},
             onMove = {},
             onEnter = {},
+            // Every other control here is inert for the same reason: this rack is a picture of the
+            // one the player left, and the warp is already closing over it.
+            onShelfChanged = {},
             statusLabel = platformName,
         )
         LaunchWarp()
@@ -394,11 +399,29 @@ private fun ChoosingStage(
     section: LauncherSection,
     settings: SettingsController,
     audio: InterfaceAudio,
+    shelf: AddOnShelf,
     onSection: (LauncherSection) -> Unit,
     onMove: (LauncherState) -> Unit,
     onEnter: (GateCard) -> Unit,
+    onShelfChanged: () -> Unit,
     statusLabel: String,
 ) {
+    val scope = rememberCoroutineScope()
+
+    // Which gate the picker is for. Held across the pick because the file arrives from the platform
+    // long after the button that asked for it has gone.
+    var addingTo by remember { mutableStateOf<String?>(null) }
+    val pickMaps =
+        rememberFilePicker { file ->
+            val gateId = addingTo ?: return@rememberFilePicker
+            addingTo = null
+            scope.launch {
+                val problem = shelf.add(gateId, file.name, file.bytes)
+                audio.play(if (problem == null) InterfaceCue.Confirm else InterfaceCue.Blocked)
+                onShelfChanged()
+            }
+        }
+
     LauncherShell(
         state = state,
         section = section,
@@ -414,6 +437,17 @@ private fun ChoosingStage(
         onEnter = { card ->
             audio.play(if (card.isPlayable) InterfaceCue.Confirm else InterfaceCue.Blocked)
             onEnter(card)
+        },
+        onAddMaps = { gateId ->
+            addingTo = gateId
+            pickMaps()
+        },
+        onRemoveAddOn = { gateId, name ->
+            scope.launch {
+                shelf.remove(gateId, name)
+                audio.play(InterfaceCue.Back)
+                onShelfChanged()
+            }
         },
         statusLabel = statusLabel,
         modifier = Modifier.fillMaxSize(),
@@ -436,22 +470,4 @@ private suspend fun Shell.enter(
         delay(settings.launchDurationMillis.toLong())
         onStage(opened.await())
     }
-}
-
-/** Everything a chosen gate resolves to: missing data, a running session, or the reason. */
-private suspend fun Gates.openedStage(gate: Gate): Stage {
-    val gateId = gate.descriptor.id.value
-    val outstanding = gate.requirements().unmet(store.names(gateId)).firstOrNull()
-    if (outstanding != null) {
-        return Stage.NeedsData(gate, outstanding)
-    }
-    return resolver
-        .factoryFor(gate)
-        .mapCatching { factory ->
-            Stage.Playing(
-                session = factory.create(store.mount(gateId), hosts.forGate(gateId)),
-                profile = gate.inputProfile(),
-                title = gate.descriptor.title,
-            ) as Stage
-        }.getOrElse { failure -> Stage.Stuck(failure.message ?: "the gate did not open") }
 }
