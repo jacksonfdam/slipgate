@@ -25,6 +25,7 @@ import com.jacksonfdam.slipgate.host.graphics.core.CrtSettings
 import com.jacksonfdam.slipgate.host.graphics.core.QualityTier
 import com.jacksonfdam.slipgate.host.graphics.core.ScalingMode
 import com.jacksonfdam.slipgate.ui.design.ColorTokens
+import com.jacksonfdam.slipgate.ui.design.LocalAccentRamp
 import com.jacksonfdam.slipgate.ui.design.TypeScale
 import com.jacksonfdam.slipgate.ui.design.accentRamp
 
@@ -45,6 +46,8 @@ internal fun SettingsScreen(
     installedGates: List<GateDataStatus>,
     version: String,
     modifier: Modifier = Modifier,
+    onAddMaps: (gateId: String) -> Unit = {},
+    onRemoveAddOn: (gateId: String, name: String) -> Unit = { _, _ -> },
 ) {
     val settings = controller.settings
 
@@ -73,13 +76,7 @@ internal fun SettingsScreen(
         }
 
         items(installedGates) { status ->
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(text = status.title, style = TypeScale.Body, color = ColorTokens.Text)
-                Text(text = status.summary, style = TypeScale.Label, color = ColorTokens.Muted)
-            }
+            GateFiles(status = status, onAddMaps = onAddMaps, onRemoveAddOn = onRemoveAddOn)
         }
 
         item {
@@ -152,9 +149,75 @@ internal fun DisplaySection(controller: SettingsController) {
 
 /** One gate's data situation, as Settings reports it. */
 internal data class GateDataStatus(
+    val id: String,
     val title: String,
     val summary: String,
+    /** The add-ons on this gate's shelf, in the order the engine will load them. */
+    val addOns: List<String> = emptyList(),
+    /** Whether add-ons can be loaded at all, and when they cannot, the reason a player can act on. */
+    val addOnsBlockedBecause: String? = null,
 )
+
+/**
+ * One gate's files: the game itself, then the maps loaded over it.
+ *
+ * Add-ons are only offered once the game is installed, because `-file` needs something to load over
+ * and a control that cannot work should not be drawn.
+ */
+@Composable
+private fun GateFiles(
+    status: GateDataStatus,
+    onAddMaps: (String) -> Unit,
+    onRemoveAddOn: (String, String) -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(text = status.title, style = TypeScale.Body, color = ColorTokens.Text)
+            Text(text = status.summary, style = TypeScale.Label, color = ColorTokens.Muted)
+        }
+
+        status.addOns.forEach { name ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(start = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(text = name, style = TypeScale.Data, color = ColorTokens.Muted)
+                Text(
+                    text = "REMOVE",
+                    style = TypeScale.Label,
+                    color = LocalAccentRamp.current.hot,
+                    modifier = Modifier.clickable { onRemoveAddOn(status.id, name) },
+                )
+            }
+        }
+
+        when {
+            status.addOnsBlockedBecause != null -> {
+                Text(
+                    text = status.addOnsBlockedBecause,
+                    style = TypeScale.Label,
+                    color = ColorTokens.Muted,
+                    modifier = Modifier.padding(start = 16.dp),
+                )
+            }
+
+            else -> {
+                Text(
+                    text = "ADD MAPS…",
+                    style = TypeScale.Label,
+                    color = LocalAccentRamp.current.hot,
+                    modifier = Modifier.padding(start = 16.dp).clickable { onAddMaps(status.id) },
+                )
+            }
+        }
+    }
+}
 
 private fun detailExplanation(controller: SettingsController): String {
     val measured = controller.measured

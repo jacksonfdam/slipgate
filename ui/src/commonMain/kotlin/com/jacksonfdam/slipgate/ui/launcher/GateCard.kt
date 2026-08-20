@@ -36,6 +36,8 @@ public data class GateCard(
      * player's game files, and reading files is not something a composable should be doing.
      */
     val accent: AccentExtraction? = null,
+    /** The add-ons on this gate's shelf, by the name the player supplied, in load order. */
+    val addOns: List<String> = emptyList(),
 ) {
     public val id: String get() = descriptor.id.value
 
