@@ -38,6 +38,15 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v6
       - run: ./gradlew :web:wasmJsBrowserDistribution
+      # The gallery is published beside the app rather than linked from inside it: the app carries no
+      # images of itself, and a visitor with no game data of their own still gets to see what the
+      # thing looks like when it is running.
+      - name: Stage the screenshot gallery
+        run: |
+          site=web/build/dist/wasmJs/productionExecutable
+          mkdir -p "$site/gallery/shots"
+          cp docs/site/gallery.html "$site/gallery/index.html"
+          cp docs/screenshots/*.jpg docs/screenshots/*.png "$site/gallery/shots/"
       # Whatever is about to be published carries no game data. The repository is checked by CI on
       # every push; this checks the built directory, which is what actually goes onto the web.
       - name: No game data in what is published
