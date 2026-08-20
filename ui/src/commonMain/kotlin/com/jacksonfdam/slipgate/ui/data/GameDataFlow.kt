@@ -62,6 +62,30 @@ public suspend fun GameDataAcquisition.take(
         onProgress = onProgress,
     )
 
+/**
+ * Downloads what [url] names in the player's own library and stores it as what [entry] needs.
+ *
+ * Stored under the entry's key rather than under the name the library used, because a gate looks for
+ * the key: someone whose IWAD is called `doom19ud.wad` on the NAS still gets a bootable gate. What
+ * the file actually is, is decided by inspecting it here as with every other route.
+ */
+public suspend fun GameDataAcquisition.takeFromLibrary(
+    gate: String,
+    engine: String,
+    entry: DataEntry,
+    url: String,
+    onProgress: (Long, Long?) -> Unit,
+): AcquisitionResult =
+    acquire(
+        AcquisitionRequest(
+            gate = gate,
+            name = entry.key,
+            url = url,
+            accepts = acceptedFlavours(engine),
+        ),
+        onProgress = onProgress,
+    )
+
 /** Installs a file the player supplied for [entry]. */
 public suspend fun GameDataAcquisition.take(
     gate: String,

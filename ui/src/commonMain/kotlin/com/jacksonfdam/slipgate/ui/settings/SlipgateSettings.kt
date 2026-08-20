@@ -26,6 +26,14 @@ public data class SlipgateSettings(
     val reducedMotion: Boolean = false,
     /** How loud the interface's own sounds are, from silence to full. */
     val interfaceVolume: Float = 0.7f,
+    /**
+     * Where this device can reach the player's own game data, or null when it cannot.
+     *
+     * A beacon address or the library itself; the launcher decides which by what answers. It is a
+     * setting rather than a build constant because it is one player's home server, and it is the
+     * only field here that reaches the network.
+     */
+    val libraryAddress: String? = null,
 ) {
     public companion object {
         public val Default: SlipgateSettings = SlipgateSettings()

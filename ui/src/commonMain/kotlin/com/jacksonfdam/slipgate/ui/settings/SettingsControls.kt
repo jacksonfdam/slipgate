@@ -12,6 +12,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -19,6 +23,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.jacksonfdam.slipgate.ui.design.ColorTokens
 import com.jacksonfdam.slipgate.ui.design.TypeScale
@@ -111,6 +117,53 @@ internal fun <T> Choice(
                 )
             }
         }
+    }
+}
+
+/**
+ * A line of text a player types, for the one setting that is not a choice between things Slipgate
+ * knows about: the address of their own server.
+ *
+ * Written straight through to the setting on every keystroke rather than on a done action, because
+ * there is no save button on this screen and a half-typed address is no worse than an empty one — the
+ * launcher only reaches the network when something asks it to.
+ */
+@Composable
+internal fun Entry(
+    label: String,
+    explanation: String,
+    value: String,
+    placeholder: String,
+    onChange: (String) -> Unit,
+    onDone: () -> Unit = {},
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(text = label, style = TypeScale.Body, color = ColorTokens.Text)
+        Text(text = explanation, style = TypeScale.Label, color = ColorTokens.Muted)
+        BasicTextField(
+            value = value,
+            onValueChange = onChange,
+            singleLine = true,
+            textStyle = LocalTextStyle.current.merge(TypeScale.Data).copy(color = ColorTokens.Text),
+            cursorBrush = SolidColor(accentRamp.hot),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onDone() }),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(ColorTokens.Surface)
+                    .border(width = 1.dp, color = ColorTokens.Edge, shape = RoundedCornerShape(2.dp))
+                    .padding(horizontal = 10.dp, vertical = 12.dp),
+            decorationBox = { field ->
+                // The placeholder is drawn behind rather than as the value, so an empty field reads as
+                // an example instead of as something already set.
+                if (value.isEmpty()) {
+                    Text(text = placeholder, style = TypeScale.Data, color = ColorTokens.Muted)
+                }
+                field()
+            },
+        )
     }
 }
 
