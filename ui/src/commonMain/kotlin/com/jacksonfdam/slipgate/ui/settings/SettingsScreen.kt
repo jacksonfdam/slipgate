@@ -17,6 +17,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,10 +25,14 @@ import androidx.compose.ui.unit.dp
 import com.jacksonfdam.slipgate.host.graphics.core.CrtSettings
 import com.jacksonfdam.slipgate.host.graphics.core.QualityTier
 import com.jacksonfdam.slipgate.host.graphics.core.ScalingMode
+import com.jacksonfdam.slipgate.ui.data.LibraryController
+import com.jacksonfdam.slipgate.ui.data.LibraryState
+import com.jacksonfdam.slipgate.ui.data.describe
 import com.jacksonfdam.slipgate.ui.design.ColorTokens
 import com.jacksonfdam.slipgate.ui.design.LocalAccentRamp
 import com.jacksonfdam.slipgate.ui.design.TypeScale
 import com.jacksonfdam.slipgate.ui.design.accentRamp
+import kotlinx.coroutines.launch
 
 /**
  * Settings, in the order the specification lists them: what the player sees first is what they change
@@ -43,6 +48,7 @@ import com.jacksonfdam.slipgate.ui.design.accentRamp
 @Composable
 internal fun SettingsScreen(
     controller: SettingsController,
+    library: LibraryController,
     installedGates: List<GateDataStatus>,
     version: String,
     modifier: Modifier = Modifier,
@@ -61,6 +67,10 @@ internal fun SettingsScreen(
 
         item {
             DisplaySection(controller)
+        }
+
+        item {
+            LibrarySection(controller, library)
         }
 
         item {
@@ -101,6 +111,46 @@ internal fun SettingsScreen(
                     color = ColorTokens.Muted,
                 )
             }
+        }
+    }
+}
+
+/**
+ * Where this device can reach the player's own game data.
+ *
+ * One field, because one address is all a player should have to carry between devices: it may be a
+ * beacon that says where their server is at the moment, or the server itself when they are at home.
+ * The line under it is the only report there is, so it says what answered rather than "connected".
+ */
+@Composable
+private fun LibrarySection(
+    controller: SettingsController,
+    library: LibraryController,
+) {
+    val scope = rememberCoroutineScope()
+    val address = controller.settings.libraryAddress.orEmpty()
+
+    Section(title = "Home library") {
+        Entry(
+            label = "Beacon or library address",
+            explanation = "Where your own files are served from. Left empty, nothing is fetched.",
+            value = address,
+            placeholder = "https://…",
+            onChange = { typed ->
+                controller.update { it.copy(libraryAddress = typed.takeIf { entered -> entered.isNotBlank() }) }
+            },
+            // Reached on the keyboard's own done action rather than while typing: every keystroke of a
+            // half-typed hostname would be a request to somewhere that does not exist.
+            onDone = { scope.launch { library.refresh(address, force = true) } },
+        )
+        Text(text = library.state.describe(), style = TypeScale.Label, color = ColorTokens.Muted)
+        if (address.isNotBlank() && library.state !is LibraryState.Looking) {
+            Text(
+                text = "CHECK AGAIN",
+                style = TypeScale.Label,
+                color = LocalAccentRamp.current.hot,
+                modifier = Modifier.clickable { scope.launch { library.refresh(address, force = true) } },
+            )
         }
     }
 }

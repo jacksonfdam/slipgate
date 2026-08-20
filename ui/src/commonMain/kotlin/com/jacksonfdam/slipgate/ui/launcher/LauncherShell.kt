@@ -23,6 +23,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.jacksonfdam.slipgate.ui.credits.CreditsScreen
+import com.jacksonfdam.slipgate.ui.data.LibraryController
 import com.jacksonfdam.slipgate.ui.design.Backdrops
 import com.jacksonfdam.slipgate.ui.design.ColorTokens
 import com.jacksonfdam.slipgate.ui.design.LocalAccentRamp
@@ -47,6 +48,7 @@ public fun LauncherShell(
     onEnter: (GateCard) -> Unit,
     statusLabel: String,
     settings: SettingsController,
+    library: LibraryController,
     modifier: Modifier = Modifier,
     onAddMaps: (gateId: String) -> Unit = {},
     onRemoveAddOn: (gateId: String, name: String) -> Unit = { _, _ -> },
@@ -66,6 +68,7 @@ public fun LauncherShell(
                             onSelect = onSelect,
                             onEnter = onEnter,
                             settings = settings,
+                            library = library,
                             statusLabel = statusLabel,
                             onAddMaps = onAddMaps,
                             onRemoveAddOn = onRemoveAddOn,
@@ -84,6 +87,7 @@ public fun LauncherShell(
                             onSelect = onSelect,
                             onEnter = onEnter,
                             settings = settings,
+                            library = library,
                             statusLabel = statusLabel,
                             onAddMaps = onAddMaps,
                             onRemoveAddOn = onRemoveAddOn,
@@ -151,6 +155,7 @@ private fun SectionContent(
     onSelect: (Int) -> Unit,
     onEnter: (GateCard) -> Unit,
     settings: SettingsController,
+    library: LibraryController,
     statusLabel: String,
     onAddMaps: (gateId: String) -> Unit,
     onRemoveAddOn: (gateId: String, name: String) -> Unit,
@@ -164,6 +169,7 @@ private fun SectionContent(
         LauncherSection.Settings -> {
             SettingsScreen(
                 controller = settings,
+                library = library,
                 installedGates = state.cards.map { card -> card.dataStatus() },
                 version = statusLabel,
                 onAddMaps = onAddMaps,
