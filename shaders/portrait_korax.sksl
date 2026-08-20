@@ -1,0 +1,95 @@
+// The korax gate portrait: three cold shafts of light falling through water, one for each of the
+// classes a player picks between, crossed by a slow swell. It reads as Hexen without depicting it.
+//
+// Written in the dialect Skia runtime effects and AGSL share, and declaring the shared scene uniform
+// block — the same fifteen floats every scene shader takes, in the same order.
+//
+// Where mars rises and corvus drifts, this one sinks: the field falls, and the swell moves across it
+// slowly enough to read as water rather than as fire. Zero octaves must still compose a readable
+// still (the Minimal tier and the reduced-motion frame, with timeSeconds frozen by the host).
+
+uniform float widthPixels;
+uniform float heightPixels;
+uniform float timeSeconds;
+uniform float accentDimR;
+uniform float accentDimG;
+uniform float accentDimB;
+uniform float accentBaseR;
+uniform float accentBaseG;
+uniform float accentBaseB;
+uniform float accentHotR;
+uniform float accentHotG;
+uniform float accentHotB;
+uniform float focusAmount;
+uniform float audioLevel;
+uniform float octaves;
+
+const float MAX_OCTAVES = 6.0;
+const float SINK = 0.04;
+const float SWELL_RATE = 0.18;
+const float SHAFTS = 3.0;
+const float SHAFT_SHARPNESS = 7.0;
+const float CAUSTIC_SCALE = 5.0;
+
+float hash(float2 p) {
+    return fract(sin(dot(p, float2(127.1, 311.7))) * 43758.5453);
+}
+
+float valueNoise(float2 p) {
+    float2 cell = floor(p);
+    float2 inside = fract(p);
+    float2 eased = inside * inside * (3.0 - 2.0 * inside);
+    float a = hash(cell);
+    float b = hash(cell + float2(1.0, 0.0));
+    float c = hash(cell + float2(0.0, 1.0));
+    float d = hash(cell + float2(1.0, 1.0));
+    return mix(mix(a, b, eased.x), mix(c, d, eased.x), eased.y);
+}
+
+float fbm(float2 p) {
+    float sum = 0.0;
+    float amplitude = 0.5;
+    float weight = 0.0;
+    for (float octave = 0.0; octave < MAX_OCTAVES; octave += 1.0) {
+        if (octave >= octaves) { break; }
+        sum += amplitude * valueNoise(p);
+        weight += amplitude;
+        amplitude *= 0.5;
+        p = p * 1.97 + float2(5.0, 41.0);
+    }
+    return weight > 0.0 ? sum / weight : 0.5;
+}
+
+half4 main(float2 coord) {
+    float2 uv = coord / float2(widthPixels, heightPixels);
+
+    // The swell: a slow lateral lean that the shafts are measured against, so they bend together.
+    float swell = sin(uv.y * 2.6 + timeSeconds * SWELL_RATE) * 0.06;
+
+    // Three shafts, evenly spaced, each brightest at its centre line. The fixed pattern is what a
+    // still frame has to stand on when the tier allows no noise at all.
+    float across = fract((uv.x + swell) * SHAFTS);
+    float shaft = pow(max(1.0 - abs(across * 2.0 - 1.0), 0.0), SHAFT_SHARPNESS);
+
+    // Light falls, so the field sinks: shafts are strongest where they enter and fade as they go.
+    float fall = smoothstep(1.0, 0.15, uv.y);
+    float2 field = float2(uv.x * CAUSTIC_SCALE, uv.y * CAUSTIC_SCALE - timeSeconds * SINK);
+    float caustic = fbm(field);
+
+    float light = shaft * fall * (0.45 + 0.55 * caustic);
+    light *= 0.7 + 0.3 * focusAmount + 0.3 * audioLevel;
+    light = clamp(light, 0.0, 1.0);
+
+    half3 dim = half3(half(accentDimR), half(accentDimG), half(accentDimB));
+    half3 base = half3(half(accentBaseR), half(accentBaseG), half(accentBaseB));
+    half3 hot = half3(half(accentHotR), half(accentHotG), half(accentHotB));
+
+    // Deep water everywhere, the shafts in the base colour, and only their cores reaching the hot end.
+    half3 colour = dim * half(0.30 + 0.35 * (1.0 - uv.y));
+    colour = mix(colour, base, half(smoothstep(0.10, 0.55, light)));
+    colour = mix(colour, hot, half(smoothstep(0.72, 1.0, light)));
+
+    // The frame fade, so the portrait sits in its card rather than filling it to the corners.
+    float frame = smoothstep(0.0, 0.10, uv.y) * smoothstep(1.0, 0.90, uv.y);
+    return half4(colour * half(frame), 1.0);
+}

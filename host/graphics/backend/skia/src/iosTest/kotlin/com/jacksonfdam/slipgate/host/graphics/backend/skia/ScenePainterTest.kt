@@ -10,13 +10,14 @@ import kotlin.test.assertNull
  */
 class ScenePainterTest {
     @Test
-    fun aGateWithAPortraitGetsAPainter() {
+    fun everyGateWithAPortraitGetsAPainter() {
         assertNotNull(portraitPainter("mars"), "the mars portrait did not compile")
+        assertNotNull(portraitPainter("corvus"), "the corvus portrait did not compile")
+        assertNotNull(portraitPainter("korax"), "the korax portrait did not compile")
     }
 
     @Test
     fun aGateWithoutAPortraitGetsNone() {
-        assertNull(portraitPainter("korax"))
         assertNull(portraitPainter("testpattern"))
     }
 }
