@@ -1,6 +1,6 @@
-// The beacon: one small document that says where a player's own game library is right now.
+// The beacon: one small document that says where a player's own data shelf is right now.
 //
-// The problem it solves is that a home library moves. A quick tunnel gets a new hostname every time
+// The problem it solves is that a shelf behind a home tunnel moves. A quick tunnel gets a new hostname every time
 // it starts, a NAS reboots after a power cut, and an app configured with a hostname is an app that
 // has to be reconfigured on every device each time either happens. So the app is configured with
 // this address instead — which never changes — and the NAS updates what it points at.
@@ -11,7 +11,7 @@
 //   GET   the app reads the pointer, proving itself by knowing the beacon id.
 //
 // The id is the read credential rather than a name, which is why it has to be long and random: the
-// pointer holds the key to the library behind it, so whoever holds the id holds the library.
+// pointer holds the key to the shelf behind it, so whoever holds the id holds the shelf.
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { del, list, put } from '@vercel/blob';
 
@@ -67,7 +67,7 @@ async function read(id, request, response) {
   const found = await locate(id);
   if (!found) {
     // 404 rather than an empty document: an app that gets a pointer it cannot use should hear that
-    // the library has never announced itself, not that it is somewhere unreachable.
+    // the shelf has never announced itself, not that it is somewhere unreachable.
     response.status(404).type('text/plain').send('this beacon has nothing to point at\n');
     return;
   }
@@ -187,7 +187,7 @@ function invalid(pointer) {
     return 'the url has to be https';
   }
   if (!fields.get('key')) {
-    return 'a pointer needs a key line, or the app cannot read the library it points at';
+    return 'a pointer needs a key line, or the app cannot read the shelf it points at';
   }
   return null;
 }

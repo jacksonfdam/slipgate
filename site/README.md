@@ -1,8 +1,8 @@
 # The Slipgate site
 
-A page explaining the home library, and the beacon a home library publishes itself to. Deployed to
+A page explaining the data shelf reached from outside a LAN, and the beacon a tunnelled shelf publishes itself to. Deployed to
 Vercel as its own project with the root directory set to `site`. The full setup guide is
-[docs/home-library.md](../docs/home-library.md).
+[docs/data-shelf.md](../docs/data-shelf.md).
 
 ## Deploy
 
@@ -22,7 +22,7 @@ it is what the NAS proves itself with when it publishes.
 
 | File | What it is |
 |---|---|
-| `index.html` | The page: how the library works, how to boot it, and a checker that reports what a beacon points at |
+| `index.html` | The page: how a tunnelled shelf works, how to boot it, and a checker that reports what a beacon points at |
 | `api/beacon/[id].js` | The beacon. `POST` to publish with the token, `GET` to read with the id, `DELETE` to forget |
 | `vercel.json` | Serves the beacon at `/beacon/<id>` as well, and keeps every answer uncached |
 

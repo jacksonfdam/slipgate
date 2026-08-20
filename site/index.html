@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Slipgate — home library beacon</title>
+    <title>Slipgate — data shelf beacon</title>
     <meta
       name="description"
       content="How a Slipgate player serves their own game data from a NAS and lets every device find it, wherever they are."
@@ -140,18 +140,18 @@
   </head>
   <body>
     <main>
-      <h1>Home library beacon</h1>
+      <h1>Data shelf beacon</h1>
       <p class="lead">
-        Slipgate ships no game data, so every device needs the player's own files. This is how one
-        copy on a NAS serves all of them — at home and away from it — without anyone retyping a
-        hostname after a reboot.
+        Slipgate ships no game data, so every device needs the player's own files. A data shelf on a
+        NAS serves the devices at home; this is how it serves the ones that are not, without anyone
+        retyping a hostname after a reboot.
       </p>
 
       <h2>How it works</h2>
       <ol>
         <li>
-          A small file server runs on the NAS, listening on localhost only and refusing every
-          request that does not carry the library key.
+          <code>serve-shelf.py</code> runs on the NAS, listening on localhost only and refusing
+          every request that does not carry the shelf key.
         </li>
         <li>
           A tunnel — <code>cloudflared</code> or <code>ngrok</code> — puts it on the public web over
@@ -159,7 +159,7 @@
           the step below.
         </li>
         <li>
-          The NAS publishes a pointer to this site: where the library is now, and the key to read
+          The NAS publishes a pointer to this site: where the shelf is now, and the key to read
           it. The app is configured with the beacon address, which never changes.
         </li>
       </ol>
@@ -168,25 +168,27 @@
         device follows it without being touched.
       </p>
 
-      <h2>Boot the library</h2>
+      <h2>Boot the shelf</h2>
       <p>
-        Both scripts live in the Slipgate repository under <code>tooling/library</code>. Lay the
-        files out one directory per gate, with map packs under <code>addons</code>:
+        The scripts live in the Slipgate repository under <code>tooling/data-shelf</code>. Lay the
+        files out one directory per gate, with the Quake-family engines' own directories inside
+        theirs and map packs in <code>addons</code>:
       </p>
-      <pre>/volume1/games/slipgate/
-  mars/doom.wad
-  mars/addons/sunlust.wad
+      <pre>slipgate-server/
+  mars/doomu.wad
   corvus/heretic.wad
+  korax/hexen.wad
   macil/strife1.wad
-  macil/voices.wad</pre>
+  chthon/id1/pak0.pak
+  addons/hexdd.wad</pre>
       <p>Then write the configuration and start it:</p>
-      <pre>export SLIPGATE_LIBRARY_ROOT=/volume1/games/slipgate
-export SLIPGATE_LIBRARY_KEY=$(openssl rand -hex 16)
+      <pre>export SLIPGATE_SHELF_ROOT=/volume1/games/slipgate-server
+export SLIPGATE_SHELF_KEY=$(openssl rand -hex 16)
 export SLIPGATE_TUNNEL=cloudflared
 export SLIPGATE_BEACON_URL=https://&lt;this-site&gt;/beacon/&lt;beacon-id&gt;
 export SLIPGATE_BEACON_TOKEN=&lt;publish-token&gt;
 
-tooling/library/slipgate-library.sh</pre>
+tooling/data-shelf/publish-shelf.sh</pre>
       <p class="muted">
         The beacon id is 24 to 64 hex characters that you choose once — it is the read credential,
         so generate it with <code>openssl rand -hex 16</code> rather than picking a word. The publish
@@ -246,14 +248,14 @@ updated	2026-08-20T18:22:41Z</pre>
 
       <h2>What this is not</h2>
       <p class="muted">
-        Not a way to get game data you do not own, and not a public mirror: the library refuses
-        anonymous requests, and the pointer that unlocks it is only readable by whoever holds the
-        beacon id. Serving commercial IWADs to strangers is redistribution however briefly it is
+        Not a way to get game data you do not own, and not a public mirror: a tunnelled shelf
+        refuses anonymous requests, and the pointer that unlocks it is only readable by whoever holds
+        the beacon id. Serving commercial IWADs to strangers is redistribution however briefly it is
         done, which is why the key is not optional and the tunnel hostname alone opens nothing.
       </p>
       <p class="muted">
         Slipgate is on <a href="https://github.com/jacksonfdam/slipgate">GitHub</a>; the setup guide
-        is <code>docs/home-library.md</code>.
+        is <code>docs/data-shelf.md</code>.
       </p>
     </main>
 
