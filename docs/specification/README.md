@@ -14,6 +14,7 @@ directory holds the specification it is built against, in the order it was writt
 | [07-addendum-05.md](07-addendum-05.md) | The Hexen II gate: uHexen2, what phase 8 inherits from phase 7, and the delivery plan |
 | [08-addendum-06.md](08-addendum-06.md) | The data origin: what `slipgate-server` may serve, what it may not, and what changes in the client |
 | [09-addendum-07.md](09-addendum-07.md) | The shelf beyond the LAN: a key on the shelf server, the beacon that says where a tunnel put it, and how it differs from addendum 06 |
+| [10-addendum-08.md](10-addendum-08.md) | The Wolfenstein 3D gate: Wolf4SDL, a third engine family, the 1995 licence, and the delivery plan |
 
 Later documents amend earlier ones rather than replacing them. Where an amendment conflicts
 with something already merged, the pull request that resolves it says so explicitly and
