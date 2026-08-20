@@ -57,6 +57,14 @@ void sg_engine_frame_boundary(void);
 // own defaults, because that is what would otherwise overwrite it.
 void sg_bind_weapon_cycle(void);
 
+// The engine's own files, kept in the module's memory by platform/sg_files.c. The module is built
+// standalone and has no filesystem behind its C library, so this is the one the engines get.
+int sg_file_count(void);
+const char *sg_file_name(int index);
+long sg_file_size(int index);
+long sg_file_read(int index, unsigned char *destination, long capacity);
+boolean sg_file_write(const char *name, const unsigned char *data, long size);
+
 int sg_audio_drain(int16_t *destination, int frames);
 void sg_audio_advance(int elapsed_millis);
 void sg_request_quit(void);
