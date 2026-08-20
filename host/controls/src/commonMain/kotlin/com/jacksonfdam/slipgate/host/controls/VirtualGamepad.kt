@@ -1,5 +1,7 @@
 package com.jacksonfdam.slipgate.host.controls
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -12,7 +14,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -20,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +35,7 @@ import com.jacksonfdam.slipgate.host.runtime.Axis2
 import com.jacksonfdam.slipgate.host.runtime.GateAction
 import com.jacksonfdam.slipgate.host.runtime.InputExtension
 import com.jacksonfdam.slipgate.host.runtime.InputProfile
+import kotlinx.coroutines.delay
 
 private val PAD_SIZE = 160.dp
 private val EDGE_PADDING = 20.dp
@@ -41,14 +47,21 @@ private val EXTENSION_SPACING = 8.dp
 private val EXTENSION_BOTTOM_PADDING = 28.dp
 private const val IDLE_ALPHA = 0.30f
 private const val PRESSED_ALPHA = 0.55f
-private const val LABEL_ALPHA = 0.85f
+internal const val LABEL_ALPHA = 0.85f
 private const val DEAD_ZONE = 12f
+
+// The pad fades out of the way when it is not being used, and comes back the instant it is touched.
+// Four seconds and 35 per cent are the numbers docs/controls-touch-layout.md sets down.
+private const val RESTING_OPACITY = 0.35f
+private const val IDLE_DELAY_MS = 4_000L
+private const val FADE_OUT_MS = 600
+private const val FADE_IN_MS = 90
 
 /**
  * Where one action's button sits and how big it is. Trigger actions cluster around the
  * right thumb's resting arc; the utility pair sits out of the way at the top edge.
  */
-private class ButtonPlacement(
+internal class ButtonPlacement(
     val fromTop: Boolean,
     val end: Dp,
     val vertical: Dp,
@@ -58,7 +71,7 @@ private class ButtonPlacement(
 
 // Distances are from the corner the button hangs off, so the cluster hugs the bezel the
 // thumb already rests on instead of marching across the middle of the picture.
-private val placements: Map<GateAction, ButtonPlacement> =
+internal val placements: Map<GateAction, ButtonPlacement> =
     mapOf(
         GateAction.Fire to
             ButtonPlacement(
@@ -90,13 +103,30 @@ private val placements: Map<GateAction, ButtonPlacement> =
             ButtonPlacement(fromTop = true, end = 144.dp, vertical = 20.dp, size = 48.dp, label = "ENTER"),
     )
 
-private val labelStyle =
-    TextStyle(
-        color = Color.White.copy(alpha = LABEL_ALPHA),
-        fontSize = 11.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = 1.sp,
-    )
+/**
+ * How visible the pad is: full while it is being used, and [RESTING_OPACITY] once it has been left
+ * alone for [IDLE_DELAY_MS].
+ *
+ * Keyed on a count of touches rather than a timestamp, because a count is what an effect can restart
+ * on — and the effect restarting is exactly what "the player did something" should mean. Slow to
+ * leave and quick to return: a pad that took as long to come back would feel stuck.
+ */
+@Composable
+private fun restingOpacity(touches: Int): Float {
+    var resting by remember { mutableStateOf(false) }
+    LaunchedEffect(touches) {
+        resting = false
+        delay(IDLE_DELAY_MS)
+        resting = true
+    }
+    val opacity by
+        animateFloatAsState(
+            targetValue = if (resting) RESTING_OPACITY else 1f,
+            animationSpec = tween(durationMillis = if (resting) FADE_OUT_MS else FADE_IN_MS),
+            label = "pad opacity",
+        )
+    return opacity
+}
 
 /**
  * The touch controls, laid out from the gate's own input profile.
@@ -109,10 +139,20 @@ public fun VirtualGamepad(
     profile: InputProfile,
     state: ControlState,
     modifier: Modifier = Modifier,
+    decor: PadDecor = PadDecor.Labels,
 ) {
-    Box(modifier = modifier.fillMaxSize()) {
+    var touches by remember { mutableIntStateOf(0) }
+    val opacity = restingOpacity(touches)
+
+    Box(
+        modifier =
+            modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = opacity },
+    ) {
         MovementPad(
             state = state,
+            onTouch = { touches++ },
             modifier =
                 Modifier
                     .align(Alignment.BottomStart)
@@ -131,7 +171,12 @@ public fun VirtualGamepad(
                         .padding(bottom = EXTENSION_BOTTOM_PADDING),
             ) {
                 profile.extensions.forEach { extension ->
-                    ExtensionButton(extension = extension, state = state)
+                    ExtensionButton(
+                        extension = extension,
+                        state = state,
+                        decor = decor,
+                        onTouch = { touches++ },
+                    )
                 }
             }
         }
@@ -141,6 +186,8 @@ public fun VirtualGamepad(
                 action = action,
                 state = state,
                 placement = placement,
+                decor = decor,
+                onTouch = { touches++ },
                 modifier =
                     if (placement.fromTop) {
                         Modifier
@@ -165,6 +212,7 @@ public fun VirtualGamepad(
 @Composable
 private fun MovementPad(
     state: ControlState,
+    onTouch: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var active by remember { mutableStateOf(false) }
@@ -175,7 +223,10 @@ private fun MovementPad(
                 .background(Color.White.copy(alpha = if (active) PRESSED_ALPHA else IDLE_ALPHA), CircleShape)
                 .pointerInput(state) {
                     detectDragGestures(
-                        onDragStart = { active = true },
+                        onDragStart = {
+                            active = true
+                            onTouch()
+                        },
                         onDragEnd = {
                             active = false
                             state.moveTo(Axis2.Zero)
@@ -218,6 +269,8 @@ private fun direction(offset: Float): Float =
 private fun ExtensionButton(
     extension: InputExtension,
     state: ControlState,
+    decor: PadDecor,
+    onTouch: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var pressed by remember { mutableStateOf(false) }
@@ -238,13 +291,14 @@ private fun ExtensionButton(
                             val down = currentEvent.changes.any { it.pressed }
                             if (down != pressed) {
                                 pressed = down
+                                if (down) onTouch()
                                 state.setExtension(extension.key, if (down) 1f else 0f)
                             }
                         }
                     }
                 },
     ) {
-        BasicText(text = extension.label, style = labelStyle)
+        decor.extension(extension)
     }
 }
 
@@ -253,6 +307,8 @@ private fun ActionButton(
     action: GateAction,
     state: ControlState,
     placement: ButtonPlacement,
+    decor: PadDecor,
+    onTouch: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var pressed by remember { mutableStateOf(false) }
@@ -274,12 +330,13 @@ private fun ActionButton(
                             val down = currentEvent.changes.any { it.pressed }
                             if (down != pressed) {
                                 pressed = down
+                                if (down) onTouch()
                                 state.setHeld(action, down)
                             }
                         }
                     }
                 },
     ) {
-        BasicText(text = placement.label, style = labelStyle)
+        decor.action(action)
     }
 }
