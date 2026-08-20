@@ -7,7 +7,7 @@ import kotlin.test.assertNull
 class BackdropsTest {
     @Test
     fun everyPaintedGateHasItsOwnBackdropAndCover() {
-        for (gate in listOf("mars", "chthon", "corvus", "korax")) {
+        for (gate in listOf("mars", "chthon", "corvus", "korax", "macil")) {
             assertEquals("bg_$gate", Backdrops.forGate(gate))
             assertEquals("cover_$gate", Backdrops.coverFor(gate))
         }

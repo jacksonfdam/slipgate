@@ -17,8 +17,14 @@ import org.jetbrains.compose.resources.decodeToImageBitmap
  * same arrangement the mars gate uses for its engine module.
  */
 internal object Backdrops {
-    /** The gates that have painted art. Anything else falls back to the neutral select backdrop. */
-    private val painted = setOf("mars", "chthon", "corvus", "korax")
+    /**
+     * The gates that have painted art. Anything else falls back to the neutral select backdrop.
+     *
+     * Art arrives before the gate it belongs to — `chthon` and `macil` are both here with no module
+     * behind them yet. An entry with no gate is inert, because nothing asks for a backdrop by a name
+     * the registry never produced.
+     */
+    private val painted = setOf("mars", "chthon", "corvus", "korax", "macil")
 
     const val SPLASH: String = "bg_splash"
     const val SELECT: String = "bg_select"
