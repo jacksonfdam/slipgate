@@ -5,7 +5,9 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.HttpURLConnection
+import java.net.MalformedURLException
 import java.net.URI
+import java.net.URISyntaxException
 import java.net.URL
 
 private const val BUFFER_BYTES = 64 * 1024
@@ -43,8 +45,14 @@ internal class UrlConnectionDownload : DataDownload {
         val address: URL =
             try {
                 URI(url).toURL()
+            } catch (malformed: URISyntaxException) {
+                // URI answers a bare "https:" with this checked exception, not with
+                // IllegalArgumentException — and unhandled it took the whole app down at start-up.
+                unusable(url, malformed)
+            } catch (malformed: MalformedURLException) {
+                unusable(url, malformed)
             } catch (malformed: IllegalArgumentException) {
-                throw DataDownloadException("$url is not a usable address", malformed)
+                unusable(url, malformed)
             }
         val connection = address.openConnection() as HttpURLConnection
         connection.connectTimeout = TIMEOUT_MILLIS
@@ -52,6 +60,11 @@ internal class UrlConnectionDownload : DataDownload {
         connection.instanceFollowRedirects = true
         return connection
     }
+
+    private fun unusable(
+        url: String,
+        cause: Exception,
+    ): Nothing = throw DataDownloadException("$url is not a usable address", cause)
 
     private fun read(
         connection: HttpURLConnection,
