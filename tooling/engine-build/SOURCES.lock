@@ -27,3 +27,9 @@ sha256 = a88cbb20898dd839cfb1f20e19127be570fc1592afd72d92d0c17ba4a9cdc2da
 emscripten = 6.0.7
 flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=1 -Wl,--wrap=M_FileCaseExists --no-entry -Oz
 
+[korax]
+artifact = games/korax/src/commonMain/composeResources/files/korax.wasm
+sha256 = 7cfbed6023a06115c8e3da84493bc3045e11438645ccc9c8d41d17059769a433
+emscripten = 6.0.7
+flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=100663296 -sALLOW_MEMORY_GROWTH=1 -Wl,--wrap=M_FileCaseExists --no-entry -Oz
+
