@@ -5,6 +5,7 @@ import com.jacksonfdam.slipgate.host.graphics.core.GraphicsBackend
 
 internal const val PALETTE_SHADER = "palette_indexed"
 internal const val CRT_SHADER = "crt"
+internal const val SHARP_UPSCALE_SHADER = "sharp_upscale"
 internal const val PALETTE_ENTRIES = 256
 internal const val PALETTE_HEIGHT = 1
 
@@ -21,3 +22,5 @@ internal fun shaderSource(name: String): String = requireNotNull(skslSources[nam
 internal fun paletteShaderSource(): String = shaderSource(PALETTE_SHADER)
 
 internal fun crtShaderSource(): String = shaderSource(CRT_SHADER)
+
+internal fun sharpUpscaleShaderSource(): String = shaderSource(SHARP_UPSCALE_SHADER)

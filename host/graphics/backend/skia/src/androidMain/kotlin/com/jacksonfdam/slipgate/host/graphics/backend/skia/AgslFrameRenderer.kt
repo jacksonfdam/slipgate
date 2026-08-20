@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import com.jacksonfdam.slipgate.host.graphics.core.CrtSettings
 import com.jacksonfdam.slipgate.host.graphics.core.GraphicsBackendId
 import com.jacksonfdam.slipgate.host.graphics.core.PresentedFrame
+import com.jacksonfdam.slipgate.host.graphics.core.ScalingMode
 import com.jacksonfdam.slipgate.host.graphics.core.Viewport
 import com.jacksonfdam.slipgate.host.graphics.core.ViewportRect
 import com.jacksonfdam.slipgate.host.runtime.DisplayFormat
@@ -35,6 +36,9 @@ internal class AgslFrameRenderer(
     private val paletteRuntimeShader = RuntimeShader(paletteShaderSource())
     private val crtRuntimeShader =
         if (crt.enabled) RuntimeShader(crtShaderSource()) else null
+
+    // Compiled on first use and kept: a player who chose smooth edges keeps them all session.
+    private var sharpRuntimeShader: RuntimeShader? = null
     private val indexedBitmap =
         Bitmap.createBitmap(format.width, format.height, Bitmap.Config.ALPHA_8)
     private val paletteBitmap =
@@ -76,11 +80,12 @@ internal class AgslFrameRenderer(
             return
         }
         val tube = crtRuntimeShader
+        val sharp = if (viewport.mode == ScalingMode.SharpUpscale) sharpShader(destination) else null
         scope.drawIntoCanvas { canvas ->
             val native = canvas.nativeCanvas
             val checkpoint = native.save()
             native.translate(destination.x.toFloat(), destination.y.toFloat())
-            if (tube == null) {
+            if (tube == null && sharp == null) {
                 native.scale(
                     destination.width.toFloat() / format.width,
                     destination.height.toFloat() / format.height,
@@ -89,12 +94,24 @@ internal class AgslFrameRenderer(
                 paint.shader = paletteRuntimeShader
                 native.drawRect(0f, 0f, format.width.toFloat(), format.height.toFloat(), paint)
             } else {
-                // The tube pass works in destination pixels, so the frame is scaled by a local
-                // matrix on the child shader rather than by the canvas.
-                scaleFrameToDestination(destination)
-                tube.setInputShader(SOURCE_INPUT, paletteRuntimeShader)
-                applyCrtUniforms(tube, destination)
-                paint.shader = tube
+                // Both passes work in destination pixels. The upscaler samples in source space
+                // itself, so it takes the frame unscaled; the tube takes whatever came before it,
+                // already in destination pixels.
+                val scaled =
+                    if (sharp == null) {
+                        scaleFrameToDestination(destination)
+                        paletteRuntimeShader
+                    } else {
+                        paletteRuntimeShader.setLocalMatrix(null)
+                        sharp
+                    }
+                if (tube == null) {
+                    paint.shader = scaled
+                } else {
+                    tube.setInputShader(SOURCE_INPUT, scaled)
+                    applyCrtUniforms(tube, destination)
+                    paint.shader = tube
+                }
                 native.drawRect(
                     0f,
                     0f,
@@ -122,6 +139,18 @@ internal class AgslFrameRenderer(
         paletteBitmap.setPixels(paletteRow, 0, PALETTE_ENTRIES, 0, 0, PALETTE_ENTRIES, PALETTE_HEIGHT)
         paletteRuntimeShader.setInputShader(PALETTE_INPUT, nearestShader(paletteBitmap))
         uploadedPalette = palette.copyOf()
+    }
+
+    /** The upscaler, wired to the palette shader and told both sizes it needs. */
+    private fun sharpShader(destination: ViewportRect): RuntimeShader {
+        val shader =
+            sharpRuntimeShader ?: RuntimeShader(sharpUpscaleShaderSource()).also { sharpRuntimeShader = it }
+        shader.setInputShader(SOURCE_INPUT, paletteRuntimeShader)
+        shader.setFloatUniform("widthPixels", destination.width.toFloat())
+        shader.setFloatUniform("heightPixels", destination.height.toFloat())
+        shader.setFloatUniform("sourceWidth", format.width.toFloat())
+        shader.setFloatUniform("sourceHeight", format.height.toFloat())
+        return shader
     }
 
     private fun scaleFrameToDestination(destination: ViewportRect) {

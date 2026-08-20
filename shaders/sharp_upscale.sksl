@@ -1,0 +1,120 @@
+// Edge-adaptive upscaling, in the dialect Skia runtime effects and AGSL share.
+//
+// Child shaders:
+//   source   the palette-resolved frame, sampled in SOURCE pixel space — unlike the tube, which
+//            takes a child already scaled to the destination. This shader does its own sampling
+//            because choosing where to sample is the whole of what it does.
+//
+// This follows the approach of FSR1's EASU stage — gather a twelve-tap neighbourhood, read the
+// local edge from it, then weight the taps with a kernel stretched along that edge — but it is not
+// AMD's reference implementation, which is built on packed-half intrinsics that SkSL does not
+// expose. What it delivers is EASU's result: a 320 by 200 picture blown up four or five times
+// keeps its diagonals straight instead of turning them into stairs or into mush.
+//
+// Every uniform is a plain float, for the reason crt.sksl gives: SkSL's packing rules make a vector
+// in the wrong slot draw a picture that looks almost right.
+//
+// The taps, in source space around the sampled point:
+//
+//        b c
+//      e f g h
+//      i j k l
+//        n o
+//
+// f, g, j and k are the four nearest; the ring around them is what tells an edge from a texture.
+
+uniform shader source;
+uniform float widthPixels;
+uniform float heightPixels;
+uniform float sourceWidth;
+uniform float sourceHeight;
+
+const float LANCZOS_LOBE = 2.0;
+const float EDGE_FLOOR = 1.0 / 32.0;
+const float STRETCH_LIMIT = 4.0;
+const half3 LUMA = half3(0.2126, 0.7152, 0.0722);
+
+/** Perceived brightness, which is what an edge is visible in. */
+float luma(float2 pixel) {
+    return float(dot(source.eval(pixel).rgb, LUMA));
+}
+
+/**
+ * Lanczos-2 in one dimension, without the trigonometry.
+ *
+ * The window is the same quadratic-times-quadratic approximation FSR1 uses: it costs two multiplies
+ * where the real thing costs two sines, and over the range a 12-tap kernel covers the difference is
+ * far below a palette entry.
+ */
+float tapWeight(float distanceSquared) {
+    float x = min(distanceSquared, LANCZOS_LOBE * LANCZOS_LOBE) * (1.0 / (LANCZOS_LOBE * LANCZOS_LOBE));
+    float window = 1.0 - x;
+    float lobe = 1.0 - x * (25.0 / 16.0) * (2.0 - x * (25.0 / 16.0));
+    return window * window * lobe;
+}
+
+half4 main(float2 coord) {
+    // The destination pixel's centre, in source space. The half-pixel offsets put the sample at the
+    // centre of the destination pixel and then at the corner of the source grid, which is where the
+    // four nearest taps are symmetric around it.
+    float2 scale = float2(sourceWidth / widthPixels, sourceHeight / heightPixels);
+    float2 centre = (coord + 0.5) * scale - 0.5;
+    float2 base = floor(centre);
+    float2 fraction = centre - base;
+
+    // The four nearest, whose brightness is what the edge is read from.
+    float lf = luma(base + float2(0.5, 0.5));
+    float lg = luma(base + float2(1.5, 0.5));
+    float lj = luma(base + float2(0.5, 1.5));
+    float lk = luma(base + float2(1.5, 1.5));
+
+    // And the ring, which is what says whether the edge continues or the pixel is simply noisy.
+    float lb = luma(base + float2(0.5, -0.5));
+    float lc = luma(base + float2(1.5, -0.5));
+    float le = luma(base + float2(-0.5, 0.5));
+    float lh = luma(base + float2(2.5, 0.5));
+    float li = luma(base + float2(-0.5, 1.5));
+    float ll = luma(base + float2(2.5, 1.5));
+    float ln = luma(base + float2(0.5, 2.5));
+    float lo = luma(base + float2(1.5, 2.5));
+
+    // The gradient across the whole neighbourhood, which is the edge's normal.
+    float gradientX = (lg + lk + lc + lo + lh + ll) - (lf + lj + lb + ln + le + li);
+    float gradientY = (lj + lk + ln + lo + li + ll) - (lf + lg + lb + lc + le + lh);
+    float strength = length(float2(gradientX, gradientY));
+
+    // An edge's direction is along it, not across it: the kernel is stretched that way so taps
+    // lying on the same edge count for more than taps lying across it.
+    float2 along = strength > EDGE_FLOOR ? float2(-gradientY, gradientX) / strength : float2(1.0, 0.0);
+    float stretch = 1.0 + min(strength, 1.0) * (STRETCH_LIMIT - 1.0);
+
+    float3 colour = float3(0.0);
+    float total = 0.0;
+    for (int y = -1; y <= 2; ++y) {
+        for (int x = -1; x <= 2; ++x) {
+            // The four corners of the 4 by 4 are outside the lobe once the kernel is stretched, and
+            // FSR1 leaves them out for the same reason: they cost four samples and change nothing.
+            if ((x == -1 || x == 2) && (y == -1 || y == 2)) {
+                continue;
+            }
+            float2 offset = float2(float(x), float(y)) + 0.5 - fraction;
+
+            // Distance measured in the edge's own frame: along the edge the kernel reaches wide,
+            // across it the kernel is squeezed, which is what keeps a hard edge hard while a
+            // diagonal still gets the taps it needs to stop being a staircase.
+            float2 across = float2(-along.y, along.x);
+            float2 warped = float2(dot(offset, along) / stretch, dot(offset, across) * stretch);
+            float weight = tapWeight(dot(warped, warped));
+            if (weight <= 0.0) {
+                continue;
+            }
+            colour += float3(source.eval(base + float2(float(x), float(y)) + 0.5).rgb) * weight;
+            total += weight;
+        }
+    }
+
+    if (total <= 0.0) {
+        return source.eval(base + fraction + 0.5);
+    }
+    return half4(half3(colour / total), 1.0);
+}

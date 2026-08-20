@@ -173,6 +173,7 @@ private fun scalingName(mode: ScalingMode): String =
         ScalingMode.Fit -> "AS INTENDED"
         ScalingMode.IntegerScale -> "WHOLE PIXELS"
         ScalingMode.Stretch -> "FILL SCREEN"
+        ScalingMode.SharpUpscale -> "SMOOTH EDGES"
     }
 
 @Composable
