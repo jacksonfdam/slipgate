@@ -1,0 +1,84 @@
+// The slipgate: what the launcher looks like while it is being pulled into a game.
+//
+// The specification's signature animation, and the one transition allowed real time. Three things
+// happen at once: streaks pull toward the centre, the picture tears along scanlines, and the whole
+// frame collapses into the gate's colours before the first frame of the game replaces it.
+//
+// Drawn over the launcher rather than distorting it. A runtime effect here samples nothing — it has
+// no child shader — so the warp is what the eye reads as motion, not a resampling of what is beneath:
+// streaks that converge, a tear that walks, and an alpha that closes the frame down.
+//
+// Declares the shared scene uniform block. Progress arrives as `focusAmount`, which is what that slot
+// means for a transition: zero at the rack, one at the game. Written in the dialect Skia runtime
+// effects and AGSL share.
+
+uniform float widthPixels;
+uniform float heightPixels;
+uniform float timeSeconds;
+uniform float accentDimR;
+uniform float accentDimG;
+uniform float accentDimB;
+uniform float accentBaseR;
+uniform float accentBaseG;
+uniform float accentBaseB;
+uniform float accentHotR;
+uniform float accentHotG;
+uniform float accentHotB;
+uniform float focusAmount;
+uniform float audioLevel;
+uniform float octaves;
+
+const float STREAK_COUNT = 90.0;
+const float STREAK_SHARPNESS = 34.0;
+const float TEAR_BANDS = 26.0;
+const float TEAR_TRAVEL = 1.7;
+const float CORE_RADIUS = 0.42;
+
+float hash(float value) {
+    return fract(sin(value * 91.3458) * 47453.5453);
+}
+
+half4 main(float2 coord) {
+    float2 uv = coord / float2(widthPixels, heightPixels);
+    // Centred and corrected for the surface's shape, so the pull is round rather than oval.
+    float2 centred = (uv - 0.5) * float2(widthPixels / heightPixels, 1.0);
+    float radius = length(centred);
+    float angle = atan(centred.y, centred.x);
+
+    float progress = clamp(focusAmount, 0.0, 1.0);
+
+    // Streaks: radial spokes that brighten as the pull tightens, and stretch as they approach the
+    // centre. Angle decides which spoke, radius decides how far along it the eye is.
+    float spoke = fract(angle * STREAK_COUNT / 6.2831853 + hash(floor(angle * STREAK_COUNT)) * 0.5);
+    float streak = pow(max(1.0 - abs(spoke * 2.0 - 1.0), 0.0), STREAK_SHARPNESS);
+    float pull = smoothstep(CORE_RADIUS + 0.35, CORE_RADIUS - 0.05, radius - progress * 0.55);
+    float streaks = streak * pull * progress;
+
+    // The tear: bands of the picture displaced sideways, walking down the frame. It is what makes the
+    // collapse read as a signal breaking rather than as a fade.
+    float band = floor(uv.y * TEAR_BANDS);
+    float walk = fract(band * 0.37 + timeSeconds * TEAR_TRAVEL);
+    float tear = step(0.82, walk) * progress * smoothstep(0.15, 0.6, progress);
+
+    // The core: the hole the launcher is going through, opening from the middle outward.
+    float core = smoothstep(CORE_RADIUS * (1.4 - progress), 0.0, radius) * progress;
+
+    half3 dim = half3(half(accentDimR), half(accentDimG), half(accentDimB));
+    half3 base = half3(half(accentBaseR), half(accentBaseG), half(accentBaseB));
+    half3 hot = half3(half(accentHotR), half(accentHotG), half(accentHotB));
+
+    // The palette collapse: over the last stretch the whole frame becomes the gate's hot colour, so
+    // the game's first frame arrives out of that rather than out of a half-drawn launcher. Without it
+    // the streaks thin out as they pass the edge and the transition ends dimmer than its middle.
+    float closing = smoothstep(0.55, 1.0, progress);
+
+    half3 colour = dim * half(streaks * 0.6);
+    colour += base * half(streaks);
+    colour += hot * half(core + tear * 0.5);
+    colour = mix(colour, hot, half(closing));
+
+    // What the frame gives up as the pull closes: nothing at the rack, everything at the game.
+    float cover = clamp(progress * progress * 0.9 + core * 0.5 + tear * 0.25 + closing, 0.0, 1.0);
+    // Premultiplied, because this is drawn over the launcher rather than instead of it.
+    return half4(colour * half(cover), half(cover));
+}
