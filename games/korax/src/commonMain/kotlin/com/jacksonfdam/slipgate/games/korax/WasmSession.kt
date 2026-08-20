@@ -21,7 +21,9 @@ import com.jacksonfdam.slipgate.host.runtime.MountedGameData
  */
 internal val HEXEN_KEYS: Map<GateAction, Int> =
     mapOf(
-        GateAction.Fire to 0xA3, // KEY_RCTRL
+        // 0x80 + 0x1d, which is what doomkeys.h defines KEY_RCTRL as. It was 0xA3 here, a number that
+        // is not a key at all: fire has never fired.
+        GateAction.Fire to 0x9D, // KEY_RCTRL
         GateAction.Use to ' '.code,
         GateAction.NextWeapon to '\''.code,
         GateAction.PreviousWeapon to ';'.code,
