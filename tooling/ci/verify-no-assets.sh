@@ -13,11 +13,13 @@
 #   android/src/main/res/mipmap*                        the launcher icon, rendered per density
 #   ios/Slipgate/Assets.xcassets/                       the same icon for the iOS bundle
 #   web/src/wasmJsMain/resources/favicon.png            the same icon for the browser tab
+#   site/assets/                                        the site's card art: the same painted covers
+#                                                       the app ships, plus the same favicon
 set -euo pipefail
 
 PATTERN='\.(png|jpe?g|webp|gif|bmp|ico|svg|ttf|otf|woff2?|eot|mp3|wav|ogg|flac|aac|m4a|mid|midi|mp4|webm|mov|avi|mkv|lottie|riv)$'
 
-ALLOWED='^docs/screenshots/|^ui/src/commonMain/composeResources/files/backdrops/|^android/src/main/res/mipmap|^ios/Slipgate/Assets\.xcassets/|^web/src/wasmJsMain/resources/favicon\.png$'
+ALLOWED='^docs/screenshots/|^ui/src/commonMain/composeResources/files/backdrops/|^android/src/main/res/mipmap|^ios/Slipgate/Assets\.xcassets/|^web/src/wasmJsMain/resources/favicon\.png$|^site/assets/'
 
 hits="$(git ls-files | grep -Ei "${PATTERN}" | grep -Ev "${ALLOWED}" || true)"
 
