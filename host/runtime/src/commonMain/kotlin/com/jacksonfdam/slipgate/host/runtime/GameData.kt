@@ -18,11 +18,20 @@ public sealed interface DataSource {
     public data object UserSupplied : DataSource
 }
 
-/** One file a gate needs before it can run. */
+/** One file a gate wants, and whether it can run without it. */
 public data class DataEntry(
     val key: String,
     val displayName: String,
     val sources: List<DataSource>,
+    /**
+     * Whether the gate boots without this file.
+     *
+     * Strife's voice acting is the case this exists for: `voices.wad` sits beside the IWAD, adds
+     * every spoken line in the game, and the game runs subtitled without it. Treating it as required
+     * would lock a player out of a game they own; leaving it out of the requirements entirely would
+     * mean never offering it. It is neither, and saying so is what this is.
+     */
+    val optional: Boolean = false,
 ) {
     init {
         require(sources.isNotEmpty()) { "data entry $key must declare at least one source" }
