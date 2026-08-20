@@ -102,12 +102,15 @@ rather than at the first commit.
   player would have to supply as `.ogg`. Neither is game data this project can be involved in.
   `USE_MIDI=no`, every codec off, `bgmnull.c` in the link, and the gate says nothing about music
   it cannot play. Sound effects are WAV inside the paks and work normally.
-- **No demo to replay.** The Doom-family harness proves determinism with `-playdemo`, and
-  addendum 04 gives `chthon` `playdemo demo1` for the same reason. Hexen II ships no `.dem`
-  files: its `demo1` is a *map* — Blackmarsh — and `startdemos` has nothing to list. The harness
-  is therefore two runs of the same map from a fixed clock with no input, compared frame for
-  frame. That is a real proof here because the engine never calls `srand`, so its `rand()`
-  sequence is the same on every run.
+- **Demos that are not in the paks.** The Doom-family harness proves determinism with
+  `-playdemo`, and addendum 04 gives `chthon` `playdemo demo1` for the same reason. Hexen II's
+  paks hold no `.dem` at all, and its `demo1` is a *map* — Blackmarsh — so the name means
+  something else here. The demos exist, though: a uHexen2 installation carries `demo1.dem`,
+  `demo2.dem` and `demo3.dem` loose in `data1/`, and its `hexen.rc` ships a commented-out
+  `startdemos demo1 demo2 demo3` for them. So the harness replays a demo when the player's data
+  directory has one, and falls back to two runs of one map from a fixed clock with no input,
+  compared frame for frame, when it does not. Both are real proofs here because the engine never
+  calls `srand`, so its `rand()` sequence is the same on every run.
 - **Four character classes, chosen in the engine's own menu.** Paladin, Crusader, Necromancer,
   Assassin, and the Demoness with the mission pack. No host surface: the menu is the engine's.
 
@@ -247,10 +250,11 @@ Specifics the implementing pull requests hold to:
 - Paks mount into an in-memory `data1/` tree — and `portals/` when the mission pack is
   installed — behind the same stdio seam `chthon` uses. `config.cfg` writes land in scratch
   memory: `Host_Shutdown` writes it on the way out and a gate must not crash while leaving.
-- The determinism harness is two runs of one map from a fixed clock, hashing the framebuffer
-  each step, gated on a `-Pslipgate.pak` property exactly as the Doom gate's harness is gated on
-  its IWAD. It skips without real data, and — this is the lesson #50 cost — the gate is not
-  believed to work until it has been run against real data on a device.
+- The determinism harness replays `demo1.dem` against itself when the data directory carries one,
+  and otherwise runs one map twice from a fixed clock, hashing the framebuffer each step. Gated on
+  a `-Pslipgate.pak` property exactly as the Doom gate's harness is gated on its IWAD. It skips
+  without real data, and — this is the lesson #50 cost — the gate is not believed to work until it
+  has been run against real data on a device.
 - `MINIMUM_MEMORY` is 0x550000 and `STD_MEM_ALLOC` is 32 MiB; the wasm module's initial memory is
   sized from a measurement, not from Hexen's 96 MiB copied across.
 
@@ -270,5 +274,6 @@ the gate itself, in item 42.
   factor of ten worse than the desktop one for every gate measured. Hexen II is a heavier engine
   than Hexen. The native backend is the answer this phase inherits, but the wasm path is still
   what the web gets, and the README's frame-budget table should say so honestly once measured.
-- **Which map is the harness map?** It has to exist in `pak0`, be reachable with `+map`, and
-  settle within a few hundred frames without input. Picked with real data in hand, in item 42.
+- **Which map is the harness map?** Only needed for the fallback path, when a data directory has
+  no `demo1.dem`. It has to exist in `pak0`, be reachable with `+map`, and settle within a few
+  hundred frames without input. Picked with real data in hand, in item 42.
