@@ -83,6 +83,13 @@ The framebuffer is uploaded as an R8 texture with the palette as a 256-entry loo
 texture, and colour is resolved in the fragment shader. Palette effects — damage flash,
 item pickup tint, the Tome of Power — are then free.
 
+Four picture shapes: the frame's own aspect, whole-number pixels, the whole screen, or
+smooth edges. The last one blows the frame up through an edge-adaptive shader that follows
+FSR1's EASU approach — gather twelve taps, read the local edge, weight the taps with a
+kernel squeezed across it — rather than by interpolating, so a diagonal stops being a
+staircase without the picture turning soft. A backend with no runtime effect draws that
+mode as the frame's own aspect, which is the same rectangle through a plainer filter.
+
 ### Frame budget
 
 A tic is 28.6 ms at 35 Hz, and one host frame steps one tic.

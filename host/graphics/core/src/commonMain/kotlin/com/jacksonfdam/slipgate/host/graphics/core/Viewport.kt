@@ -37,6 +37,15 @@ public enum class ScalingMode {
 
     /** Fill the surface, aspect ratio be damned. */
     Stretch,
+
+    /**
+     * [Fit]'s rectangle, upscaled through the edge-adaptive shader rather than by interpolation.
+     *
+     * A separate mode rather than a switch beside the others because it is a choice a player makes
+     * once and sees everywhere: whole pixels, honest pixels, or smooth edges. A backend with no
+     * runtime effect draws it as [Fit], which is the same rectangle and a softer picture.
+     */
+    SharpUpscale,
 }
 
 /**
@@ -63,8 +72,13 @@ public data class Viewport(
         val (width, height) =
             when (mode) {
                 ScalingMode.Stretch -> surface.width to surface.height
+
                 ScalingMode.Fit -> fitted()
+
                 ScalingMode.IntegerScale -> integerScaled()
+
+                // The same rectangle as Fit: the difference is in how the frame is sampled into it.
+                ScalingMode.SharpUpscale -> fitted()
             }
         return ViewportRect(
             x = (surface.width - width) / 2,
