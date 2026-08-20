@@ -10,6 +10,7 @@ directory holds the specification it is built against, in the order it was writt
 | [03-addendum-02.md](03-addendum-02.md) | The shader path: why WebGPU is out and one SkSL/AGSL pipeline inside Compose is in |
 | [04-addendum-03.md](04-addendum-03.md) | Custom maps: role read from the palette, add-ons on the shelf, and the launch options queued behind them |
 | [05-strife-gate.md](05-strife-gate.md) | Working notes for a fourth gate: what Strife needs that the other three did not, and its art |
+| [06-addendum-04.md](06-addendum-04.md) | The Quake gate: phase 7 confirmed, its amendments, and the delivery plan |
 
 Later documents amend earlier ones rather than replacing them. Where an amendment conflicts
 with something already merged, the pull request that resolves it says so explicitly and
