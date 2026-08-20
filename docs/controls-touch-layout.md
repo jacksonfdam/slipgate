@@ -103,9 +103,23 @@ These tables are the source of truth when `corvus`, `korax` and `chthon` declare
 `GateAction`s (Confirm already covers Heretic/Hexen's "use current item" key), and jump
 maps differently per engine, which is exactly why translation lives with each gate.
 
-## Deferred to the settings build (20c) and the gamepad visual layer (20d)
+## The visual layer (20d)
+
+The pad is drawn in the interface's own alphabet: one glyph per control, authored on the same
+24-unit grid as the rail's icons, because a button over a game and a button in the chrome are the
+same interface and a player should not have to learn two alphabets. `PadDecor` is the seam —
+`host/controls` knows where a button goes and what it does, and whoever places the pad decides what
+it looks like, which is what keeps the design system out of a module that must not depend on it.
+
+A control with no glyph keeps its words. That is deliberate: a label a player can read beats a
+picture they have to guess at.
+
+The pad fades to 35% after 4 seconds without a touch and comes back at full opacity the instant one
+lands — slow to leave, quick to return. Fading is visual only; a faded button still takes a press.
+
+## Deferred to the settings build (20c)
 
 - **Per-gate remapping** in Settings — let the player rebind touch controls and keys per
   game. `InputProfile` is the seam; the bindings tables above are the data to expose.
-- Layout edit mode (drag to reposition, pinch to resize, per-control opacity, reset,
-  save per gate), SDF button glyphs, idle fade to 35% after 4 s.
+- Layout edit mode: drag to reposition, pinch to resize, per-control opacity, reset, save per gate.
+  It needs somewhere to save a layout per gate, which is the same store per-gate bindings need.

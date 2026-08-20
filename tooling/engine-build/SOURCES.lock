@@ -17,19 +17,19 @@ flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sST
 
 [mars]
 artifact = games/mars/src/commonMain/composeResources/files/mars.wasm
-sha256 = ccb4718228199dd6ab23783bda06fe261a0884562e40d1172faaaab0cd7a7ef8
+sha256 = 25c0c608af943bce1bf84a7177505ece38daf205952c682da94406d31fc314fb
 emscripten = 6.0.7
 flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=1 -Wl,--wrap=M_FileCaseExists --no-entry -Oz
 
 [corvus]
 artifact = games/corvus/src/commonMain/composeResources/files/corvus.wasm
-sha256 = 657866aa736ef310e7abe8b08b557962f55346455f56a71332610a6f04ff6e4c
+sha256 = edd1732d872cce3e5b3f6480988640159406f5ba8a4028440db0931a75b06adf
 emscripten = 6.0.7
 flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=1 -Wl,--wrap=M_FileCaseExists --no-entry -Oz
 
 [korax]
 artifact = games/korax/src/commonMain/composeResources/files/korax.wasm
-sha256 = 5dac5e19d1cfc66462fb76d98c51901ac5f2a92510bbfbd92cdc790864b90d0a
+sha256 = 44ed074faaf0fc4f7474776df2dcd18fa7a6884854dda405cd0a6840edd66cfb
 emscripten = 6.0.7
 flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=100663296 -sALLOW_MEMORY_GROWTH=1 -Wl,--wrap=M_FileCaseExists --no-entry -Oz
 

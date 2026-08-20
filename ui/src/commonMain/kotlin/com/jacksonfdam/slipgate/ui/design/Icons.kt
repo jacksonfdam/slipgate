@@ -22,6 +22,24 @@ public enum class IconGlyph {
     Play,
     Back,
     Close,
+
+    // The pad's own vocabulary. Drawn on the same grid as the rail's icons, because a button over a
+    // game and a button in the chrome are the same interface and a player should not have to learn
+    // two alphabets.
+    Fire,
+    Use,
+    Jump,
+    Crouch,
+    WeaponNext,
+    WeaponPrevious,
+    Map,
+    Menu,
+    Enter,
+    ItemNext,
+    ItemPrevious,
+    ItemUse,
+    FlyUp,
+    FlyDown,
 }
 
 /** Stroke and fill geometry for one icon on the 24-unit grid. */

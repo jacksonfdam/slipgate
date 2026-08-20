@@ -35,6 +35,9 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.jacksonfdam.slipgate.ui.design.ColorTokens
@@ -166,7 +169,14 @@ private fun GateCardView(
                     // reads as a tilt instead of a slide.
                     cameraDistance = CAMERA_DISTANCE
                 }.clickable(onClick = onClick)
-                .padding(vertical = 4.dp),
+                // One label rather than the three texts inside it: read aloud, "Mars Doom needs Doom
+                // IWAD" is a card describing itself, and the fragments are not.
+                .semantics(mergeDescendants = true) {
+                    contentDescription = spoken(card)
+                    // Whether this is the card the rack is on, which is the other half of what a
+                    // listener needs: what it is, and whether it is the one selected.
+                    this.selected = selected
+                }.padding(vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -303,6 +313,31 @@ private fun dissolveIn(
         )
     return alpha
 }
+
+/**
+ * What a screen reader says about a card: its name, its engine, and whether it can be entered.
+ *
+ * The same three facts the card shows, in the order somebody listening needs them — the name first,
+ * because that is what they are looking for, and the state last, because that is what stops them.
+ */
+internal fun spoken(card: GateCard): String =
+    listOf(
+        card.descriptor.title,
+        card.descriptor.engine,
+        when (val availability = card.availability) {
+            GateAvailability.Installed -> {
+                "ready to play"
+            }
+
+            is GateAvailability.NeedsData -> {
+                "needs ${availability.missing.displayName}"
+            }
+
+            is GateAvailability.UserSuppliedOnly -> {
+                "needs ${availability.missing.displayName}, which only you can supply"
+            }
+        },
+    ).joinToString(", ")
 
 /** What the line under the rack says about the selected gate. */
 internal fun describe(card: GateCard): String =
