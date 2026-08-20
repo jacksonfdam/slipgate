@@ -17,9 +17,11 @@ import com.jacksonfdam.slipgate.host.runtime.MountedGameData
  * Doom's own key codes, from `doomkeys.h`. The engine speaks these and nothing else, so the
  * translation from Slipgate's normalised actions lives with the gate that knows them.
  */
-private val DOOM_KEYS: Map<GateAction, Int> =
+internal val DOOM_KEYS: Map<GateAction, Int> =
     mapOf(
-        GateAction.Fire to 0xA3, // KEY_RCTRL
+        // 0x80 + 0x1d, which is what doomkeys.h defines KEY_RCTRL as. It was 0xA3 here, a number that
+        // is not a key at all: fire has never fired.
+        GateAction.Fire to 0x9D, // KEY_RCTRL
         GateAction.Use to ' '.code,
         GateAction.NextWeapon to '\''.code,
         GateAction.PreviousWeapon to ';'.code,
@@ -35,7 +37,7 @@ private val DOOM_KEYS: Map<GateAction, Int> =
  * rather than strafing on the horizontal axis, because that is Doom's own default and a player who
  * grew up on it expects the left edge of a pad to turn them around.
  */
-private val DOOM_DIRECTIONS =
+internal val DOOM_DIRECTIONS =
     DirectionBindings(
         forward = 0xAD, // KEY_UPARROW
         backward = 0xAF, // KEY_DOWNARROW
