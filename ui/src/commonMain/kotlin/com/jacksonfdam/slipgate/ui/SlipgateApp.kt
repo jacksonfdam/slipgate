@@ -132,12 +132,20 @@ public fun SlipgateApp(
         }
 
     // The interface's voice: cues, and the bed in the focused gate's key. A gate paused behind its
-    // own menu is not playing, so the shell may be heard again.
+    // own menu is not playing, so the shell may be heard again — and an app that has gone off screen
+    // says nothing at all.
     val playing = stage as? Stage.Playing
+    val inForeground = rememberInForeground()
     InterfaceVoice(
         audio = audio,
         settings = settings,
-        quiet = playing != null && !playing.menuOpen,
+        inForeground = inForeground,
+        quiet =
+            interfaceQuiet(
+                inForeground = inForeground,
+                gateRunning = playing != null,
+                gateMenuOpen = playing?.menuOpen == true,
+            ),
         focused = (stage as? Stage.Choosing)?.state?.current,
     )
 
@@ -316,6 +324,7 @@ private fun decisionFor(medianFrameMicros: Long): TierDecision =
 private fun InterfaceVoice(
     audio: InterfaceAudio,
     settings: SettingsController,
+    inForeground: Boolean,
     quiet: Boolean,
     focused: GateCard?,
 ) {
@@ -329,7 +338,12 @@ private fun InterfaceVoice(
         focused?.let { card -> audio.setAmbientKey(ambientKeyOf(card)) }
         audio.setAmbientVoices(settings.activeTier.ambientVoices)
     }
-    LaunchedEffect(Unit) {
+    // Restarted rather than left running when the app goes off screen: the frame clock keeps firing
+    // there, and a loop that keeps rendering audio nobody can hear is a loop that keeps a phone awake.
+    LaunchedEffect(inForeground) {
+        if (!inForeground) {
+            return@LaunchedEffect
+        }
         var previousNanos = 0L
         while (true) {
             withFrameNanos { nanos ->
@@ -350,8 +364,9 @@ private fun InterfaceVoice(
  * stopped on stays on screen: what a player left is what they come back to.
  *
  * It stops for the same reason when the window loses focus — the player took a call, pulled the
- * notification shade down, switched tabs. An engine stepping into a screen nobody is looking at costs
- * a phone its battery and the player the monsters that reached them while they were away.
+ * notification shade down, switched tabs — and when the app leaves the screen altogether, which is
+ * the case focus alone does not answer for. An engine stepping into a screen nobody is looking at
+ * costs a phone its battery and the player the monsters that reached them while they were away.
  */
 @Composable
 private fun PlayingStage(
@@ -361,13 +376,19 @@ private fun PlayingStage(
     onLeave: () -> Unit,
 ) {
     val focused = LocalWindowInfo.current.isWindowFocused
+    val inForeground = rememberInForeground()
     Box(modifier = Modifier.fillMaxSize()) {
         GateSurface(
             session = stage.session,
             inputProfile = stage.profile,
             crt = settings.settings.crt,
             scaling = settings.settings.scaling,
-            paused = stage.menuOpen || !focused,
+            paused =
+                gatePaused(
+                    menuOpen = stage.menuOpen,
+                    windowFocused = focused,
+                    inForeground = inForeground,
+                ),
             modifier = Modifier.fillMaxSize(),
         )
         if (stage.menuOpen) {
