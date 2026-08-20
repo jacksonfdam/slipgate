@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ColorTokens.Void: the icon art fades into the same ground the shell draws on. -->
+    <color name="ic_launcher_background">#FF07080B</color>
+</resources>
