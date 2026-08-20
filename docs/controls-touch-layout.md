@@ -56,8 +56,11 @@ press into a key. `games/corvus/.../WasmSession.kt` holds Heretic's, at the defa
 | FLY UP | `corvus.fly.up` | Page Up |
 | FLY DOWN | `corvus.fly.down` | Insert |
 
-`CorvusGateTest` asserts that every extension the profile declares has a key and every key has an
-extension, because a drawn button with no binding is silent rather than broken.
+Hexen's are the same five, at the same keys, with `korax.` in place of `corvus.` — and Hexen adds the
+one action the Raven engines gained with it: JUMP, at `/`, which is `key_jump`'s default.
+
+`CorvusGateTest` and `KoraxGateTest` each assert that every extension the profile declares has a key
+and every key has an extension, because a drawn button with no binding is silent rather than broken.
 
 Heretic's look up and down are not bound yet: nothing produces a look axis — the pad has one wheel
 and the session reads movement only — and the game plays without free look, as it did on a
