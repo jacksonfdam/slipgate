@@ -95,10 +95,13 @@ internal val placements: Map<GateAction, ButtonPlacement> =
                 size = 60.dp,
                 label = "USE",
             ),
-        GateAction.NextWeapon to
-            ButtonPlacement(fromTop = false, end = 116.dp, vertical = 118.dp, size = 56.dp, label = "›"),
+        // Previous on the left and next on the right, the way every media control in the world sits.
+        // They were the other way round, which put the button that steps back where a thumb reaches
+        // for the one that steps forward — and reads as inverted however good the glyph is.
         GateAction.PreviousWeapon to
-            ButtonPlacement(fromTop = false, end = 28.dp, vertical = 148.dp, size = 56.dp, label = "‹"),
+            ButtonPlacement(fromTop = false, end = 116.dp, vertical = 118.dp, size = 56.dp, label = "‹"),
+        GateAction.NextWeapon to
+            ButtonPlacement(fromTop = false, end = 28.dp, vertical = 148.dp, size = 56.dp, label = "›"),
         GateAction.Jump to
             ButtonPlacement(fromTop = false, end = 216.dp, vertical = 28.dp, size = 60.dp, label = "JUMP"),
         GateAction.Crouch to
