@@ -9,10 +9,13 @@
 #include <string.h>
 
 #include "config.h"
+#include "deh_str.h"
 #include "doomtype.h"
 #include "i_video.h"
 #include "m_misc.h"
 #include "v_video.h"
+#include "w_wad.h"
+#include "z_zone.h"
 
 #include "sg_platform.h"
 
@@ -39,6 +42,12 @@ void I_InitGraphics(void)
     }
     screenvisible = true;
     V_RestoreBuffer();
+
+    // The palette starts as the game's own, the way upstream's I_InitGraphics ends. Doom happens to
+    // set it again early enough that leaving this out was invisible; Heretic does not set one until
+    // its status bar starts flashing, so without this the host is handed indexed pixels and 256
+    // black entries to resolve them through.
+    I_SetPalette(W_CacheLumpName(DEH_String("PLAYPAL"), PU_CACHE));
 }
 
 void I_ShutdownGraphics(void)
