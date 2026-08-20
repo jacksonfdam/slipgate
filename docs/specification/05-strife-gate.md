@@ -1,7 +1,11 @@
 # The Strife gate
 
-Working notes for the fourth gate, written before the work so the decisions are arguable
-while they are still cheap. This is a plan, not a record: nothing here is built yet.
+Working notes for the fourth gate, written before the work so the decisions were arguable
+while they were still cheap.
+
+**The gate is built.** It boots, and the plan below is kept as written rather than tidied
+into hindsight — a plan edited to match what happened stops being evidence of anything. What
+the plan got right, got wrong and did not see is recorded at the end.
 
 ## Why it is the next gate
 
@@ -129,3 +133,71 @@ palette should read as oxidised metal and sodium light rather than hellfire or m
 3. Optional-data support, or `voices.wad` as an add-on. Decide which before writing either.
 4. Art, and `macil` into the `painted` set.
 5. The `gate: macil` label, and the path-based automation entry that applies it.
+
+## What actually happened
+
+The order above held. Three things it did not see, and two it called wrong.
+
+### Strife globs a directory the module does not have
+
+The one that would have cost a day if it had surfaced later. The gate died before its first
+frame with `ClearTmp: Couldn't open dir`: Strife globs its temporary save directory at
+start-up and calls `I_Error` when the glob comes back null, and upstream's `i_glob.c` is
+`opendir` and `readdir` over a filesystem the module does not have.
+
+`platform/strife/sg_glob.c` reads the module's own file table instead, treating a directory
+as a prefix — any path inside the save area globs successfully whether or not a file is under
+it, because an empty temporary directory is the normal state at start-up rather than an error.
+
+Replaced for Strife alone, through `SG_REPLACED_EXTRA`. Every engine calls glob and only
+Strife treats failure as fatal, so replacing it for all four would rebuild three modules to
+serve a fourth. That matters more than it looks: the build does not reproduce byte for byte
+across machines even at the pinned Emscripten, so three unexplainable module diffs would have
+been unreviewable.
+
+### `-nograph` is not optional
+
+`showintro` defaults to on and gates `I_InitGraphics` in both `initStartup` and `D_DoomLoop`.
+The host escapes start-up inside the engine's first `I_StartFrame`, by which point graphics
+must already be up — so with the intro on, the gate never opens. Clearing it also routes
+`initStartup` through `TXT_Init`, which the platform's absent text screen declines, exactly
+the path Heretic takes.
+
+That needed `engineArguments` to carry a per-gate switch, which it had no way to do.
+
+### `TXT_GetXY` and the wrong header
+
+Strife reads the text cursor back where Heretic only ever set it, so the vendored header
+needed the declaration. And the shim's includes are not Heretic's: `players`, `consoleplayer`,
+`singledemo` and `G_DeferedPlayDemo` come from `doomstat.h` and `g_game.h` here.
+
+### Called wrong: the dialogue
+
+The plan expected branching dialogue to be the input problem. It is not, yet — the conversation
+screen takes number keys the engine already reads, and nothing about it needed declaring. The
+real input problem was quantity: eleven extensions against Heretic's five, more than a phone
+screen can carry, which is a layout decision rather than a plumbing one. Five reach the pad.
+
+### Called wrong: which keys
+
+The plan said Corvus was the template. It is, for shape — and a trap for numbers. Strife
+overrides `key_invleft` and `key_invright` to Insert and Delete where Raven uses the bracket
+pair, so copying the table would have compiled and bound two keys Strife does nothing with.
+`MacilGateTest` asserts those two codes for that reason.
+
+### Settled
+
+- **The name** is `macil`. The art was generated to it before the module existed, which made
+  the choice cheaper to keep than to revisit.
+- **`voices.wad`** is an optional `DataEntry` rather than an add-on. The add-on route was
+  considered and rejected on a fact the plan did not have: the inspector refuses `voices.wad`
+  because it holds no maps, so the shelf could only have taken it by loosening the rule that
+  keeps anything at all from being installed as an add-on.
+- **Memory** is 128 MiB to start, not the 96 the plan floated.
+- **Not on the web**, for the reason `corvus` and `korax` are not.
+
+### Still open
+
+- Recording and playing demos, which the other gates have and this one has not been given.
+- Which of the six unmapped extensions deserve a place once the touch layout is revisited.
+- A frame budget measurement, so this gate sits in the table in the README with the others.
