@@ -21,6 +21,24 @@ private val NEEDS_AN_IWAD =
             ),
     )
 
+private val WANTS_VOICES =
+    DataRequirements(
+        entries =
+            listOf(
+                DataEntry(
+                    key = "strife1.wad",
+                    displayName = "Strife IWAD",
+                    sources = listOf(DataSource.UserSupplied),
+                ),
+                DataEntry(
+                    key = "voices.wad",
+                    displayName = "Strife voices",
+                    sources = listOf(DataSource.UserSupplied),
+                    optional = true,
+                ),
+            ),
+    )
+
 class RequirementsTest {
     @Test
     fun anEmptyShelfLeavesEverythingOutstanding() {
@@ -40,6 +58,28 @@ class RequirementsTest {
     @Test
     fun aGateThatNeedsNothingIsAlwaysSatisfied() {
         assertTrue(DataRequirements(entries = emptyList()).unmet(emptySet()).isEmpty())
+    }
+
+    /** Strife's voices: the game runs subtitled without them, so their absence holds nothing up. */
+    @Test
+    fun anOptionalFileNeverHoldsAGateShut() {
+        assertTrue(WANTS_VOICES.unmet(setOf("strife1.wad")).isEmpty())
+    }
+
+    @Test
+    fun anOptionalFileIsStillOfferedWhileItIsMissing() {
+        assertEquals(listOf("voices.wad"), WANTS_VOICES.absent(setOf("strife1.wad")).map { it.key })
+    }
+
+    @Test
+    fun aRequiredFileIsBothUnmetAndAbsent() {
+        assertEquals(listOf("strife1.wad"), WANTS_VOICES.unmet(emptySet()).map { it.key })
+        assertEquals(listOf("strife1.wad", "voices.wad"), WANTS_VOICES.absent(emptySet()).map { it.key })
+    }
+
+    @Test
+    fun nothingIsAbsentOnceEverythingIsStored() {
+        assertTrue(WANTS_VOICES.absent(setOf("strife1.wad", "voices.wad")).isEmpty())
     }
 
     @Test
