@@ -5,6 +5,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -81,6 +83,10 @@ internal fun Amount(
     }
 }
 
+// FlowRow because the options are words, and words are as long as they are: five detail tiers do not
+// fit one line of a phone held upright. A plain Row squeezed the last pill until MAXIMUM came out one
+// letter per line.
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun <T> Choice(
     label: String,
@@ -93,7 +99,10 @@ internal fun <T> Choice(
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(text = label, style = TypeScale.Body, color = ColorTokens.Text)
         Text(text = explanation, style = TypeScale.Label, color = ColorTokens.Muted)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             options.forEach { option ->
                 Pill(
                     text = name(option),
@@ -116,6 +125,9 @@ internal fun Pill(
         text = text,
         style = TypeScale.Label,
         color = if (selected) ramp.hot else ColorTokens.Muted,
+        // A pill is one word wide, whatever the space left over says.
+        maxLines = 1,
+        softWrap = false,
         modifier =
             Modifier
                 .clip(RoundedCornerShape(2.dp))
