@@ -1,38 +1,59 @@
 #!/usr/bin/env python3
-"""Serves the local game-data shelf over the LAN.
+"""Serves the local game-data shelf over the LAN, or through a tunnel with a key.
 
-Two things a plain static server does not give us, and both are the reason this file exists:
+Four things a plain static server does not give us, and each is a reason this file exists:
 
   CORS   — the browser target fetches game data with fetch(), and without
            Access-Control-Allow-Origin it is refused before the request is made. That missing
            header on GitHub's release assets is why the web build cannot download Freedoom today.
   Ranges — a 98 MB pak over a phone's wifi needs to resume. Python's stock handler ignores Range
            entirely and answers 200 with the whole file, which reads as success and is not.
+  Index  — /shelf.index is what the app reads to learn what is here: tab separated lines, because
+           the host carries no JSON parser. It is derived from manifest.json when the shelf has
+           one and from the directory itself when it does not.
+  Key    — optional, and off by default: on a LAN the network is the authentication, exactly as
+           before. Pass --key and every path but /health needs it. That is what makes the shelf
+           safe to put behind a tunnel, where the hostname is the only thing between the public
+           web and a directory of retail game data.
 
-No authentication, deliberately: this serves your own network, from your own machine, and the
-token model in docs/specification/08-addendum-06.md is for an origin that faces the internet.
 Bind it to your LAN address rather than 0.0.0.0 if that distinction matters where you are.
 
 Usage:
-    serve-shelf.py [shelf-root] [--port 8600] [--bind 0.0.0.0]
+    serve-shelf.py [shelf-root] [--port 8600] [--bind 0.0.0.0] [--key <key>]
 """
 
 from __future__ import annotations
 
 import argparse
+import hmac
+import json
 import mimetypes
+import os
 import re
 import socket
 from functools import partial
 from http import HTTPStatus
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 RANGE = re.compile(r"^bytes=(\d*)-(\d*)$")
 CHUNK = 1 << 20
 
+INDEX_PATH = "/shelf.index"
+INDEX_HEADER = "slipgate-shelf 1"
+
+# What the index lists. Anything else on the shelf — notes, the manifest, a stray screenshot — is
+# still served if asked for by name, but it is not offered to a gate as game data.
+DATA_SUFFIXES = frozenset({".wad", ".iwad", ".pwad", ".pk3", ".pak", ".deh", ".bex", ".lmp"})
+
+SHELF_NOTES = {"README.md", "NOTES.txt", "manifest.json", ".DS_Store"}
+
 
 class ShelfHandler(SimpleHTTPRequestHandler):
+    # Bound by main() before the server starts. Empty means no key, which is the LAN default.
+    key = ""
+
     def end_headers(self) -> None:
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Headers", "Range")
@@ -42,9 +63,28 @@ class ShelfHandler(SimpleHTTPRequestHandler):
 
     def do_OPTIONS(self) -> None:  # noqa: N802 — the base class spells them this way
         self.send_response(HTTPStatus.NO_CONTENT)
+        self.send_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
         self.end_headers()
 
+    def do_HEAD(self) -> None:  # noqa: N802
+        if self.refused():
+            return
+        super().do_HEAD()
+
     def do_GET(self) -> None:  # noqa: N802
+        route = urlparse(self.path).path
+        if route == "/health":
+            # Open even behind a key, so whatever supervises the server can wait on it.
+            self.text(HTTPStatus.OK, b"slipgate-shelf ok\n")
+            return
+
+        if self.refused():
+            return
+
+        if route == INDEX_PATH:
+            self.text(HTTPStatus.OK, self.index())
+            return
+
         header = self.headers.get("Range")
         if not header:
             super().do_GET()
@@ -93,6 +133,87 @@ class ShelfHandler(SimpleHTTPRequestHandler):
                 remaining -= len(block)
 
 
+    def refused(self) -> bool:
+        """Answers 401 and returns True when a key is required and was not offered correctly."""
+        if not self.key or self.offered() == self.key:
+            return False
+        # The same answer for a missing key and a wrong one: whoever learned the hostname should
+        # not also learn whether they got close.
+        self.text(HTTPStatus.UNAUTHORIZED, b"a key is required\n")
+        return True
+
+    def offered(self) -> str:
+        """The key the caller sent, from a header when it can set one and the query when it cannot.
+
+        The app's download layer is three platform HTTP clients behind one `fetch(url)`, and none of
+        them carries headers until the resumable rewrite lands. A query parameter is the version of
+        this that works on all three today, and it travels inside the tunnel's TLS.
+        """
+        header = self.headers.get("Authorization", "")
+        if header.lower().startswith("bearer "):
+            token = header[len("bearer ") :].strip()
+            if token and hmac.compare_digest(token, self.key):
+                return self.key
+        query = parse_qs(urlparse(self.path).query).get("key") or [""]
+        return self.key if query[0] and hmac.compare_digest(query[0], self.key) else ""
+
+    def index(self) -> bytes:
+        """The shelf as lines: `file`, the shelf it sits in, its name, its role, its size, its path.
+
+        manifest.json is the source of truth when it exists, because inspect-shelf.py read every
+        file to write it. Without one the directory still answers — a shelf nobody has inspected
+        yet is a shelf a player can still install from, and the app inspects what arrives anyway.
+        """
+        root = Path(self.directory)
+        lines = [INDEX_HEADER]
+        for shelf, name, role, size, url in self.listing(root):
+            lines.append("\t".join(("file", shelf, name, role, str(size), url)))
+        return ("\n".join(lines) + "\n").encode("utf-8")
+
+    def listing(self, root: Path) -> list[tuple[str, str, str, int, str]]:
+        manifest = root / "manifest.json"
+        if manifest.is_file():
+            try:
+                entries = json.loads(manifest.read_text())["files"]
+            except (OSError, ValueError, KeyError):
+                entries = None
+            if entries is not None:
+                return [
+                    (
+                        entry.get("shelf", ""),
+                        entry.get("name", ""),
+                        "addon" if entry.get("role") == "AddOn" else "game",
+                        int(entry.get("size", 0)),
+                        entry.get("url", ""),
+                    )
+                    for entry in entries
+                    if entry.get("url")
+                ]
+
+        found = []
+        for path in sorted(root.rglob("*")):
+            if not path.is_file() or path.name in SHELF_NOTES:
+                continue
+            if path.suffix.lower() not in DATA_SUFFIXES:
+                continue
+            relative = path.relative_to(root)
+            shelf = relative.parts[0]
+            # Without a reading, the shelf a file sits in is all there is to go on: `addons/` holds
+            # what loads over a game, which is the one role the layout itself states.
+            role = "addon" if shelf == "addons" else "game"
+            found.append((shelf, path.name, role, path.stat().st_size, "/" + relative.as_posix()))
+        return found
+
+    def text(self, status: HTTPStatus, body: bytes) -> None:
+        self.send_response(status)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(body)
+
+
 def lan_address() -> str:
     probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -110,17 +231,22 @@ def main() -> None:
     parser.add_argument("shelf", nargs="?", default=str(repository / "slipgate-server"))
     parser.add_argument("--port", type=int, default=8600)
     parser.add_argument("--bind", default="0.0.0.0")
+    parser.add_argument("--key", default=os.environ.get("SLIPGATE_SHELF_KEY", ""))
     arguments = parser.parse_args()
 
     shelf = Path(arguments.shelf).resolve()
     if not shelf.is_dir():
         raise SystemExit(f"No shelf at {shelf}. Run tooling/data-shelf/init-shelf.sh first.")
 
+    ShelfHandler.key = arguments.key
     handler = partial(ShelfHandler, directory=str(shelf))
     server = HTTPServer((arguments.bind, arguments.port), handler)
     print(f"Serving {shelf}")
     print(f"  http://{lan_address()}:{arguments.port}/   ← reachable from your devices")
     print(f"  http://localhost:{arguments.port}/manifest.json   ← the readings, from inspect-shelf.py --manifest")
+    print(f"  http://localhost:{arguments.port}{INDEX_PATH}   ← what the app reads")
+    if arguments.key:
+        print("  a key is required on every path but /health")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
