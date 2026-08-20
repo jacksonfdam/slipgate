@@ -14,21 +14,21 @@
 #include "sg_platform.h"
 
 // Rebuilds nothing: the table is the filesystem. Returns how many files the engine has written.
-__attribute__((export_name("slipgate_save_scan")))
+SG_EXPORT("slipgate_save_scan")
 int slipgate_save_scan(void)
 {
     return sg_file_count();
 }
 
-__attribute__((export_name("slipgate_save_size")))
+SG_EXPORT("slipgate_save_size")
 int slipgate_save_size(int index)
 {
     return (int)sg_file_size(index);
 }
 
 // Copies the name of file [index] into the host's buffer. Returns its length, or -1.
-__attribute__((export_name("slipgate_save_name")))
-int slipgate_save_name(int index, int destination, int capacity)
+SG_EXPORT("slipgate_save_name")
+int slipgate_save_name(int index, sg_ptr destination, int capacity)
 {
     const char *name = sg_file_name(index);
     if (name == NULL)
@@ -45,15 +45,15 @@ int slipgate_save_name(int index, int destination, int capacity)
 }
 
 // Copies the contents of file [index] into the host's buffer. Returns the bytes read, or -1.
-__attribute__((export_name("slipgate_save_read")))
-int slipgate_save_read(int index, int destination, int capacity)
+SG_EXPORT("slipgate_save_read")
+int slipgate_save_read(int index, sg_ptr destination, int capacity)
 {
     return (int)sg_file_read(index, (unsigned char *)(intptr_t)destination, capacity);
 }
 
 // Writes one file the host kept back into the engine's filesystem, before it looks for one.
-__attribute__((export_name("slipgate_save_put")))
-int slipgate_save_put(int name_pointer, int data_pointer, int size)
+SG_EXPORT("slipgate_save_put")
+int slipgate_save_put(sg_ptr name_pointer, sg_ptr data_pointer, int size)
 {
     const char *name = (const char *)(intptr_t)name_pointer;
     if (name[0] == '/' || strstr(name, "..") != NULL)

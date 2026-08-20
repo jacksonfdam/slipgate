@@ -117,7 +117,14 @@ wad_file_class_t stdc_wad_file = {
 // The engine looks for its game data on a filesystem before it opens it, and a mounted file is not
 // on one. Wrapping the existence check at link time — rather than patching d_iwad.c — is what lets
 // the search find what the host mounted while every other path keeps working.
+#if defined(__wasm__)
 char *__real_M_FileCaseExists(const char *path);
+#else
+// Natively the reroute is a macro in sg_stdio_redirect.h; this file is compiled without it so the
+// real engine function keeps its own name.
+char *M_FileCaseExists(const char *path);
+#define __real_M_FileCaseExists M_FileCaseExists
+#endif
 
 char *__wrap_M_FileCaseExists(const char *path)
 {
@@ -132,8 +139,8 @@ char *__wrap_M_FileCaseExists(const char *path)
 // Mounts a file the host has already written into module memory. The host allocates through
 // slipgate_alloc, writes the bytes, and hands the address over; the module keeps it for the life of
 // the session.
-__attribute__((export_name("slipgate_mount")))
-int slipgate_mount(int name_ptr, int data_ptr, int size)
+SG_EXPORT("slipgate_mount")
+int slipgate_mount(sg_ptr name_ptr, sg_ptr data_ptr, int size)
 {
     const char *name = (const char *)(intptr_t)name_ptr;
 
@@ -157,7 +164,7 @@ int slipgate_mount(int name_ptr, int data_ptr, int size)
 }
 
 // Forgets every mount. The buffers belong to the host, which frees them through slipgate_free.
-__attribute__((export_name("slipgate_mount_clear")))
+SG_EXPORT("slipgate_mount_clear")
 void slipgate_mount_clear(void)
 {
     for (int index = 0; index < MAX_MOUNTED_FILES; index++)
