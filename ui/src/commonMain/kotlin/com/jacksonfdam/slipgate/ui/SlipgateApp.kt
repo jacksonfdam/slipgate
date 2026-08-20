@@ -41,7 +41,7 @@ import com.jacksonfdam.slipgate.ui.audio.InterfaceAudio
 import com.jacksonfdam.slipgate.ui.audio.ambientKeyOf
 import com.jacksonfdam.slipgate.ui.data.AddOnShelf
 import com.jacksonfdam.slipgate.ui.data.GameDataStage
-import com.jacksonfdam.slipgate.ui.data.LibraryController
+import com.jacksonfdam.slipgate.ui.data.RemoteShelfController
 import com.jacksonfdam.slipgate.ui.data.StoredAddOnShelf
 import com.jacksonfdam.slipgate.ui.data.rememberFilePicker
 import com.jacksonfdam.slipgate.ui.gate.GateMenu
@@ -116,29 +116,29 @@ public fun SlipgateApp(
     hosts: SessionHosts = koinInject(),
     store: GameDataStore = koinInject(),
     acquisition: GameDataAcquisition = koinInject(),
-    library: LibraryController = koinInject(),
+    remoteShelf: RemoteShelfController = koinInject(),
     settings: SettingsController = koinInject(),
     audio: InterfaceAudio = koinInject(),
 ) {
     var stage by remember { mutableStateOf<Stage>(Stage.Splash) }
     var section by remember { mutableStateOf(LauncherSection.Gates) }
     val shell =
-        remember(registry, resolver, hosts, store, acquisition, library, settings, audio) {
+        remember(registry, resolver, hosts, store, acquisition, remoteShelf, settings, audio) {
             Shell(
                 gates = Gates(registry, resolver, hosts, store),
                 acquisition = acquisition,
                 shelf = StoredAddOnShelf(store, acquisition),
-                library = library,
+                remoteShelf = remoteShelf,
                 settings = settings,
                 audio = audio,
             )
         }
 
-    // The library is asked once, as the app opens, and again whenever the address changes. Here
+    // The shelf is asked once, as the app opens, and again whenever the address changes. Here
     // rather than on the screen that uses it, because a player who reaches a gate's data screen has
     // already spent two taps getting there and the list should be waiting for them.
-    LaunchedEffect(library, settings.settings.libraryAddress) {
-        library.refresh(settings.settings.libraryAddress)
+    LaunchedEffect(remoteShelf, settings.settings.shelfAddress) {
+        remoteShelf.refresh(settings.settings.shelfAddress)
     }
 
     // The interface's voice: cues, and the bed in the focused gate's key. A gate paused behind its
@@ -183,7 +183,7 @@ private class Shell(
     val gates: Gates,
     val acquisition: GameDataAcquisition,
     val shelf: AddOnShelf,
-    val library: LibraryController,
+    val remoteShelf: RemoteShelfController,
     val settings: SettingsController,
     val audio: InterfaceAudio,
 )
@@ -219,7 +219,7 @@ private fun StageSurface(
                 settings = shell.settings,
                 audio = shell.audio,
                 shelf = shell.shelf,
-                library = shell.library,
+                remoteShelf = shell.remoteShelf,
                 onSection = onSection,
                 onMove = { next -> onStage(Stage.Choosing(next)) },
                 onEnter = { card -> scope.launch { shell.enter(card, stage.state, onStage) } },
@@ -239,7 +239,7 @@ private fun StageSurface(
                 gate = stage.gate,
                 entry = stage.entry,
                 acquisition = shell.acquisition,
-                library = shell.library,
+                remoteShelf = shell.remoteShelf,
                 onInstalled = { scope.launch { onStage(shell.gates.openedStage(stage.gate)) } },
                 modifier = Modifier.fillMaxSize(),
             )
@@ -288,7 +288,7 @@ private fun LaunchingStage(
             settings = shell.settings,
             audio = shell.audio,
             shelf = shell.shelf,
-            library = shell.library,
+            remoteShelf = shell.remoteShelf,
             onSection = {},
             onMove = {},
             onEnter = {},
@@ -435,7 +435,7 @@ private fun ChoosingStage(
     settings: SettingsController,
     audio: InterfaceAudio,
     shelf: AddOnShelf,
-    library: LibraryController,
+    remoteShelf: RemoteShelfController,
     onSection: (LauncherSection) -> Unit,
     onMove: (LauncherState) -> Unit,
     onEnter: (GateCard) -> Unit,
@@ -462,7 +462,7 @@ private fun ChoosingStage(
         state = state,
         section = section,
         settings = settings,
-        library = library,
+        remoteShelf = remoteShelf,
         onSection = { chosen ->
             audio.play(if (chosen == LauncherSection.Gates) InterfaceCue.Back else InterfaceCue.Navigate)
             onSection(chosen)

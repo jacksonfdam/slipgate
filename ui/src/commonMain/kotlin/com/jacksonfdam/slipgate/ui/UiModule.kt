@@ -4,7 +4,7 @@ import com.jacksonfdam.slipgate.host.audio.AudioOutput
 import com.jacksonfdam.slipgate.host.audio.openAudioOutput
 import com.jacksonfdam.slipgate.host.gamedata.GameDataAcquisition
 import com.jacksonfdam.slipgate.host.gamedata.GameDataStore
-import com.jacksonfdam.slipgate.host.gamedata.GameLibrary
+import com.jacksonfdam.slipgate.host.gamedata.RemoteShelf
 import com.jacksonfdam.slipgate.host.graphics.backend.classic.ClassicBackend
 import com.jacksonfdam.slipgate.host.graphics.backend.skia.skiaBackend
 import com.jacksonfdam.slipgate.host.graphics.core.BackendSelector
@@ -12,7 +12,7 @@ import com.jacksonfdam.slipgate.host.graphics.core.CrtSettings
 import com.jacksonfdam.slipgate.host.runtime.Gate
 import com.jacksonfdam.slipgate.host.runtime.GateRegistry
 import com.jacksonfdam.slipgate.ui.audio.InterfaceAudio
-import com.jacksonfdam.slipgate.ui.data.LibraryController
+import com.jacksonfdam.slipgate.ui.data.RemoteShelfController
 import com.jacksonfdam.slipgate.ui.settings.SettingsController
 import com.jacksonfdam.slipgate.ui.settings.SettingsStore
 import org.koin.core.module.Module
@@ -27,11 +27,11 @@ internal fun uiModule(gates: List<Gate>): Module =
         single { GateRegistry(gates = gates) }
         single { GameDataAcquisition(store = get<GameDataStore>()) }
         single { SettingsController(store = get<SettingsStore>()) }
-        // One per shell rather than one per screen: the answer to "what does my library hold" is the
+        // One per shell rather than one per screen: the answer to "what does my shelf hold" is the
         // same on the rack, in Settings and on a gate's data screen, and asking three times over a
         // home tunnel is three times the wait for the same list.
-        single { GameLibrary() }
-        single { LibraryController(library = get()) }
+        single { RemoteShelf() }
+        single { RemoteShelfController(shelf = get()) }
         single { InterfaceAudio(output = get<AudioOutput>()) }
         // Candidates are listed in preference order; the classic path always works and so
         // always comes last. The shader backends are appended as they land.

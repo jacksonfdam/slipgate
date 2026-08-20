@@ -26,7 +26,7 @@ internal fun GameDataStage(
     gate: Gate,
     entry: DataEntry,
     acquisition: GameDataAcquisition,
-    library: LibraryController,
+    remoteShelf: RemoteShelfController,
     onInstalled: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -60,17 +60,17 @@ internal fun GameDataStage(
         },
         onSupply = supply,
         modifier = modifier,
-        // Only what the library filed under this gate, and only what a gate could boot from: a map
+        // Only what the shelf filed under this gate, and only what a gate could boot from: a map
         // pack offered where the game belongs would be refused after a download rather than before.
-        libraryFiles = library.bootable(gateId),
-        onLibrary = { file ->
-            val url = library.listing?.urlFor(file)
+        shelfFiles = remoteShelf.bootable(gateId),
+        onShelf = { file ->
+            val url = remoteShelf.listing?.urlFor(file)
             if (url != null) {
                 scope.launch {
                     progress = AcquisitionState.Working(received = 0, total = null)
                     progress =
                         acquisition
-                            .takeFromLibrary(gateId, engine, entry, url) { received, total ->
+                            .takeFromShelf(gateId, engine, entry, url) { received, total ->
                                 progress = AcquisitionState.Working(received, total)
                             }.asState()
                 }

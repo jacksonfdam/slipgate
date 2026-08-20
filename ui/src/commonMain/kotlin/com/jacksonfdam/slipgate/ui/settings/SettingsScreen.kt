@@ -25,8 +25,8 @@ import androidx.compose.ui.unit.dp
 import com.jacksonfdam.slipgate.host.graphics.core.CrtSettings
 import com.jacksonfdam.slipgate.host.graphics.core.QualityTier
 import com.jacksonfdam.slipgate.host.graphics.core.ScalingMode
-import com.jacksonfdam.slipgate.ui.data.LibraryController
-import com.jacksonfdam.slipgate.ui.data.LibraryState
+import com.jacksonfdam.slipgate.ui.data.RemoteShelfController
+import com.jacksonfdam.slipgate.ui.data.RemoteShelfState
 import com.jacksonfdam.slipgate.ui.data.describe
 import com.jacksonfdam.slipgate.ui.design.ColorTokens
 import com.jacksonfdam.slipgate.ui.design.LocalAccentRamp
@@ -48,7 +48,7 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun SettingsScreen(
     controller: SettingsController,
-    library: LibraryController,
+    remoteShelf: RemoteShelfController,
     installedGates: List<GateDataStatus>,
     version: String,
     modifier: Modifier = Modifier,
@@ -70,7 +70,7 @@ internal fun SettingsScreen(
         }
 
         item {
-            LibrarySection(controller, library)
+            ShelfSection(controller, remoteShelf)
         }
 
         item {
@@ -123,33 +123,33 @@ internal fun SettingsScreen(
  * The line under it is the only report there is, so it says what answered rather than "connected".
  */
 @Composable
-private fun LibrarySection(
+private fun ShelfSection(
     controller: SettingsController,
-    library: LibraryController,
+    remoteShelf: RemoteShelfController,
 ) {
     val scope = rememberCoroutineScope()
-    val address = controller.settings.libraryAddress.orEmpty()
+    val address = controller.settings.shelfAddress.orEmpty()
 
-    Section(title = "Home library") {
+    Section(title = "Data shelf") {
         Entry(
-            label = "Beacon or library address",
+            label = "Beacon or shelf address",
             explanation = "Where your own files are served from. Left empty, nothing is fetched.",
             value = address,
             placeholder = "https://…",
             onChange = { typed ->
-                controller.update { it.copy(libraryAddress = typed.takeIf { entered -> entered.isNotBlank() }) }
+                controller.update { it.copy(shelfAddress = typed.takeIf { entered -> entered.isNotBlank() }) }
             },
             // Reached on the keyboard's own done action rather than while typing: every keystroke of a
             // half-typed hostname would be a request to somewhere that does not exist.
-            onDone = { scope.launch { library.refresh(address, force = true) } },
+            onDone = { scope.launch { remoteShelf.refresh(address, force = true) } },
         )
-        Text(text = library.state.describe(), style = TypeScale.Label, color = ColorTokens.Muted)
-        if (address.isNotBlank() && library.state !is LibraryState.Looking) {
+        Text(text = remoteShelf.state.describe(), style = TypeScale.Label, color = ColorTokens.Muted)
+        if (address.isNotBlank() && remoteShelf.state !is RemoteShelfState.Looking) {
             Text(
                 text = "CHECK AGAIN",
                 style = TypeScale.Label,
                 color = LocalAccentRamp.current.hot,
-                modifier = Modifier.clickable { scope.launch { library.refresh(address, force = true) } },
+                modifier = Modifier.clickable { scope.launch { remoteShelf.refresh(address, force = true) } },
             )
         }
     }
