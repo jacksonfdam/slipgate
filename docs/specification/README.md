@@ -12,6 +12,7 @@ directory holds the specification it is built against, in the order it was writt
 | [05-strife-gate.md](05-strife-gate.md) | Working notes for a fourth gate: what Strife needs that the other three did not, and its art |
 | [06-addendum-04.md](06-addendum-04.md) | The Quake gate: phase 7 confirmed, its amendments, and the delivery plan |
 | [07-addendum-05.md](07-addendum-05.md) | The Hexen II gate: uHexen2, what phase 8 inherits from phase 7, and the delivery plan |
+| [08-addendum-06.md](08-addendum-06.md) | The data origin: what `slipgate-server` may serve, what it may not, and what changes in the client |
 
 Later documents amend earlier ones rather than replacing them. Where an amendment conflicts
 with something already merged, the pull request that resolves it says so explicitly and
