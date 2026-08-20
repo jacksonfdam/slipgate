@@ -120,7 +120,7 @@ public fun GateSurface(
             presentation.draw(this, presentation.presentedFrames)
         }
         if (!paused) {
-            VirtualGamepad(profile = inputProfile, state = controls)
+            VirtualGamepad(profile = inputProfile, state = controls, decor = padGlyphs())
         }
         BackendLabel(
             text = selection.describe(),
