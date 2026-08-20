@@ -22,6 +22,17 @@ internal class SingleFileData(
         if (name == this.name) bytes.size.toLong() else throw NoSuchElementException(name)
 }
 
+/** Several files, mounted the way a store that has cached a palette beside the game data does. */
+internal class MountedFiles(
+    private val files: Map<String, ByteArray>,
+) : MountedGameData {
+    override fun names(): Set<String> = files.keys
+
+    override suspend fun read(name: String): ByteArray = files[name] ?: throw NoSuchElementException(name)
+
+    override suspend fun size(name: String): Long = read(name).size.toLong()
+}
+
 /** Counts what the session played, and whether any of it was more than silence. */
 internal class CountingAudioSink : AudioSink {
     override val sampleRate: Int = 44_100

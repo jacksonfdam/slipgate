@@ -1,10 +1,10 @@
 package com.jacksonfdam.slipgate.games.korax
 
 import com.jacksonfdam.slipgate.host.backend.wasm.DirectionBindings
-import com.jacksonfdam.slipgate.host.backend.wasm.WasmEngine
 import com.jacksonfdam.slipgate.host.backend.wasm.WasmGateSession
 import com.jacksonfdam.slipgate.host.backend.wasm.WasmHost
 import com.jacksonfdam.slipgate.host.backend.wasm.keptSaves
+import com.jacksonfdam.slipgate.host.backend.wasm.startEngine
 import com.jacksonfdam.slipgate.host.runtime.GateAction
 import com.jacksonfdam.slipgate.host.runtime.GateHost
 import com.jacksonfdam.slipgate.host.runtime.GateSession
@@ -74,13 +74,16 @@ internal suspend fun openWasmSession(
     data: MountedGameData,
     host: GateHost,
 ): GateSession {
-    val iwadName = data.names().firstOrNull() ?: error("no game data is mounted for the korax gate")
+    // The IWAD by the name the gate asked for, not whichever file the store happens to list first:
+    // the launcher caches a palette sidecar beside the game data, and mounting 768 bytes of colours
+    // as an IWAD is a gate that will not boot.
+    val iwadName = KORAX_IWAD
     val iwad = data.read(iwadName)
 
     host.logger.log(LogLevel.Info, "booting the korax gate from $iwadName")
 
     val engine =
-        WasmEngine.start(
+        startEngine(
             moduleBytes = koraxModuleBytes(),
             files = mapOf(iwadName to iwad),
             arguments = listOf("slipgate", "-iwad", iwadName, "-nomusic"),
