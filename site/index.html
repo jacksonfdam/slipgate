@@ -1,327 +1,430 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Slipgate — data shelf beacon</title>
-    <meta
-      name="description"
-      content="How a Slipgate player serves their own game data from a NAS and lets every device find it, wherever they are."
-    />
-    <style>
-      :root {
-        color-scheme: dark;
-        --ink: #e8e2d5;
-        --muted: #9a9284;
-        --ground: #14120f;
-        --surface: #1c1916;
-        --edge: #332d25;
-        --hot: #d98a2b;
-      }
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slipgate — pick a gate, the screen warps, the game takes over</title>
+<meta name="description" content="Slipgate is a console-style game select screen that boots classic id Tech games. Doom, Heretic and Hexen today; Quake and Strife on the way. Android, Web and iOS from one Kotlin Multiplatform host.">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<meta property="og:title" content="Slipgate">
+<meta property="og:description" content="A console-style game select screen that boots classic id Tech games, each engine compiled to WebAssembly and driven from a single Kotlin Multiplatform host.">
+<style>
+  :root {
+    /* ColorTokens.kt — the app's own palette, dark-only by design */
+    --void:    #07080B;
+    --recess:  #0D0F14;
+    --surface: #14171F;
+    --edge:    #232833;
+    --text:    #E8EAF0;
+    --muted:   #868D9E;
+    --steel-dim:  #39414F;
+    --steel:      #7E8CA3;
+    --steel-hot:  #BCC8DC;
+    /* per-gate accents, sampled from each gate's own cover art */
+    --mars:   #FF5A1F;
+    --corvus: #3FD08B;
+    --korax:  #9B6BE8;
+    --chthon: #FF8A2A;
+    --macil:  #D9A441;
+    /* Motion.kt */
+    --ease: cubic-bezier(0.2, 0, 0, 1);
+  }
 
-      * {
-        box-sizing: border-box;
-      }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
-      body {
-        margin: 0;
-        padding: 48px 24px 96px;
-        background: var(--ground);
-        color: var(--ink);
-        font: 16px/1.6 ui-sans-serif, system-ui, sans-serif;
-      }
+  html { scroll-behavior: smooth; }
 
-      main {
-        max-width: 760px;
-        margin: 0 auto;
-      }
+  body {
+    background: var(--void);
+    color: var(--text);
+    /* TypeScale.kt: system faces only, mono reserved for machine-generated values */
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
 
-      h1 {
-        margin: 0 0 4px;
-        font-size: 28px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-      }
+  ::selection { background: var(--steel-dim); color: var(--steel-hot); }
 
-      h2 {
-        margin: 48px 0 8px;
-        font-size: 13px;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        color: var(--hot);
-      }
+  a { color: var(--steel-hot); text-decoration: none; border-bottom: 1px solid var(--steel-dim); transition: border-color 240ms var(--ease), color 240ms var(--ease); }
+  a:hover { color: #fff; border-color: var(--steel); }
 
-      p,
-      li {
-        color: var(--ink);
-      }
+  code, .data {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+    background: var(--recess);
+    border: 1px solid var(--edge);
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
 
-      .lead,
-      .muted {
-        color: var(--muted);
-      }
+  pre {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    background: var(--recess);
+    border: 1px solid var(--edge);
+    border-radius: 8px;
+    padding: 16px 20px;
+    overflow-x: auto;
+  }
+  pre code { background: none; border: none; padding: 0; }
 
-      a {
-        color: var(--hot);
-      }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
 
-      code,
-      pre {
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        font-size: 13px;
-      }
+  /* Label style from TypeScale: 12px, +1.4 tracking, caps */
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
 
-      pre {
-        overflow-x: auto;
-        padding: 14px 16px;
-        border: 1px solid var(--edge);
-        border-radius: 3px;
-        background: var(--surface);
-      }
+  h2 {
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+    margin: 8px 0 20px;
+  }
 
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 14px;
-      }
+  h3 { font-size: 20px; font-weight: 500; line-height: 1.3; margin-bottom: 8px; }
 
-      th,
-      td {
-        padding: 8px 10px;
-        border-bottom: 1px solid var(--edge);
-        text-align: left;
-        vertical-align: top;
-      }
+  p { color: var(--muted); max-width: 68ch; }
+  p strong { color: var(--text); font-weight: 500; }
+  section p + p { margin-top: 12px; }
 
-      th {
-        font-size: 12px;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: var(--muted);
-      }
+  /* ---------- header ---------- */
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: color-mix(in srgb, var(--void) 82%, transparent);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--edge);
+  }
+  .nav {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 56px;
+  }
+  .nav .mark { display: flex; align-items: center; gap: 12px; border: none; }
+  .nav svg.wordmark { height: 14px; width: auto; display: block; }
+  .nav ul { display: flex; gap: 24px; list-style: none; }
+  .nav ul a { border: none; color: var(--muted); font-size: 13px; }
+  .nav ul a:hover { color: var(--text); }
+  @media (max-width: 720px) { .nav ul { display: none; } }
 
-      form {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 12px;
-      }
+  /* ---------- hero ---------- */
+  .hero { padding: 96px 0 72px; position: relative; overflow: hidden; }
+  .hero::before {
+    content: "";
+    position: absolute; inset: -40% -20%;
+    background: radial-gradient(ellipse 60% 50% at 50% 30%, #1a1f2b 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero .wrap { position: relative; }
+  .hero svg.wordmark { width: min(514px, 86%); height: auto; display: block; margin-bottom: 28px; }
+  .hero .tagline { font-size: 20px; line-height: 1.5; color: var(--text); max-width: 56ch; }
+  .hero .sub { margin-top: 16px; }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+  .badge {
+    font-size: 12px; font-weight: 500; letter-spacing: 1.4px; text-transform: uppercase;
+    color: var(--steel-hot);
+    border: 1px solid var(--edge);
+    background: var(--recess);
+    border-radius: 4px;
+    padding: 6px 12px;
+  }
 
-      input {
-        flex: 1 1 320px;
-        min-width: 0;
-        padding: 10px 12px;
-        border: 1px solid var(--edge);
-        border-radius: 3px;
-        background: var(--surface);
-        color: var(--ink);
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        font-size: 13px;
-      }
+  section { padding: 72px 0; border-top: 1px solid var(--edge); }
 
-      button {
-        padding: 10px 18px;
-        border: 1px solid var(--hot);
-        border-radius: 3px;
-        background: transparent;
-        color: var(--hot);
-        font: inherit;
-        font-size: 13px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        cursor: pointer;
-      }
+  /* ---------- gates ---------- */
+  .gate-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 36px;
+  }
+  .gate {
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    transition: transform 240ms var(--ease), border-color 240ms var(--ease);
+  }
+  .gate:hover { transform: translateY(-3px); border-color: var(--accent, var(--steel-dim)); }
+  .gate img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; border-bottom: 1px solid var(--edge); }
+  .gate .body { padding: 20px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+  .gate .name { display: flex; align-items: baseline; gap: 10px; }
+  .gate .name h3 { margin: 0; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+  .gate .name .game { color: var(--muted); font-size: 13px; }
+  .gate p { font-size: 14px; }
+  .gate .meta { margin-top: auto; padding-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag {
+    font-size: 11px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase;
+    border: 1px solid var(--edge); border-radius: 4px; padding: 3px 8px; color: var(--muted);
+  }
+  .tag.live { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, var(--edge)); }
 
-      #verdict {
-        margin-top: 14px;
-        white-space: pre-wrap;
-      }
-    </style>
-  </head>
-  <body>
-    <main>
-      <h1>Data shelf beacon</h1>
-      <p class="lead">
-        Slipgate ships no game data, so every device needs the player's own files. A data shelf on a
-        NAS serves the devices at home; this is how it serves the ones that are not, without anyone
-        retyping a hostname after a reboot.
-      </p>
+  /* ---------- shelf / server ---------- */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; margin-top: 12px; }
+  @media (max-width: 800px) { .two-col { grid-template-columns: 1fr; } }
 
-      <h2>How it works</h2>
-      <ol>
-        <li>
-          <code>serve-shelf.py</code> runs on the NAS, listening on localhost only and refusing
-          every request that does not carry the shelf key.
-        </li>
-        <li>
-          A tunnel — <code>cloudflared</code> or <code>ngrok</code> — puts it on the public web over
-          TLS. A quick tunnel gets a new hostname each time it starts, which is the whole reason for
-          the step below.
-        </li>
-        <li>
-          The NAS publishes a pointer to this site: where the shelf is now, and the key to read
-          it. The app is configured with the beacon address, which never changes.
-        </li>
-      </ol>
-      <p class="muted">
-        One field in Settings, set once per device. After a power cut the NAS republishes and every
-        device follows it without being touched.
-      </p>
+  .shelf-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+  .shelf-table th {
+    text-align: left; font-size: 12px; font-weight: 500; letter-spacing: 1.4px;
+    text-transform: uppercase; color: var(--muted); padding: 10px 12px;
+    border-bottom: 1px solid var(--edge);
+  }
+  .shelf-table td { padding: 10px 12px; border-bottom: 1px solid var(--edge); color: var(--muted); }
+  .shelf-table td:first-child { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; color: var(--steel-hot); }
 
-      <h2>Boot the shelf</h2>
-      <p>
-        The scripts live in the Slipgate repository under <code>tooling/data-shelf</code>. Lay the
-        files out one directory per gate, with the Quake-family engines' own directories inside
-        theirs and map packs in <code>addons</code>:
-      </p>
-      <pre>slipgate-server/
-  mars/doomu.wad
-  corvus/heretic.wad
-  korax/hexen.wad
-  macil/strife1.wad
-  chthon/id1/pak0.pak
-  addons/hexdd.wad</pre>
-      <p>Then write the configuration and start it:</p>
-      <pre>export SLIPGATE_SHELF_ROOT=/volume1/games/slipgate-server
-export SLIPGATE_SHELF_KEY=$(openssl rand -hex 16)
-export SLIPGATE_TUNNEL=cloudflared
-export SLIPGATE_BEACON_URL=https://&lt;this-site&gt;/beacon/&lt;beacon-id&gt;
-export SLIPGATE_BEACON_TOKEN=&lt;publish-token&gt;
+  /* ---------- credits ---------- */
+  .credit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-top: 32px; }
+  .credit {
+    background: var(--surface); border: 1px solid var(--edge); border-radius: 10px;
+    padding: 20px;
+  }
+  .credit h3 { font-size: 16px; }
+  .credit p { font-size: 13px; margin-top: 6px; }
+  .credit .eyebrow { display: block; margin-bottom: 8px; }
 
-tooling/data-shelf/publish-shelf.sh</pre>
-      <p class="muted">
-        The beacon id is 24 to 64 hex characters that you choose once — it is the read credential,
-        so generate it with <code>openssl rand -hex 16</code> rather than picking a word. The publish
-        token is the site's <code>SLIPGATE_BEACON_TOKEN</code> environment variable.
-      </p>
+  footer { border-top: 1px solid var(--edge); padding: 40px 0 56px; }
+  footer p { font-size: 13px; }
+  footer .wrap { display: flex; flex-direction: column; gap: 12px; }
 
-      <h2>The beacon</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Request</th>
-            <th>Who calls it</th>
-            <th>What happens</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>POST /beacon/&lt;id&gt;</code></td>
-            <td>The NAS</td>
-            <td>Stores the pointer. Needs the publish token as a bearer token.</td>
-          </tr>
-          <tr>
-            <td><code>GET /beacon/&lt;id&gt;</code></td>
-            <td>The app</td>
-            <td>Returns the pointer, uncached. Knowing the id is the credential.</td>
-          </tr>
-          <tr>
-            <td><code>DELETE /beacon/&lt;id&gt;</code></td>
-            <td>You</td>
-            <td>Forgets the pointer, so the app stops being sent anywhere.</td>
-          </tr>
-        </tbody>
-      </table>
-      <p>A pointer is four lines, tab separated, because the app parses it without a JSON parser:</p>
-      <pre>slipgate-beacon 1
-url	https://tunnel-hostname.example
-key	9f0c1d2e3a4b5c6d7e8f9a0b1c2d3e4f
-updated	2026-08-20T18:22:41Z</pre>
+  .footnote { font-size: 13px; margin-top: 16px; }
+</style>
+</head>
+<body>
 
-      <h2>Check a beacon</h2>
-      <p>
-        Paste a beacon address to see what it currently points at. Nothing is stored or sent
-        anywhere else — the request goes from this page straight to the beacon.
-      </p>
-      <form id="check">
-        <input
-          id="address"
-          type="url"
-          inputmode="url"
-          spellcheck="false"
-          placeholder="https://this-site/beacon/&lt;beacon-id&gt;"
-          required
-        />
-        <button type="submit">Check</button>
-      </form>
-      <p id="verdict" class="muted">Not checked yet.</p>
+<!-- The SLIPGATE wordmark, ported polygon-for-polygon from WordmarkGlyphs.kt -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <path id="slipgate-wordmark" d="M0 0 L46 0 L52 16 L0 16 Z M0 16 L16 16 L16 42 L0 42 Z M0 42 L52 42 L52 58 L0 58 Z M36 58 L52 58 L52 84 L36 84 Z M0 84 L52 84 L52 100 L6 100 Z M66 6 L82 0 L82 84 L66 84 Z M66 84 L112 84 L118 100 L66 100 Z M150 6 L166 0 L166 94 L150 100 Z M198 0 L214 0 L214 94 L198 100 Z M214 0 L250 0 L250 16 L214 16 Z M234 16 L250 16 L250 42 L234 42 Z M214 42 L250 42 L250 58 L214 58 Z M264 0 L310 0 L316 16 L264 16 Z M264 16 L280 16 L280 84 L264 84 Z M264 84 L316 84 L316 100 L264 100 Z M300 58 L316 58 L316 84 L300 84 Z M284 42 L316 42 L316 58 L290 58 Z M330 0 L382 0 L382 16 L330 16 Z M330 16 L346 16 L346 94 L330 100 Z M366 16 L382 16 L382 94 L366 100 Z M346 58 L366 58 L366 74 L346 74 Z M396 0 L442 0 L448 16 L402 16 Z M414 16 L430 16 L430 94 L414 100 Z M462 0 L478 0 L478 100 L462 100 Z M478 0 L508 0 L514 16 L478 16 Z M478 42 L504 42 L510 58 L478 58 Z M478 84 L508 84 L514 100 L478 100 Z"/>
+  </defs>
+</svg>
 
-      <h2>What this is not</h2>
-      <p class="muted">
-        Not a way to get game data you do not own, and not a public mirror: a tunnelled shelf
-        refuses anonymous requests, and the pointer that unlocks it is only readable by whoever holds
-        the beacon id. Serving commercial IWADs to strangers is redistribution however briefly it is
-        done, which is why the key is not optional and the tunnel hostname alone opens nothing.
-      </p>
-      <p class="muted">
-        Slipgate is on <a href="https://github.com/jacksonfdam/slipgate">GitHub</a>; the setup guide
-        is <code>docs/data-shelf.md</code>.
-      </p>
-    </main>
+<header>
+  <nav class="nav wrap">
+    <a class="mark" href="#top" aria-label="Slipgate">
+      <svg class="wordmark" viewBox="0 0 514 100" fill="currentColor" aria-hidden="true"><use href="#slipgate-wordmark"/></svg>
+    </a>
+    <ul>
+      <li><a href="#gates">Gates</a></li>
+      <li><a href="#data">Game data</a></li>
+      <li><a href="#shelf">LAN shelf</a></li>
+      <li><a href="#engines">Engines</a></li>
+      <li><a href="#credits">Credits</a></li>
+    </ul>
+  </nav>
+</header>
 
-    <script type="module">
-      const form = document.querySelector('#check');
-      const address = document.querySelector('#address');
-      const verdict = document.querySelector('#verdict');
+<main id="top">
 
-      const MINUTE = 60_000;
+  <div class="hero">
+    <div class="wrap">
+      <svg class="wordmark" viewBox="0 0 514 100" fill="var(--text)" role="img" aria-label="SLIPGATE"><use href="#slipgate-wordmark"/></svg>
+      <p class="tagline">A console-style game select screen that boots classic id&nbsp;Tech games. Each engine is compiled to WebAssembly and driven from a single Kotlin Multiplatform host — the same launcher, renderer, input layer and save system serve every game behind it.</p>
+      <p class="sub">Slipgate is a launcher first and an engine host second. You pick a gate, the screen warps, and the game takes over the surface.</p>
+      <div class="badges">
+        <span class="badge">Android</span>
+        <span class="badge">Web · WasmJS</span>
+        <span class="badge">iOS</span>
+        <span class="badge">Open source</span>
+      </div>
+    </div>
+  </div>
 
-      form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        verdict.textContent = 'Checking…';
-        try {
-          const response = await fetch(address.value, { cache: 'no-store' });
-          if (response.status === 404) {
-            verdict.textContent = 'That beacon has nothing to point at yet.';
-            return;
-          }
-          if (!response.ok) {
-            verdict.textContent = `The beacon answered ${response.status}.`;
-            return;
-          }
-          const pointer = await response.text();
-          verdict.textContent = describe(pointer);
-        } catch (failure) {
-          verdict.textContent = `Could not reach it: ${failure.message}`;
-        }
-      });
+  <section id="gates">
+    <div class="wrap">
+      <span class="eyebrow">The rack</span>
+      <h2>Gates</h2>
+      <p>A <strong>gate</strong> is one game plus the engine that runs it. Each gate is named for a figure from the game behind it rather than for the game itself, so the rack reads as a row of places to go rather than a list of products.</p>
 
-      function describe(pointer) {
-        const fields = new Map(
-          pointer
-            .split('\n')
-            .map((line) => line.trim())
-            .filter(Boolean)
-            .slice(1)
-            .map((line) => {
-              const [name, ...rest] = line.split('\t');
-              return [name, rest.join('\t')];
-            }),
-        );
-        const url = fields.get('url');
-        if (!url) {
-          return 'That answered, but it is not a Slipgate pointer.';
-        }
-        // The key is deliberately not shown: this page is as likely to be open on a shared screen
-        // as anywhere else, and the app is what needs to read it.
-        return `Points at ${url}, published ${age(fields.get('updated'))}. A key is included.`;
-      }
+      <div class="gate-grid">
+        <article class="gate" style="--accent: var(--mars)">
+          <img src="assets/cover_mars.webp" alt="Mars gate cover — an armored marine facing a wall of fire" loading="lazy">
+          <div class="body">
+            <div class="name"><h3>Mars</h3><span class="game">Doom · 1993</span></div>
+            <p>Doom opens on the Union Aerospace Corporation's facility on Phobos, where a teleport experiment has torn something open. The marine who fights back through it was posted to Mars for assaulting a superior officer who ordered him to fire on civilians.</p>
+            <div class="meta">
+              <span class="tag live">Playable</span>
+              <span class="tag">Chocolate Doom</span>
+              <span class="tag">Freedoom included</span>
+            </div>
+          </div>
+        </article>
 
-      function age(stamp) {
-        const published = Date.parse(stamp ?? '');
-        if (Number.isNaN(published)) {
-          return 'at an unstated time';
-        }
-        const minutes = Math.round((Date.now() - published) / MINUTE);
-        if (minutes < 1) {
-          return 'just now';
-        }
-        if (minutes < 60) {
-          return `${minutes} minutes ago`;
-        }
-        const hours = Math.round(minutes / 60);
-        return hours < 48 ? `${hours} hours ago` : `${Math.round(hours / 24)} days ago`;
-      }
-    </script>
-  </body>
+        <article class="gate" style="--accent: var(--corvus)">
+          <img src="assets/cover_corvus.webp" alt="Corvus gate cover — an elven archer under a storm of green lightning" loading="lazy">
+          <div class="body">
+            <div class="name"><h3>Corvus</h3><span class="game">Heretic · 1994</span></div>
+            <p>Heretic's hero is the last of the Sidhe elves, one of seven who refused to serve D'Sparil and were named heretics for it. The other six were broken; Corvus went into the dungeons after the Serpent Rider alone.</p>
+            <div class="meta">
+              <span class="tag live">Playable</span>
+              <span class="tag">Chocolate Doom · Raven</span>
+              <span class="tag">Blasphemer included</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="gate" style="--accent: var(--korax)">
+          <img src="assets/cover_korax.webp" alt="Korax gate cover — three silhouetted heroes before a serpent throne" loading="lazy">
+          <div class="body">
+            <div class="name"><h3>Korax</h3><span class="game">Hexen · 1995</span></div>
+            <p>Korax is the second Serpent Rider, who took the world after his brother fell. Three heroes survived the call to arms that emptied their orders — and the player is whichever one they choose.</p>
+            <div class="meta">
+              <span class="tag live">Playable</span>
+              <span class="tag">Chocolate Doom · Raven</span>
+              <span class="tag">Own IWAD required</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="gate" style="--accent: var(--chthon)">
+          <img src="assets/cover_chthon.webp" alt="Chthon gate cover — a horned lava demon wading through molten rock" loading="lazy">
+          <div class="body">
+            <div class="name"><h3>Chthon</h3><span class="game">Quake · 1996</span></div>
+            <p>Quake's first boss — the lava thing under Shub-Niggurath's dimension shard, waiting at the bottom of the first slipgate run. The gate that gave this project its name.</p>
+            <div class="meta">
+              <span class="tag">In development</span>
+              <span class="tag">Mark V WinQuake</span>
+              <span class="tag">Own PAKs required</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="gate" style="--accent: var(--macil)">
+          <img src="assets/cover_macil.webp" alt="Macil gate cover — a cloaked rebel before the Order's iron gates" loading="lazy">
+          <div class="body">
+            <div class="name"><h3>Macil</h3><span class="game">Strife · 1996</span></div>
+            <p>Strife's rebel leader, who runs the Front against the Order from under a town the Order already owns. The same engine tree that builds the first three gates builds this one too.</p>
+            <div class="meta">
+              <span class="tag">Planned</span>
+              <span class="tag">Chocolate Doom</span>
+              <span class="tag">Own IWAD required</span>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="data">
+    <div class="wrap">
+      <span class="eyebrow">First run</span>
+      <h2>Game data</h2>
+      <div class="two-col">
+        <div>
+          <p><strong>No game data ships with Slipgate.</strong> Not in the repository, not in releases, not in CI caches. Acquisition is a first-run flow inside the app: Doom offers a Freedoom download, Heretic offers Blasphemer, and Hexen takes your own IWAD — its gate card says so instead of showing a download button that cannot work.</p>
+          <p>Both free options are named as what they are: a replacement rather than the original. Freedoom is not Doom and Blasphemer is not Heretic — different levels and art, the same game to play — and the data screen says so before you download half a gigabyte expecting otherwise.</p>
+        </div>
+        <div>
+          <p>Supplied files are validated <strong>by contents, never by filename</strong> — signature, lump directory, palette, and the translucency table that separates the engine families. A file that is game data for the wrong game is refused by name: <em>"that is Doom data and this gate needs Hexen."</em></p>
+          <p>Whether a file carries a palette decides what it can be: one that does can boot a gate, one that does not is an add-on loaded over a game already installed. That is how the engines themselves decide it — and it gets the two famous exceptions right: Chex&nbsp;Quest is a whole game under a <code>PWAD</code> header, and Hexen's Deathkings expansion is an add-on under an <code>IWAD</code> one. Thirty years of custom map packs install per gate and load in a stable order with <code>-file</code>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="shelf">
+    <div class="wrap">
+      <span class="eyebrow">Serve your own library</span>
+      <h2>The LAN shelf</h2>
+      <div class="two-col">
+        <div>
+          <p>Game data you own can live on a machine you own. The shelf is a folder tree on your NAS or desktop — one folder per gate — served over plain HTTP on the local network. Any static file server works:</p>
+          <pre><code>cd slipgate-server
+python3 -m http.server 8600 --bind 0.0.0.0</code></pre>
+          <p class="footnote">Your phone then pulls files straight from the shelf — e.g. <code>http://192.168.0.10:8600/mars/doomu.wad</code> — through the same downloader that fetches Freedoom. No cloud, no account, no upload of purchased data to anyone else's server.</p>
+          <p class="footnote">A <code>manifest.json</code> catalogues every file the way the app itself reads it — kind, role, flavour, episode and map counts, size and sha256 — produced by the same content-based rules, never by filename.</p>
+        </div>
+        <div>
+          <table class="shelf-table">
+            <thead><tr><th>Shelf</th><th>Holds</th></tr></thead>
+            <tbody>
+              <tr><td>mars/</td><td>Ultimate Doom, Doom II, Final Doom, Chex Quest</td></tr>
+              <tr><td>corvus/</td><td>Heretic: Shadow of the Serpent Riders</td></tr>
+              <tr><td>korax/</td><td>Hexen: Beyond Heretic</td></tr>
+              <tr><td>addons/</td><td>Deathkings of the Dark Citadel — loads over Hexen, never boots alone</td></tr>
+              <tr><td>unsupported/</td><td>Strife — recognised and named, waiting for its gate</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="engines">
+    <div class="wrap">
+      <span class="eyebrow">Under the surface</span>
+      <h2>Engines &amp; architecture</h2>
+      <div class="two-col">
+        <div>
+          <p>The three playable gates are built from the <strong>Chocolate Doom</strong> tree, which carries Doom, Heretic and Hexen behind one platform abstraction — the reason a single port effort yields three gates, and the reason Strife is a fourth rather than a rewrite. The Quake gate is built from <strong>Mark&nbsp;V WinQuake</strong>, the lineage behind QuakeDroid.</p>
+          <p>Each engine is compiled to <strong>WebAssembly</strong> from a pinned upstream revision and executed by <strong>Chasm</strong>, a Kotlin Multiplatform wasm runtime. The host feeds a palette-indexed framebuffer to the GPU as an R8 texture with the palette as a 256-entry lookup, and resolves colour in the fragment shader — so palette effects like the damage flash and the Tome of Power come for free.</p>
+        </div>
+        <div>
+          <p>Nothing in the host assumes 320×200, 8-bit colour, 35&nbsp;Hz tics or a single save blob — those are properties of a session, which is what keeps engines beyond id&nbsp;Tech&nbsp;1 viable. One shader dialect (SkSL/AGSL) draws inside Compose's own canvas on every platform, with an edge-adaptive upscaler in the spirit of FSR1's EASU for smooth-edge scaling, and an optional tube effect — curvature, scanlines and grille, as a television of the period had.</p>
+          <p>The host never depends on the games; gates are discovered through a registry the platform entry point populates. The host is dual-licensed <strong>MIT&nbsp;/ Apache&nbsp;2.0</strong>; the engines are <strong>GPLv2</strong>, and so are the wasm modules built from them, with complete corresponding source and pinned revisions published for every module.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="credits">
+    <div class="wrap">
+      <span class="eyebrow">Standing on shoulders</span>
+      <h2>Inspiration &amp; credits</h2>
+      <p>Slipgate exists because <strong>mood</strong> demonstrated that a full id&nbsp;Tech&nbsp;1 game can be driven from Kotlin Multiplatform through a wasm runtime. The host architecture here — a palette-indexed framebuffer pipeline fed by a wasm game instance — follows the approach mood established, studied and reimplemented rather than copied. Slipgate extends it to multiple engines behind a single launcher.</p>
+
+      <div class="credit-grid">
+        <div class="credit">
+          <span class="eyebrow">Prior art</span>
+          <h3><a href="https://github.com/CharlieTap/mood">mood</a></h3>
+          <p>Charlie Tapping's proof that Doom runs from Kotlin Multiplatform via a wasm runtime. The spark for this whole project.</p>
+        </div>
+        <div class="credit">
+          <span class="eyebrow">Runtime</span>
+          <h3><a href="https://github.com/CharlieTap/chasm">Chasm</a></h3>
+          <p>The Kotlin Multiplatform WebAssembly runtime that executes every engine module on every platform.</p>
+        </div>
+        <div class="credit">
+          <span class="eyebrow">Engines</span>
+          <h3><a href="https://github.com/chocolate-doom/chocolate-doom">Chocolate Doom</a></h3>
+          <p>The conservative, historically-accurate port carrying Doom, Heretic, Hexen and Strife — and decades of contributors' care.</p>
+        </div>
+        <div class="credit">
+          <span class="eyebrow">Engines</span>
+          <h3><a href="https://github.com/jacksonfdam/markv-quakedroid">Mark V WinQuake</a></h3>
+          <p>Baker's Quake port, the QuakeDroid lineage — the engine behind the Chthon gate.</p>
+        </div>
+        <div class="credit">
+          <span class="eyebrow">Free data</span>
+          <h3><a href="https://freedoom.github.io/">Freedoom</a> &amp; <a href="https://github.com/Blasphemer/blasphemer">Blasphemer</a></h3>
+          <p>Freely licensed IWADs that let the Mars and Corvus gates run with nothing purchased.</p>
+        </div>
+        <div class="credit">
+          <span class="eyebrow">The originals</span>
+          <h3>id Software &amp; Raven Software</h3>
+          <p>Doom, Quake, Heretic, Hexen — the games that made source ports a culture, released under the GPL so all of this could exist.</p>
+        </div>
+      </div>
+
+      <p class="footnote">Slipgate is built by <a href="https://github.com/jacksonfdam">Jackson F. de A. Mafra</a>. Doom, Heretic, Hexen, Strife and Quake are trademarks of their respective owners; Slipgate is an unaffiliated open-source launcher and ships none of their data.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><svg class="wordmark" viewBox="0 0 514 100" fill="var(--muted)" style="height:10px;width:auto;vertical-align:middle" aria-hidden="true"><use href="#slipgate-wordmark"/></svg></p>
+    <p>Host dual-licensed MIT / Apache 2.0 · engine modules GPLv2 · no game data ships with this project.</p>
+    <p><a href="https://github.com/jacksonfdam/slipgate">Source on GitHub</a></p>
+  </div>
+</footer>
+
+</body>
 </html>
