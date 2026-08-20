@@ -17,13 +17,13 @@ flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sST
 
 [mars]
 artifact = games/mars/src/commonMain/composeResources/files/mars.wasm
-sha256 = 80a0007d7cf419bbdbd2d4aa8484dbdc98c1807618e9bbeb408186c6a3cbdae8
+sha256 = 4f7b026b139838ca01a3a1046aba6b9e31dca076323636fa8de8fe4fe2f00f6c
 emscripten = 6.0.7
 flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=1 -Wl,--wrap=M_FileCaseExists --no-entry -Oz
 
 [corvus]
 artifact = games/corvus/src/commonMain/composeResources/files/corvus.wasm
-sha256 = d11eca54a15e5d0fed3746a003c70aee7a84fc8eec543e0e45c8358080b5fd51
+sha256 = a88cbb20898dd839cfb1f20e19127be570fc1592afd72d92d0c17ba4a9cdc2da
 emscripten = 6.0.7
 flags = -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=1 -Wl,--wrap=M_FileCaseExists --no-entry -Oz
 
