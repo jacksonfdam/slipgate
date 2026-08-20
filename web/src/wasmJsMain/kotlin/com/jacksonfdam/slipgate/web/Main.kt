@@ -2,6 +2,7 @@ package com.jacksonfdam.slipgate.web
 
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
+import com.jacksonfdam.slipgate.games.mars.MarsGate
 import com.jacksonfdam.slipgate.host.runtime.TestPatternGate
 import com.jacksonfdam.slipgate.ui.SlipgateApp
 import com.jacksonfdam.slipgate.ui.slipgateModules
@@ -16,8 +17,8 @@ fun main() {
 /**
  * The gates this build ships.
  *
- * The Doom gate is absent on web, and not by choice: it runs on Chasm, which publishes nothing for
- * wasmJs, so a browser needs a driver built on its own WebAssembly engine. Until that exists this
- * build ships the test pattern, which exercises the same session, framebuffer and palette path.
+ * The Doom gate reaches the web now that the module runs on the browser's own WebAssembly engine
+ * rather than on Chasm, which publishes nothing for wasmJs. The test pattern stays: it needs no game
+ * data, which makes it the one gate that can be entered on a first visit.
  */
-private fun gates() = listOf(TestPatternGate())
+private fun gates() = listOf(MarsGate(), TestPatternGate())
