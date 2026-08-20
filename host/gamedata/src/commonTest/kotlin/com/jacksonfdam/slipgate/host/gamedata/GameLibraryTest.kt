@@ -34,7 +34,7 @@ class GameLibraryTest {
         }
 
     @Test
-    fun `reads a library asked for directly, with the key from the address`() =
+    fun `reads a library asked for directly with the key from the address`() =
         runTest {
             val library = GameLibrary(FakeDownload("https://nas.local:8099/manifest?key=abc123" to MANIFEST))
 
