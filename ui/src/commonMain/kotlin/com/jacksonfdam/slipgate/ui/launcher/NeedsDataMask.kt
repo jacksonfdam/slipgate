@@ -9,10 +9,13 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import com.jacksonfdam.slipgate.ui.design.ColorTokens
 
-private const val WASH_ALPHA = 0.55f
-private const val SPECKLE_ALPHA = 0.35f
-private const val CELL_PIXELS = 3f
-private const val SPECKLE_THRESHOLD = 0.62f
+private const val WASH_ALPHA = 0.40f
+private const val SPECKLE_ALPHA = 0.20f
+private const val CELL_PIXELS = 4f
+
+// Sparse on purpose: a mask that lit a third of its cells was television static, and the portrait
+// under it may as well not have been drawn.
+private const val SPECKLE_THRESHOLD = 0.93f
 private const val HASH_X = 127.1f
 private const val HASH_Y = 311.7f
 private const val HASH_SCALE = 43758.547f
