@@ -31,6 +31,9 @@ import kotlinx.coroutines.isActive
  *
  * [focus] is how selected this portrait is, from 0 to 1: the shader uses it to tighten its core, so a
  * resting card is calmer than the stage above it.
+ *
+ * A gate whose data is not installed keeps its portrait and gets a mask over it, so the rack still
+ * reads as one rack and the card that cannot be entered says so by how it looks.
  */
 @Composable
 internal fun GatePortrait(
@@ -70,6 +73,9 @@ internal fun GatePortrait(
                         ),
                 )
             }
+        }
+        if (!card.isPlayable) {
+            NeedsDataMask()
         }
     }
 }
