@@ -33,6 +33,10 @@ A gate is one game plus the engine that runs it.
 | `corvus` | Heretic | `:games:corvus` | Yes — Blasphemer |
 | `korax` | Hexen | `:games:korax` | No — user-supplied IWAD only |
 
+All three modules are built from that tree by `tooling/engine-build`, and all three ship with their
+gate. Doom and Heretic have been run against real data; Hexen has not, because there is no freely
+licensed IWAD to run it against.
+
 All three come from the [Chocolate Doom](https://github.com/chocolate-doom/chocolate-doom)
 tree, which carries Doom, Heretic and Hexen behind one platform abstraction. That shared
 `i_*` layer is the reason a single port effort yields three gates.
