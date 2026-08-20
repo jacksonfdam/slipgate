@@ -3,25 +3,25 @@ package com.jacksonfdam.slipgate.ui.data
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.jacksonfdam.slipgate.host.gamedata.GameLibrary
-import com.jacksonfdam.slipgate.host.gamedata.LibraryFile
-import com.jacksonfdam.slipgate.host.gamedata.LibraryListing
+import com.jacksonfdam.slipgate.host.gamedata.RemoteShelf
+import com.jacksonfdam.slipgate.host.gamedata.ShelfFile
+import com.jacksonfdam.slipgate.host.gamedata.ShelfListing
 
-/** What the shell knows about the player's own library at the moment. */
-public sealed interface LibraryState {
+/** What the shell knows about the player's own shelf at the moment. */
+public sealed interface RemoteShelfState {
     /** No address is configured, so there is nothing to reach and nothing to report. */
-    public data object Unset : LibraryState
+    public data object Unset : RemoteShelfState
 
-    public data object Looking : LibraryState
+    public data object Looking : RemoteShelfState
 
     public data class Ready(
-        val listing: LibraryListing.Open,
-    ) : LibraryState
+        val listing: ShelfListing.Open,
+    ) : RemoteShelfState
 
     /** An address is configured and did not work out. The message is what a player is owed. */
     public data class Missing(
         val message: String,
-    ) : LibraryState
+    ) : RemoteShelfState
 }
 
 /**
@@ -31,20 +31,20 @@ public sealed interface LibraryState {
  * two taps away: the list should already be there by then. Re-asked when the address changes, or when
  * the player asks — a NAS that was off when the app started is the ordinary case, not an error.
  */
-public class LibraryController(
-    private val library: GameLibrary,
+public class RemoteShelfController(
+    private val shelf: RemoteShelf,
 ) {
-    public var state: LibraryState by mutableStateOf(LibraryState.Unset)
+    public var state: RemoteShelfState by mutableStateOf(RemoteShelfState.Unset)
         private set
 
     private var asked: String? = null
 
     /** The library, when one answered. Null covers every other state, which is what a screen wants. */
-    public val listing: LibraryListing.Open?
-        get() = (state as? LibraryState.Ready)?.listing
+    public val listing: ShelfListing.Open?
+        get() = (state as? RemoteShelfState.Ready)?.listing
 
     /** What this library offers [gate] as a game to boot, or nothing at all. */
-    public fun bootable(gate: String): List<LibraryFile> = listing?.bootable(gate) ?: emptyList()
+    public fun bootable(gate: String): List<ShelfFile> = listing?.bootable(gate) ?: emptyList()
 
     /**
      * Reaches the address, unless it has already been reached and nothing has changed.
@@ -59,39 +59,39 @@ public class LibraryController(
         val wanted = address?.trim()?.takeIf { it.isNotEmpty() }
         if (wanted == null) {
             asked = null
-            state = LibraryState.Unset
+            state = RemoteShelfState.Unset
             return
         }
-        if (!force && wanted == asked && state !is LibraryState.Missing) {
+        if (!force && wanted == asked && state !is RemoteShelfState.Missing) {
             return
         }
 
         asked = wanted
-        state = LibraryState.Looking
+        state = RemoteShelfState.Looking
         state =
-            when (val listing = library.open(wanted)) {
-                is LibraryListing.Open -> LibraryState.Ready(listing)
-                is LibraryListing.Unreachable -> LibraryState.Missing(listing.message)
+            when (val listing = shelf.open(wanted)) {
+                is ShelfListing.Open -> RemoteShelfState.Ready(listing)
+                is ShelfListing.Unreachable -> RemoteShelfState.Missing(listing.message)
             }
     }
 }
 
 /** The sentence Settings shows under the address field. */
-public fun LibraryState.describe(): String =
+public fun RemoteShelfState.describe(): String =
     when (this) {
-        LibraryState.Unset -> {
+        RemoteShelfState.Unset -> {
             "Not set. Your own files stay on whichever device you put them on."
         }
 
-        LibraryState.Looking -> {
+        RemoteShelfState.Looking -> {
             "Looking…"
         }
 
-        is LibraryState.Missing -> {
+        is RemoteShelfState.Missing -> {
             message
         }
 
-        is LibraryState.Ready -> {
+        is RemoteShelfState.Ready -> {
             val files = listing.files.size
             val where = listing.base
             val announced = listing.publishedAt?.let { ", announced $it" } ?: ""

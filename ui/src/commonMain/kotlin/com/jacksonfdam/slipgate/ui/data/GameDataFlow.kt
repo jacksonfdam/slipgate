@@ -63,13 +63,13 @@ public suspend fun GameDataAcquisition.take(
     )
 
 /**
- * Downloads what [url] names in the player's own library and stores it as what [entry] needs.
+ * Downloads what [url] names in the player's own shelf and stores it as what [entry] needs.
  *
- * Stored under the entry's key rather than under the name the library used, because a gate looks for
+ * Stored under the entry's key rather than under the name the shelf used, because a gate looks for
  * the key: someone whose IWAD is called `doom19ud.wad` on the NAS still gets a bootable gate. What
  * the file actually is, is decided by inspecting it here as with every other route.
  */
-public suspend fun GameDataAcquisition.takeFromLibrary(
+public suspend fun GameDataAcquisition.takeFromShelf(
     gate: String,
     engine: String,
     entry: DataEntry,

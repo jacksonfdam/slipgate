@@ -29,11 +29,11 @@ public data class SlipgateSettings(
     /**
      * Where this device can reach the player's own game data, or null when it cannot.
      *
-     * A beacon address or the library itself; the launcher decides which by what answers. It is a
+     * A beacon address or the shelf itself; the launcher decides which by what answers. It is a
      * setting rather than a build constant because it is one player's home server, and it is the
      * only field here that reaches the network.
      */
-    val libraryAddress: String? = null,
+    val shelfAddress: String? = null,
 ) {
     public companion object {
         public val Default: SlipgateSettings = SlipgateSettings()

@@ -16,7 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.jacksonfdam.slipgate.host.gamedata.LibraryFile
+import com.jacksonfdam.slipgate.host.gamedata.ShelfFile
 import com.jacksonfdam.slipgate.host.runtime.DataEntry
 import com.jacksonfdam.slipgate.host.runtime.DataSource
 
@@ -36,9 +36,9 @@ internal fun GameDataScreen(
     onDownload: (DataSource.FreeDownload) -> Unit,
     onSupply: () -> Unit,
     modifier: Modifier = Modifier,
-    /** What the player's own library offers this gate, which may be nothing. */
-    libraryFiles: List<LibraryFile> = emptyList(),
-    onLibrary: (LibraryFile) -> Unit = {},
+    /** What the player's own shelf offers this gate, which may be nothing. */
+    shelfFiles: List<ShelfFile> = emptyList(),
+    onShelf: (ShelfFile) -> Unit = {},
 ) {
     val working = state is AcquisitionState.Working
 
@@ -69,7 +69,7 @@ internal fun GameDataScreen(
             modifier = Modifier.widthIn(max = EXPLANATION_WIDTH.dp),
         )
 
-        LibraryRoutes(files = libraryFiles, enabled = !working, onLibrary = onLibrary)
+        ShelfRoutes(files = shelfFiles, enabled = !working, onShelf = onShelf)
 
         entry.sources.forEach { source ->
             when (source) {
@@ -100,20 +100,20 @@ internal fun GameDataScreen(
 }
 
 /**
- * What the player's own library can offer this gate, first among the routes.
+ * What the player's own shelf can offer this gate, first among the routes.
  *
  * First because it is their own copy of the game rather than a replacement of it, and because it is
  * usually on the other end of a faster link than a release asset on the public web.
  */
 @Composable
-private fun LibraryRoutes(
-    files: List<LibraryFile>,
+private fun ShelfRoutes(
+    files: List<ShelfFile>,
     enabled: Boolean,
-    onLibrary: (LibraryFile) -> Unit,
+    onShelf: (ShelfFile) -> Unit,
 ) {
     files.forEach { file ->
         Button(
-            onClick = { onLibrary(file) },
+            onClick = { onShelf(file) },
             enabled = enabled,
             modifier = Modifier.widthIn(min = 240.dp),
         ) {
@@ -183,9 +183,9 @@ internal fun explain(
 }
 
 /** One library file as a button: what it is called, and what it will cost to fetch. */
-private fun describe(file: LibraryFile): String {
+private fun describe(file: ShelfFile): String {
     val size = file.size?.let { " · ${it / BYTES_PER_MEGABYTE} MB" } ?: ""
-    return "Install ${file.name} from my library$size"
+    return "Install ${file.name} from my shelf$size"
 }
 
 /** Megabytes, because a byte count of a 40 megabyte download tells a player nothing. */
