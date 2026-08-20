@@ -46,6 +46,13 @@ void sg_drain_events(void);
 void sg_engine_run_frame(void);
 boolean sg_engine_play_demo(const char *name, boolean single);
 
+// Called at the top of every engine frame, from I_StartFrame.
+//
+// It exists for the engines whose frame cannot be called directly: an engine layer that has to run
+// the game's own loop leaves it from here, by longjmp, once one iteration has finished. The engines
+// with a frame function of their own do nothing here, and this returns.
+void sg_engine_frame_boundary(void);
+
 int sg_audio_drain(int16_t *destination, int frames);
 void sg_audio_advance(int elapsed_millis);
 void sg_request_quit(void);
