@@ -69,7 +69,19 @@ internal class RenderedFrame(
         return sum / (width * CHANNELS_PER_COLOUR)
     }
 
+    /** Mean brightness of one column, for a test that cares which way round a shape runs. */
+    fun columnBrightness(column: Int): Float {
+        var sum = 0f
+        for (row in 0 until height) {
+            val colour = colourAt((row * width + column) * CHANNELS)
+            sum += ((colour shr RED) and CHANNEL) + ((colour shr GREEN) and CHANNEL) + (colour and CHANNEL)
+        }
+        return sum / (height * CHANNELS_PER_COLOUR)
+    }
+
     val lastRow: Int get() = height - 1
+
+    val lastColumn: Int get() = width - 1
 
     private fun colourAt(index: Int): Int =
         (bytes[index].toInt() and CHANNEL) or
