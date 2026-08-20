@@ -16,6 +16,7 @@ repository holds a pin rather than a copy of anyone else's tree.
 ```
 ./build-doom.sh               # writes .build/mars.wasm
 ./build-heretic.sh            # writes .build/corvus.wasm
+./build-hexen.sh              # writes .build/korax.wasm
 ```
 
 `build-engine.sh` is the build; the per-game scripts are what differs between games — the directory
@@ -50,12 +51,25 @@ loop around it, so Doom's frame is one call. Heretic was never factored that way
 calls the initialisation path once and a frame per step, which is what makes a stepped session
 possible at all — and either way the upstream tree stays unpatched.
 
+Hexen needs a third answer, because its loop body cannot be called at all: `DrawAndBlit` is static to
+`h2_main.c`, along with the page drawer and the message drawer it calls. Copying it into the platform
+layer would mean copying its file-local state, and a copy that drifts from the engine is worse than no
+copy. So `platform/hexen/sg_engine.c` runs **the engine's own loop for exactly one iteration**:
+`H2_GameLoop` is entered per step and left again at the top of its second pass, through
+`sg_engine_frame_boundary` — the hook `I_StartFrame` calls at every frame boundary, which does nothing
+for the two engines that have a frame function of their own. What runs in between is Hexen's real loop
+body, statics and all.
+
 Heretic needs one thing Doom does not: its `d_main.c` calls Chocolate Doom's textscreen library
 directly to draw a DOS-style loading screen. That library is an SDL window with a bitmap font in it,
 which has no place inside a gate, so `platform/include/txt_main.h` declares the calls that file
 makes and `platform/heretic/sg_textscreen.c` implements them as nothing. `TXT_Init` reporting
 failure is a path the engine already handles: it clears `using_graphical_startup` and boots without
 the loading screen.
+
+Hexen has the same shape of problem in a different place: it boots behind a 640x480 planar VGA screen
+emulated in `i_videohr.c`. `I_SetVideoModeHR` reporting failure is what makes `st_start.c` skip it,
+and the rest of that family are no-ops in `platform/sg_stubs.c` beside the CD player and the joystick.
 
 ## The toolchain
 
