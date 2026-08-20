@@ -21,6 +21,9 @@ tooling/engine-build/.build/
 # Game data must never be committed
 *.wad
 *.WAD
+# A local shelf staged for a LAN file server; the extensions above cover the data
+# itself, this covers the manifest and notes that would otherwise be tracked beside it
+slipgate-server/
 *.iwad
 *.pk3
 *.deh
