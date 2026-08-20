@@ -33,8 +33,8 @@ that the touch layout drives the engine exactly as its keyboard defaults would:
 | Movement pad | movement axis | arrow keys (turn, not strafe — Doom's default) |
 | FIRE | `Fire` | right Ctrl |
 | USE | `Use` | space |
-| ‹ / › | `PreviousWeapon` / `NextWeapon` | `;` / `'` |
-| MAP | `Map` | F8 (automap toggle in the default bindings) |
+| ‹ / › | `PreviousWeapon` / `NextWeapon` | `;` / `'` — bound by the platform layer, because `key_prevweapon` and `key_nextweapon` ship as zero: vanilla chose a weapon by its number, and cycling is a source port's addition |
+| MAP | `Map` | Tab — `key_map_toggle`'s default. It was F8 until it was checked against a running game: F8 is the messages toggle, so the button turned messages off |
 | MENU | `Menu` | Escape |
 | ENTER | `Confirm` | Enter — what the engine's menus read as a choice |
 
