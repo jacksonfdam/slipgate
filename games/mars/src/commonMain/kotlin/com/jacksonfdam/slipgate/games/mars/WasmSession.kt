@@ -21,7 +21,9 @@ private val DOOM_KEYS: Map<GateAction, Int> =
         GateAction.Use to ' '.code,
         GateAction.NextWeapon to '\''.code,
         GateAction.PreviousWeapon to ';'.code,
-        GateAction.Map to 0x80 + 0x3B + 0x07, // KEY_F8, the automap in the default bindings
+        // Tab, which is what key_map_toggle is bound to in m_controls.c. It used to be F8 here, and
+        // F8 is the messages toggle: the MAP button turned messages off rather than showing the map.
+        GateAction.Map to 9, // KEY_TAB
         GateAction.Menu to 27, // KEY_ESCAPE
         GateAction.Confirm to 13, // KEY_ENTER, what the menus read as a choice
     )
