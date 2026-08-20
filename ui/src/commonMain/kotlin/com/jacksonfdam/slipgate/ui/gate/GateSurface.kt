@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.jacksonfdam.slipgate.host.controls.ControlState
 import com.jacksonfdam.slipgate.host.controls.VirtualGamepad
+import com.jacksonfdam.slipgate.host.controls.gateKeyboard
 import com.jacksonfdam.slipgate.host.graphics.backend.classic.ClassicBackend
 import com.jacksonfdam.slipgate.host.graphics.backend.skia.ComposeFrameRenderer
 import com.jacksonfdam.slipgate.host.graphics.backend.skia.skiaBackend
@@ -52,7 +53,8 @@ private val EmptyRect = ViewportRect(x = 0, y = 0, width = 0, height = 0)
  *
  * A [paused] surface keeps drawing the last frame it was given but stops stepping the session, so a
  * game does not play on behind the menu a player opened over it. Held controls are forgotten on the
- * way in, because a thumb that was on the fire button when the menu opened is not still on it.
+ * way in, because a thumb that was on the fire button when the menu opened is not still on it — and
+ * the keyboard is let go of too, so Escape reaches the menu rather than the game behind it.
  *
  * Two kinds of renderer are handled. A shader renderer draws into Compose's own canvas, so the
  * frame counter is what invalidates the draw. A CPU renderer hands back pixels, so the uploaded
@@ -104,7 +106,11 @@ public fun GateSurface(
         }
     }
 
-    Box(modifier = modifier) {
+    Box(
+        // A physical keyboard reaches the gate here rather than through the pad: the two write to the
+        // same control state, so a player can hold a key and tap a button in the same frame.
+        modifier = if (paused) modifier else modifier.gateKeyboard(controls),
+    ) {
         Canvas(
             modifier =
                 Modifier
