@@ -109,8 +109,8 @@ launcher          gate registry, select screen, navigation, in-game overlay
 ui                shared Compose shell and theme
 games/*           one module per gate
 android, web, ios platform entry points
-tooling/*         engine build scripts, the home library server, CI helpers
-site              the beacon a home library publishes itself to, deployed to Vercel
+tooling/*         engine build scripts, the data shelf scripts, CI helpers
+site              the beacon a tunnelled data shelf publishes itself to, deployed to Vercel
 ```
 
 Two dependency rules hold the design together:
@@ -204,26 +204,29 @@ decide it, and it gets the two famous exceptions right — Chex Quest is a whole
 ### Your own files, from your own machine
 
 A player who owns the games and keeps them on a NAS should supply them once rather than once per
-device. So a third route sits beside the two above: a library the player runs themselves.
+device. [docs/data-shelf.md](docs/data-shelf.md) is that shelf: one directory laid out per gate,
+read by `inspect-shelf.py` and served by `serve-shelf.py` with the two headers a stock static server
+lacks.
+
+Two things reach it. On the LAN, the address of the machine it runs on. From outside — a phone on
+mobile data, a laptop somewhere else — this:
 
 ```
-tooling/library/slipgate-library.sh    # serves a directory, opens a tunnel, publishes where it went
+tooling/data-shelf/publish-shelf.sh    # keys the shelf, tunnels it, publishes where it landed
 ```
 
-The server is Python's standard library, listens on localhost, and refuses every request that does
-not carry its key. A `cloudflared` or `ngrok` tunnel puts it on the web over TLS, and because a quick
-tunnel's hostname changes on every restart, the script publishes where it landed to a beacon — the
-`site/` project on Vercel — so that each device is configured with one address that never changes.
-Settings → Home library takes that address, and a gate that needs data then offers **Install *file*
-from my library** above its other routes. Files from a library are inspected and refused exactly like
-files picked by hand.
+The shelf listens on localhost with a key, a `cloudflared` or `ngrok` tunnel puts it on the web over
+TLS, and because a quick tunnel's hostname changes on every restart the script publishes where it
+landed to a beacon — the `site/` project in this repository — so each device is configured with one
+address that never changes. Settings → Data shelf takes that address, and a gate that needs data then
+offers **Install *file* from my shelf** above its other routes. Files from a shelf are inspected and
+refused exactly like files picked by hand.
 
-The whole of it is optional and none of it is a mirror: the key is not optional, the beacon id is a
-credential, and serving commercial IWADs to strangers is redistribution however brief the tunnel is.
-Setup, including the NAS side and the Vercel side, is [docs/home-library.md](docs/home-library.md).
+None of it is a mirror: the key stops being optional the moment a tunnel is involved, the beacon id is
+a credential, and serving retail game data to strangers is redistribution however brief the tunnel is.
 
-A library also serves the web build, which the free downloads cannot: it sends the cross-origin
-header that GitHub's release assets do not.
+A shelf also serves the web build, which the free downloads cannot: it sends the cross-origin header
+that GitHub's release assets do not.
 
 ### Custom maps
 
