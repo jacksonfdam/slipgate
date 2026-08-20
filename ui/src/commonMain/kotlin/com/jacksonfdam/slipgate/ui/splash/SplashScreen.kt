@@ -4,8 +4,10 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,12 +23,15 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import com.jacksonfdam.slipgate.host.graphics.core.FrameTimeSampler
+import com.jacksonfdam.slipgate.ui.design.Backdrops
 import com.jacksonfdam.slipgate.ui.design.ColorTokens
 import com.jacksonfdam.slipgate.ui.design.Wordmark
 import com.jacksonfdam.slipgate.ui.design.accentRamp
 import com.jacksonfdam.slipgate.ui.design.glyphPath
 import com.jacksonfdam.slipgate.ui.design.reducedMotion
+import com.jacksonfdam.slipgate.ui.design.rememberBackdrop
 import kotlinx.coroutines.launch
 
 /**
@@ -74,18 +79,29 @@ public fun SplashScreen(
     }
 
     val glyphPaths = remember { Wordmark.glyphs.map(::glyphPath) }
-    Canvas(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .background(ColorTokens.Void)
-                .pointerInput(Unit) {
-                    detectTapGestures {
-                        scope.launch { progress.snapTo(1f) }
-                    }
-                },
-    ) {
-        drawSplashFrame(progress.value, glyphPaths, accent.base)
+    val backdrop = rememberBackdrop(Backdrops.SPLASH)
+    Box(modifier = modifier.fillMaxSize().background(ColorTokens.Void)) {
+        // The painted hall sits under the animation; the wordmark assembles over it unchanged.
+        backdrop?.let { image ->
+            Image(
+                bitmap = image,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+        }
+        Canvas(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTapGestures {
+                            scope.launch { progress.snapTo(1f) }
+                        }
+                    },
+        ) {
+            drawSplashFrame(progress.value, glyphPaths, accent.base)
+        }
     }
 }
 
