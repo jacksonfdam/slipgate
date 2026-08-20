@@ -8,6 +8,7 @@ import com.jacksonfdam.slipgate.host.runtime.GateSession
 import com.jacksonfdam.slipgate.host.runtime.InputFrame
 import com.jacksonfdam.slipgate.host.runtime.LogLevel
 import com.jacksonfdam.slipgate.host.runtime.PixelFormat
+import com.jacksonfdam.slipgate.host.runtime.SessionSaves
 import com.jacksonfdam.slipgate.host.runtime.SessionStatus
 
 private const val FRAME_RENDERED = 0x01
@@ -65,7 +66,8 @@ public class WasmGateSession(
      * its input profile, so the gate says once what a control is called and what it does.
      */
     private val extensionBindings: Map<String, Int> = emptyMap(),
-) : GateSession {
+) : GateSession,
+    SessionSaves {
     override val display: DisplayFormat =
         DisplayFormat(
             width = engine.framebufferWidth(),
@@ -136,6 +138,22 @@ public class WasmGateSession(
 
     override fun close() {
         finished = true
+    }
+
+    /**
+     * Copies the engine's own files into the host's storage, and forgets the ones it no longer has.
+     *
+     * Forgetting matters: a player who deleted a save in the game's own menu deleted it, and a host
+     * that kept its copy would hand it back on the next launch.
+     */
+    override suspend fun keepSaves() {
+        val written = engine.savedFiles().mapKeys { (path, _) -> flattenSavePath(path) }
+        val kept = host.storage.files(ENGINE_SAVE_SLOT)
+        written.forEach { (name, bytes) -> host.storage.write(ENGINE_SAVE_SLOT, name, bytes) }
+        kept.filterNot { name -> name in written }.forEach { name ->
+            host.storage.delete(ENGINE_SAVE_SLOT, name)
+        }
+        host.logger.log(LogLevel.Info, "kept ${written.size} of the engine's files")
     }
 
     /**
