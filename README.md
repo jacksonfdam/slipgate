@@ -33,13 +33,32 @@ A gate is one game plus the engine that runs it.
 | `corvus` | Heretic | `:games:corvus` | Yes — Blasphemer |
 | `korax` | Hexen | `:games:korax` | No — user-supplied IWAD only |
 
-All three modules are built from that tree by `tooling/engine-build`, and all three ship with their
-gate. Doom and Heretic have been run against real data; Hexen has not, because there is no freely
-licensed IWAD to run it against.
+Each gate is named for the game behind it rather than for the game itself, so the rack
+reads as a row of places to go rather than a list of products:
 
-All three come from the [Chocolate Doom](https://github.com/chocolate-doom/chocolate-doom)
-tree, which carries Doom, Heretic and Hexen behind one platform abstraction. That shared
-`i_*` layer is the reason a single port effort yields three gates.
+- **`mars`** — Doom opens on the Union Aerospace Corporation's facility on Phobos, where a
+  teleport experiment has torn something open. The marine who fights back through it was
+  posted to Mars for assaulting a superior officer who ordered him to fire on civilians.
+- **`corvus`** — Heretic's hero is the last of the Sidhe elves, one of seven who refused to
+  serve the D'Sparil and were named heretics for it. The other six were broken; Corvus went
+  into the dungeons after the Serpent Rider alone.
+- **`korax`** — Hexen's Korax is the second Serpent Rider, who took the world after his
+  brother fell. Three heroes survived the call to arms that emptied their orders, and the
+  player is whichever one they choose.
+- **`chthon`** — Quake's first boss, the lava thing under Shub-Niggurath's dimension shard.
+  Its art is committed; the gate is not built yet.
+- **`macil`** — Strife's rebel leader, who runs the Front against the Order from under a
+  town the Order already owns. Planned, with its art committed and its plan written up in
+  [docs/specification/05-strife-gate.md](docs/specification/05-strife-gate.md).
+
+The three built modules come from the
+[Chocolate Doom](https://github.com/chocolate-doom/chocolate-doom) tree, which carries Doom,
+Heretic and Hexen behind one platform abstraction. That shared `i_*` layer is the reason a
+single port effort yields three gates — and the reason Strife is a fourth rather than a
+rewrite, since the same tree builds it too.
+
+Doom and Heretic have been run against real data; Hexen has not, because there is no freely
+licensed IWAD to run it against.
 
 ## Architecture
 
@@ -136,9 +155,19 @@ does not is an add-on loaded over a game already installed. That is how the engi
 decide it, and it gets the two famous exceptions right — Chex Quest is a whole game under a
 `PWAD` header, and Hexen's Deathkings expansion is an add-on under an `IWAD` one.
 
-Custom maps are installed per gate from Settings and loaded over the game with `-file`, in
-name order. A gate with no game installed does not offer to add maps, because there would be
-nothing to load them over.
+### Custom maps
+
+Thirty years of map packs are the reason most people still install Doom, so a gate's shelf
+holds add-ons beside the game it boots. They are installed per gate from Settings → Game
+files, listed there in the order the engine will load them, and passed to it with `-file` at
+boot. Load order is alphabetical, which is arbitrary but is the same every time — it decides
+which of two packs wins when both replace the same map.
+
+A gate with no game installed does not offer to add maps, because there would be nothing to
+load them over.
+
+Strife data is recognised and named, but no gate runs it yet: `strife1.wad` is `MAPxx` with
+Rogue's own translucency table, so it is refused by name rather than mistaken for Doom.
 
 **The web cannot download either replacement.** GitHub's release assets send no
 `Access-Control-Allow-Origin`, so a browser refuses the request before it starts; the app says
