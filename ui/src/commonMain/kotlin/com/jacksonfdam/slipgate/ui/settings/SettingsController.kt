@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.jacksonfdam.slipgate.host.graphics.core.QualityTier
 import com.jacksonfdam.slipgate.host.graphics.core.TierDecision
+import com.jacksonfdam.slipgate.ui.design.Motion
 
 /**
  * The one place a setting changes.
@@ -35,6 +36,15 @@ public class SettingsController(
             store.write(next)
         }
     }
+
+    /**
+     * How long the launch transition runs for, in milliseconds.
+     *
+     * Here rather than at the call site because it is the one place that knows whether the player asked
+     * for reduced motion, and the shell has to wait exactly as long as the warp is on screen.
+     */
+    public val launchDurationMillis: Int
+        get() = Motion.duration(Motion.LAUNCH_MS, settings.reducedMotion)
 
     /** Records what the benchmark measured. Never changes a choice the player already made. */
     public fun recordMeasurement(decision: TierDecision) {
