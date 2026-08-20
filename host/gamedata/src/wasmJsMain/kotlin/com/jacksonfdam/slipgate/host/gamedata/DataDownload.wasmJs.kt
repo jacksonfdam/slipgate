@@ -8,7 +8,6 @@ import kotlinx.coroutines.await
 import org.khronos.webgl.Int8Array
 import org.khronos.webgl.toByteArray
 import kotlin.js.ExperimentalWasmJsInterop
-import kotlin.js.JsException
 import kotlin.js.Promise
 
 /** Fetches with the browser's own client. */
@@ -24,11 +23,21 @@ internal class FetchDownload : DataDownload {
         url: String,
         onProgress: DownloadProgress,
     ): ByteArray {
+        // A fetch the browser refuses outright — a cross-origin one, most of all — rejects with a
+        // JavaScript TypeError, which reaches Kotlin as an exception it has no type for. Caught as
+        // broadly as that costs, because uncaught it escapes the whole flow and leaves the screen on
+        // a progress bar that will never move.
+        @Suppress("TooGenericExceptionCaught")
         val fetched =
             try {
                 fetchBytes(url).await()
-            } catch (failure: JsException) {
-                throw DataDownloadException("the download did not finish: ${failure.message}", failure)
+            } catch (failure: Throwable) {
+                // The browser does not say why it refused, and its own wording is no use to anybody:
+                // what a person can act on is that the file's host has to allow this page to read it.
+                throw DataDownloadException(
+                    "the browser refused the download; the file's host does not allow it from this page",
+                    failure,
+                )
             }
         val bytes = (fetched ?: throw DataDownloadException("the file arrived empty")).toByteArray()
         onProgress(bytes.size.toLong(), bytes.size.toLong())
