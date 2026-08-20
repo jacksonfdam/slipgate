@@ -15,8 +15,13 @@ val slipgateAndroidMinSdk = property("slipgate.androidMinSdk") as String
 // forget to ship the engine.
 val suppliedIwad = providers.gradleProperty("slipgate.iwad")
 
+// A second IWAD, because Doom II is a different game to the engine and one file cannot stand for
+// both: -Pslipgate.iwad2=/path/to/doom2.wad
+val suppliedMappedIwad = providers.gradleProperty("slipgate.iwad2")
+
 tasks.withType<Test>().configureEach {
     environment("SLIPGATE_IWAD", suppliedIwad.getOrElse(""))
+    environment("SLIPGATE_IWAD_MAPPED", suppliedMappedIwad.getOrElse(""))
 }
 
 // The simulator's own environment, which is not the test runner's: simctl forwards a variable to
@@ -69,6 +74,9 @@ kotlin {
         commonMain.dependencies {
             api(project(":host:runtime"))
             implementation(project(":host:backend:wasm"))
+            // For the wad inspector: which game a file holds decides the name the module is handed
+            // it under, because the engine identifies the game from that name.
+            implementation(project(":host:gamedata"))
             implementation(compose.runtime)
             implementation(compose.components.resources)
         }
