@@ -33,6 +33,11 @@ sha256 = 11a2777216f4b6313392cfa5121b63636db6b59b9b420563dd874f79761a83fa
 emscripten = 6.0.7
 flags = -ffile-prefix-map=<workdir>=slipgate -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=100663296 -sALLOW_MEMORY_GROWTH=1 -Wl,--wrap=M_FileCaseExists --no-entry -Oz
 
+[macil]
+artifact = games/macil/src/commonMain/composeResources/files/macil.wasm
+sha256 = 9edb2849aa40be125879c8a69e39396368205bfdcc3b700d91ee227e342b3767
+emscripten = 6.0.7
+flags = -ffile-prefix-map=<workdir>=slipgate -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sWASM_LEGACY_EXCEPTIONS=0 -sSTANDALONE_WASM -sINITIAL_MEMORY=134217728 -sALLOW_MEMORY_GROWTH=1 -Wl,--wrap=M_FileCaseExists --no-entry -Oz
 
 # Native libraries, built by tooling/engine-build-native from the same pinned sources and the
 # same platform layer as the modules above. ndk is the exact NDK release; the host library is
