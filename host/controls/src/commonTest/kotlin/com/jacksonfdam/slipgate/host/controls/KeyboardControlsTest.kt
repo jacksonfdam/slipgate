@@ -1,10 +1,12 @@
 package com.jacksonfdam.slipgate.host.controls
 
+import androidx.compose.ui.input.key.Key
 import com.jacksonfdam.slipgate.host.runtime.Axis2
 import com.jacksonfdam.slipgate.host.runtime.GateAction
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class KeyboardControlsTest {
@@ -85,5 +87,42 @@ class KeyboardControlsTest {
         val frame = state.frame()
         assertEquals(Axis2.Zero, frame.movement)
         assertEquals(0, frame.actions.mask)
+    }
+
+    /**
+     * The keys Compose reports, mapped onto the layer's own vocabulary.
+     *
+     * Worth pinning because it is the join nobody sees fail: an unmapped key is a key that does
+     * nothing, silently, on one platform.
+     */
+    @Test
+    fun everyBoundKeyHasAComposeKeyBehindIt() {
+        val mapped =
+            listOf(
+                Key.DirectionUp,
+                Key.DirectionDown,
+                Key.DirectionLeft,
+                Key.DirectionRight,
+                Key.W,
+                Key.A,
+                Key.S,
+                Key.D,
+                Key.CtrlLeft,
+                Key.CtrlRight,
+                Key.Spacebar,
+                Key.Comma,
+                Key.Period,
+                Key.Tab,
+                Key.Escape,
+                Key.Enter,
+                Key.NumPadEnter,
+            ).mapNotNull(::controlKeyFor).toSet()
+
+        assertEquals(ControlKey.entries.toSet(), mapped, "a key in the vocabulary reaches nothing")
+    }
+
+    @Test
+    fun aKeyNobodyBoundIsLeftAlone() {
+        assertNull(controlKeyFor(Key.F5))
     }
 }
