@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.kmp.library)
@@ -11,9 +13,6 @@ val slipgateAndroidMinSdk = property("slipgate.androidMinSdk") as String
 
 // The engine module is a resource of the gate that runs it, so a build that ships the gate cannot
 // forget to ship the engine.
-//
-// There is no wasmJs target yet: the Chasm-backed driver does not run there, and the browser's own
-// engine needs a driver of its own before this gate can reach the web.
 val suppliedIwad = providers.gradleProperty("slipgate.iwad")
 
 tasks.withType<Test>().configureEach {
@@ -50,6 +49,13 @@ kotlin {
 
     iosArm64()
     iosSimulatorArm64()
+
+    // The web runs the module on the browser's own WebAssembly engine; the driver for that lives in
+    // host/backend/wasm alongside the Chasm one.
+    @OptIn(ExperimentalWasmDsl::class)
+    wasmJs {
+        browser()
+    }
 
     sourceSets {
         androidMain { resources.srcDir(stageEngineModule) }

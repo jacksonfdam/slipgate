@@ -25,6 +25,7 @@ kotlin {
     sourceSets {
         wasmJsMain.dependencies {
             implementation(project(":ui"))
+            implementation(project(":games:mars"))
             implementation(compose.ui)
             implementation(libs.koin.core)
         }
