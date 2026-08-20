@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.skiaCanvas
 import com.jacksonfdam.slipgate.host.graphics.core.CrtSettings
 import com.jacksonfdam.slipgate.host.graphics.core.GraphicsBackendId
 import com.jacksonfdam.slipgate.host.graphics.core.PresentedFrame
+import com.jacksonfdam.slipgate.host.graphics.core.ScalingMode
 import com.jacksonfdam.slipgate.host.graphics.core.Viewport
 import com.jacksonfdam.slipgate.host.graphics.core.ViewportRect
 import com.jacksonfdam.slipgate.host.runtime.DisplayFormat
@@ -46,6 +47,10 @@ internal class SkikoFrameRenderer(
     private val paletteEffect = RuntimeEffect.makeForShader(paletteShaderSource())
     private val crtEffect =
         if (crt.enabled) RuntimeEffect.makeForShader(crtShaderSource()) else null
+
+    // Built on demand and kept: compiling a runtime effect is not free, and a player who chose
+    // smooth edges keeps them for the whole session.
+    private var sharpEffect: RuntimeEffect? = null
     private val indexedBitmap =
         Bitmap().apply {
             allocPixels(
@@ -99,20 +104,55 @@ internal class SkikoFrameRenderer(
      * Separated from [draw] so a test can render it into an offscreen Skia surface without a
      * Compose canvas, which is what makes the golden image comparison possible at all.
      */
-    internal fun paintFor(destination: ViewportRect): Paint? {
+    internal fun paintFor(
+        destination: ViewportRect,
+        mode: ScalingMode = ScalingMode.Fit,
+    ): Paint? {
         val frameShader = paletteShader?.takeIf { presented } ?: return null
+        val scaled =
+            if (mode == ScalingMode.SharpUpscale) {
+                sharpUpscaled(frameShader, destination)
+            } else {
+                scaledToDestination(frameShader, destination)
+            }
         val tube = crtEffect
         paint.shader =
             if (tube == null) {
-                scaledToDestination(frameShader, destination)
+                scaled
             } else {
                 tube.makeShader(
                     uniforms = crtUniforms(destination.width, destination.height),
-                    children = arrayOf(scaledToDestination(frameShader, destination)),
+                    children = arrayOf(scaled),
                     localMatrix = null,
                 )
             }
         return paint
+    }
+
+    /**
+     * The frame upscaled by the edge-adaptive shader, in destination pixels.
+     *
+     * The child goes in unscaled: this shader samples in source space itself, because choosing
+     * where to sample is the whole of what it does.
+     */
+    private fun sharpUpscaled(
+        frameShader: Shader,
+        destination: ViewportRect,
+    ): Shader {
+        val effect = sharpEffect ?: RuntimeEffect.makeForShader(sharpUpscaleShaderSource()).also { sharpEffect = it }
+        return effect.makeShader(
+            uniforms =
+                Data.makeFromBytes(
+                    floatBytes(
+                        destination.width.toFloat(),
+                        destination.height.toFloat(),
+                        format.width.toFloat(),
+                        format.height.toFloat(),
+                    ),
+                ),
+            children = arrayOf(frameShader),
+            localMatrix = null,
+        )
     }
 
     override fun draw(
@@ -125,7 +165,7 @@ internal class SkikoFrameRenderer(
         }
         // Both paths work in destination pixels: the frame is scaled by a local matrix on the
         // shader rather than by the canvas, so the tube pass sees real display pixels.
-        val framePaint = paintFor(destination) ?: return
+        val framePaint = paintFor(destination, viewport.mode) ?: return
         scope.drawIntoCanvas { canvas ->
             val native = canvas.skiaCanvas
             native.save()
