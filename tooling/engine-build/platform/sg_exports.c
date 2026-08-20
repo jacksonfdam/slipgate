@@ -136,6 +136,8 @@ int slipgate_init(void)
     }
     booting = false;
     booted = true;
+    // After the engine's own defaults, so they do not overwrite it.
+    sg_bind_weapon_cycle();
     sg_host_log("slipgate: engine ready");
     return 0;
 }
