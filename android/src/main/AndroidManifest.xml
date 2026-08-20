@@ -6,6 +6,7 @@
 
     <application
         android:name=".SlipgateApplication"
+        android:icon="@mipmap/ic_launcher"
         android:label="Slipgate"
         android:supportsRtl="true"
         android:theme="@style/Theme.Slipgate">
