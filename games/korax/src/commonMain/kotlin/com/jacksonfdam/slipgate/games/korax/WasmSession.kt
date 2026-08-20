@@ -3,6 +3,7 @@ package com.jacksonfdam.slipgate.games.korax
 import com.jacksonfdam.slipgate.host.backend.wasm.DirectionBindings
 import com.jacksonfdam.slipgate.host.backend.wasm.WasmGateSession
 import com.jacksonfdam.slipgate.host.backend.wasm.WasmHost
+import com.jacksonfdam.slipgate.host.backend.wasm.engineArguments
 import com.jacksonfdam.slipgate.host.backend.wasm.keptSaves
 import com.jacksonfdam.slipgate.host.backend.wasm.startEngine
 import com.jacksonfdam.slipgate.host.runtime.GateAction
@@ -11,6 +12,7 @@ import com.jacksonfdam.slipgate.host.runtime.GateSession
 import com.jacksonfdam.slipgate.host.runtime.ID_TECH_1_PIXEL_ASPECT
 import com.jacksonfdam.slipgate.host.runtime.LogLevel
 import com.jacksonfdam.slipgate.host.runtime.MountedGameData
+import com.jacksonfdam.slipgate.host.runtime.addOnNames
 
 /**
  * Hexen's key codes, from `doomkeys.h` and the defaults in `m_controls.c`.
@@ -67,10 +69,11 @@ private val HEXEN_DIRECTIONS =
     )
 
 /**
- * Boots the Hexen module with the data the host mounted.
+ * Boots the Hexen module with the data the host mounted, and any add-ons stored beside it.
  *
- * `-nomusic` is passed for the reason the Doom gate passes it: the platform layer mixes sound effects
- * and leaves music to a later measured budget.
+ * Deathkings of the Dark Citadel is one of these: it ships with an `IWAD` signature but carries no
+ * palette, so it is an add-on by what it holds rather than by what it claims, and it loads over
+ * Hexen the same way any map pack would.
  */
 internal suspend fun openWasmSession(
     data: MountedGameData,
@@ -81,14 +84,18 @@ internal suspend fun openWasmSession(
     // as an IWAD is a gate that will not boot.
     val iwadName = KORAX_IWAD
     val iwad = data.read(iwadName)
+    val addOns = data.addOnNames()
 
     host.logger.log(LogLevel.Info, "booting the korax gate from $iwadName")
+    if (addOns.isNotEmpty()) {
+        host.logger.log(LogLevel.Info, "loading ${addOns.size} add-on(s) over it: ${addOns.joinToString()}")
+    }
 
     val engine =
         startEngine(
             moduleBytes = koraxModuleBytes(),
-            files = mapOf(iwadName to iwad),
-            arguments = listOf("slipgate", "-iwad", iwadName, "-nomusic"),
+            files = mapOf(iwadName to iwad) + addOns.associateWith { data.read(it) },
+            arguments = engineArguments(iwadName, addOns),
             host = GateHostBridge(host),
             // Whatever the player saved last time, back in the engine's own filesystem before it looks.
             saves = keptSaves(host),
