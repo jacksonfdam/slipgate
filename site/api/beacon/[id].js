@@ -36,13 +36,13 @@ export default async function handler(request, response) {
 
   const id = String(request.query.id ?? '').toLowerCase();
   if (!ID_PATTERN.test(id)) {
-    response.status(400).type('text/plain').send('a beacon id is 24 to 64 hex characters\n');
+    plain(response, 400, 'a beacon id is 24 to 64 hex characters\n');
     return;
   }
 
   const secret = process.env.SLIPGATE_BEACON_TOKEN;
   if (!secret) {
-    response.status(503).type('text/plain').send('this beacon has no publish token configured\n');
+    plain(response, 503, 'this beacon has no publish token configured\n');
     return;
   }
 
@@ -59,8 +59,15 @@ export default async function handler(request, response) {
       await forget(id, request, response, secret);
       return;
     default:
-      response.status(405).type('text/plain').send('GET to read, POST to publish\n');
+      plain(response, 405, 'GET to read, POST to publish\n');
   }
+}
+
+// Vercel's Node response carries status() and send() but not Express's type(); the header is set
+// by hand so every answer stays text/plain without assuming a framework that is not there.
+function plain(response, status, text) {
+  response.setHeader('content-type', 'text/plain; charset=utf-8');
+  response.status(status).send(text);
 }
 
 async function read(id, request, response) {
@@ -68,7 +75,7 @@ async function read(id, request, response) {
   if (!found) {
     // 404 rather than an empty document: an app that gets a pointer it cannot use should hear that
     // the shelf has never announced itself, not that it is somewhere unreachable.
-    response.status(404).type('text/plain').send('this beacon has nothing to point at\n');
+    plain(response, 404, 'this beacon has nothing to point at\n');
     return;
   }
 
@@ -76,14 +83,15 @@ async function read(id, request, response) {
   // a tunnel which closed five minutes ago.
   const upstream = await fetch(found.url, { cache: 'no-store' });
   if (!upstream.ok) {
-    response.status(502).type('text/plain').send('the pointer could not be read\n');
+    plain(response, 502, 'the pointer could not be read\n');
     return;
   }
 
   const pointer = await upstream.text();
   response.setHeader('cache-control', 'no-store, max-age=0');
   response.setHeader('x-slipgate-published', found.uploadedAt ?? '');
-  response.status(200).type('text/plain; charset=utf-8');
+  response.setHeader('content-type', 'text/plain; charset=utf-8');
+  response.status(200);
   if (request.method === 'HEAD') {
     response.end();
     return;
@@ -93,13 +101,13 @@ async function read(id, request, response) {
 
 async function write(id, request, response, secret) {
   if (!authorised(request, secret)) {
-    response.status(401).type('text/plain').send('the publish token is wrong or missing\n');
+    plain(response, 401, 'the publish token is wrong or missing\n');
     return;
   }
 
   const pointer = await body(request);
   if (pointer.length > MAX_POINTER_BYTES) {
-    response.status(413).type('text/plain').send('a pointer is a few lines, not a file\n');
+    plain(response, 413, 'a pointer is a few lines, not a file\n');
     return;
   }
 
@@ -107,7 +115,7 @@ async function write(id, request, response, secret) {
   if (problem) {
     // Validated rather than trusted, because everything downstream of this is an app that will try
     // to download game data from whatever address this document names.
-    response.status(422).type('text/plain').send(`${problem}\n`);
+    plain(response, 422, `${problem}\n`);
     return;
   }
 
@@ -123,7 +131,7 @@ async function write(id, request, response, secret) {
 
 async function forget(id, request, response, secret) {
   if (!authorised(request, secret)) {
-    response.status(401).type('text/plain').send('the publish token is wrong or missing\n');
+    plain(response, 401, 'the publish token is wrong or missing\n');
     return;
   }
   const found = await locate(id);
