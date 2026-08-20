@@ -55,6 +55,55 @@ public class WasmEngine private constructor(
         return accepted
     }
 
+    /**
+     * Everything the engine has written to its own filesystem: savegames, its config, and for Hexen a
+     * file per map of a hub.
+     *
+     * Read rather than intercepted. The engine saves by writing a file, and a host that wanted to
+     * catch those writes would have to reimplement enough of stdio to fool it; reading the directory
+     * afterwards is the same information for none of the risk.
+     */
+    public fun savedFiles(): Map<String, ByteArray> {
+        val count = call(SAVE_SCAN)
+        if (count <= 0) {
+            return emptyMap()
+        }
+        val namePointer = call(ALLOC, MAX_SAVE_NAME_BYTES)
+        check(namePointer != 0) { "the engine could not allocate a name buffer" }
+        val saved = mutableMapOf<String, ByteArray>()
+        for (index in 0 until count) {
+            val size = call(SAVE_SIZE, index)
+            val length = call(SAVE_NAME, index, namePointer, MAX_SAVE_NAME_BYTES)
+            if (size < 0 || length <= 0) {
+                continue
+            }
+            val name = read(namePointer, length).decodeToString()
+            val dataPointer = call(ALLOC, size)
+            check(dataPointer != 0) { "the engine could not allocate $size bytes for $name" }
+            if (call(SAVE_READ, index, dataPointer, size) == size) {
+                saved[name] = read(dataPointer, size)
+            }
+            call(FREE, dataPointer)
+        }
+        call(FREE, namePointer)
+        return saved
+    }
+
+    /** Writes one file the host kept back into the engine's filesystem. Returns whether it landed. */
+    public fun putSavedFile(
+        name: String,
+        bytes: ByteArray,
+    ): Boolean {
+        val namePointer = writeString(name)
+        val dataPointer = call(ALLOC, bytes.size)
+        check(dataPointer != 0) { "the engine could not allocate ${bytes.size} bytes for $name" }
+        writeBytes(store, memory, dataPointer, bytes).expect("could not write $name into the engine")
+        val stored = call(SAVE_PUT, namePointer, dataPointer, bytes.size) == 1
+        call(FREE, dataPointer)
+        call(FREE, namePointer)
+        return stored
+    }
+
     /** Advances the engine by [elapsedMillis] and returns the status flags it reports. */
     public fun step(elapsedMillis: Int): Int = call(STEP, elapsedMillis)
 
@@ -145,6 +194,14 @@ public class WasmEngine private constructor(
         private const val PUSH_EVENT = "slipgate_push_event"
         private const val AUDIO_DRAIN = "slipgate_audio_drain"
         private const val PLAY_DEMO = "slipgate_play_demo"
+        private const val SAVE_SCAN = "slipgate_save_scan"
+        private const val SAVE_SIZE = "slipgate_save_size"
+        private const val SAVE_NAME = "slipgate_save_name"
+        private const val SAVE_READ = "slipgate_save_read"
+        private const val SAVE_PUT = "slipgate_save_put"
+
+        /** As long a name as the module will report; see MAX_PATH_BYTES in platform/sg_saves.c. */
+        private const val MAX_SAVE_NAME_BYTES = 128
 
         private const val PALETTE_BYTES = 768
         private const val AUDIO_FRAME_BYTES = 4
@@ -155,12 +212,16 @@ public class WasmEngine private constructor(
          *
          * Mounting copies each file into the module rather than pointing at host memory, because
          * the two do not share an address space — that copy is the price of a sandbox.
+         *
+         * [saves] is whatever the host kept from a previous session, written into the engine's own
+         * filesystem before it starts. What comes back out is [savedFiles].
          */
         public fun start(
             moduleBytes: ByteArray,
             files: Map<String, ByteArray>,
             arguments: List<String>,
             host: WasmHost,
+            saves: Map<String, ByteArray> = emptyMap(),
         ): WasmEngine {
             val store = store()
             val parsed = module(moduleBytes).expect("the engine module did not parse")
@@ -178,6 +239,9 @@ public class WasmEngine private constructor(
 
             val engine = WasmEngine(store, created, memory)
             files.forEach { (name, bytes) -> engine.mount(name, bytes) }
+            // Before start-up, because start-up is when the engine reads its config, and a player's
+            // settings are one of the files this carries.
+            saves.forEach { (name, bytes) -> engine.putSavedFile(name, bytes) }
             arguments.forEach { argument ->
                 check(engine.call(ARG_PUSH, engine.writeString(argument)) == 1) {
                     "the engine refused the argument $argument"
