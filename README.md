@@ -141,6 +141,11 @@ Requires JDK 21 and, per target, the Android SDK (`compileSdk` 37) or Xcode.
 The web distribution lands in `web/build/dist/wasmJs/productionExecutable` and can be
 served with any static file server.
 
+It also publishes to GitHub Pages, by hand rather than on every push: run the **Pages**
+workflow from the Actions tab. The repository's Pages source has to be set to GitHub
+Actions once before the first run. A visitor arrives at a launcher asking for their own
+game data, because none of it is in this repository or in anything it ships.
+
 ## Contributing
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) first. The commit and pull request rules are

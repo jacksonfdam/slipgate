@@ -1,0 +1,57 @@
+# The web build, published to GitHub Pages.
+#
+# Run by hand rather than on every push to main: publishing is a decision, and a launcher that says
+# "waiting for your files" is the whole of what a visitor sees until they supply their own game data
+# — which is the point, because no game data is in this repository or in anything it ships.
+#
+# Before the first run, Pages has to be turned on for the repository with its source set to GitHub
+# Actions. That is a repository setting, so it is the owner's to make.
+name: Pages
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.daemon=false
+
+jobs:
+  publish:
+    name: Publish the web build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6
+      - run: ./gradlew :web:wasmJsBrowserDistribution
+      # Whatever is about to be published carries no game data. The repository is checked by CI on
+      # every push; this checks the built directory, which is what actually goes onto the web.
+      - name: No game data in what is published
+        run: |
+          found=$(find web/build/dist/wasmJs/productionExecutable -type f \
+            \( -iname '*.wad' -o -iname '*.pk3' -o -iname '*.pak' -o -iname '*.iwad' \) || true)
+          if [ -n "$found" ]; then
+            echo "::error::game data in the web distribution:"
+            echo "$found"
+            exit 1
+          fi
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: web/build/dist/wasmJs/productionExecutable
+      - id: deployment
+        uses: actions/deploy-pages@v4
