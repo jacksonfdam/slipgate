@@ -1,0 +1,12 @@
+{
+  "name": "slipgate-site",
+  "private": true,
+  "type": "module",
+  "description": "The Slipgate site: the beacon a home game library publishes itself to.",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.0"
+  }
+}

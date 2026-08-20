@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Slipgate — home library beacon</title>
+    <meta
+      name="description"
+      content="How a Slipgate player serves their own game data from a NAS and lets every device find it, wherever they are."
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #e8e2d5;
+        --muted: #9a9284;
+        --ground: #14120f;
+        --surface: #1c1916;
+        --edge: #332d25;
+        --hot: #d98a2b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 48px 24px 96px;
+        background: var(--ground);
+        color: var(--ink);
+        font: 16px/1.6 ui-sans-serif, system-ui, sans-serif;
+      }
+
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        margin: 0 0 4px;
+        font-size: 28px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      h2 {
+        margin: 48px 0 8px;
+        font-size: 13px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--hot);
+      }
+
+      p,
+      li {
+        color: var(--ink);
+      }
+
+      .lead,
+      .muted {
+        color: var(--muted);
+      }
+
+      a {
+        color: var(--hot);
+      }
+
+      code,
+      pre {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 13px;
+      }
+
+      pre {
+        overflow-x: auto;
+        padding: 14px 16px;
+        border: 1px solid var(--edge);
+        border-radius: 3px;
+        background: var(--surface);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+
+      th,
+      td {
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--edge);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        font-size: 12px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      input {
+        flex: 1 1 320px;
+        min-width: 0;
+        padding: 10px 12px;
+        border: 1px solid var(--edge);
+        border-radius: 3px;
+        background: var(--surface);
+        color: var(--ink);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 13px;
+      }
+
+      button {
+        padding: 10px 18px;
+        border: 1px solid var(--hot);
+        border-radius: 3px;
+        background: transparent;
+        color: var(--hot);
+        font: inherit;
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      #verdict {
+        margin-top: 14px;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Home library beacon</h1>
+      <p class="lead">
+        Slipgate ships no game data, so every device needs the player's own files. This is how one
+        copy on a NAS serves all of them — at home and away from it — without anyone retyping a
+        hostname after a reboot.
+      </p>
+
+      <h2>How it works</h2>
+      <ol>
+        <li>
+          A small file server runs on the NAS, listening on localhost only and refusing every
+          request that does not carry the library key.
+        </li>
+        <li>
+          A tunnel — <code>cloudflared</code> or <code>ngrok</code> — puts it on the public web over
+          TLS. A quick tunnel gets a new hostname each time it starts, which is the whole reason for
+          the step below.
+        </li>
+        <li>
+          The NAS publishes a pointer to this site: where the library is now, and the key to read
+          it. The app is configured with the beacon address, which never changes.
+        </li>
+      </ol>
+      <p class="muted">
+        One field in Settings, set once per device. After a power cut the NAS republishes and every
+        device follows it without being touched.
+      </p>
+
+      <h2>Boot the library</h2>
+      <p>
+        Both scripts live in the Slipgate repository under <code>tooling/library</code>. Lay the
+        files out one directory per gate, with map packs under <code>addons</code>:
+      </p>
+      <pre>/volume1/games/slipgate/
+  mars/doom.wad
+  mars/addons/sunlust.wad
+  corvus/heretic.wad
+  macil/strife1.wad
+  macil/voices.wad</pre>
+      <p>Then write the configuration and start it:</p>
+      <pre>export SLIPGATE_LIBRARY_ROOT=/volume1/games/slipgate
+export SLIPGATE_LIBRARY_KEY=$(openssl rand -hex 16)
+export SLIPGATE_TUNNEL=cloudflared
+export SLIPGATE_BEACON_URL=https://&lt;this-site&gt;/beacon/&lt;beacon-id&gt;
+export SLIPGATE_BEACON_TOKEN=&lt;publish-token&gt;
+
+tooling/library/slipgate-library.sh</pre>
+      <p class="muted">
+        The beacon id is 24 to 64 hex characters that you choose once — it is the read credential,
+        so generate it with <code>openssl rand -hex 16</code> rather than picking a word. The publish
+        token is the site's <code>SLIPGATE_BEACON_TOKEN</code> environment variable.
+      </p>
+
+      <h2>The beacon</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Request</th>
+            <th>Who calls it</th>
+            <th>What happens</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>POST /beacon/&lt;id&gt;</code></td>
+            <td>The NAS</td>
+            <td>Stores the pointer. Needs the publish token as a bearer token.</td>
+          </tr>
+          <tr>
+            <td><code>GET /beacon/&lt;id&gt;</code></td>
+            <td>The app</td>
+            <td>Returns the pointer, uncached. Knowing the id is the credential.</td>
+          </tr>
+          <tr>
+            <td><code>DELETE /beacon/&lt;id&gt;</code></td>
+            <td>You</td>
+            <td>Forgets the pointer, so the app stops being sent anywhere.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>A pointer is four lines, tab separated, because the app parses it without a JSON parser:</p>
+      <pre>slipgate-beacon 1
+url	https://tunnel-hostname.example
+key	9f0c1d2e3a4b5c6d7e8f9a0b1c2d3e4f
+updated	2026-08-20T18:22:41Z</pre>
+
+      <h2>Check a beacon</h2>
+      <p>
+        Paste a beacon address to see what it currently points at. Nothing is stored or sent
+        anywhere else — the request goes from this page straight to the beacon.
+      </p>
+      <form id="check">
+        <input
+          id="address"
+          type="url"
+          inputmode="url"
+          spellcheck="false"
+          placeholder="https://this-site/beacon/&lt;beacon-id&gt;"
+          required
+        />
+        <button type="submit">Check</button>
+      </form>
+      <p id="verdict" class="muted">Not checked yet.</p>
+
+      <h2>What this is not</h2>
+      <p class="muted">
+        Not a way to get game data you do not own, and not a public mirror: the library refuses
+        anonymous requests, and the pointer that unlocks it is only readable by whoever holds the
+        beacon id. Serving commercial IWADs to strangers is redistribution however briefly it is
+        done, which is why the key is not optional and the tunnel hostname alone opens nothing.
+      </p>
+      <p class="muted">
+        Slipgate is on <a href="https://github.com/jacksonfdam/slipgate">GitHub</a>; the setup guide
+        is <code>docs/home-library.md</code>.
+      </p>
+    </main>
+
+    <script type="module">
+      const form = document.querySelector('#check');
+      const address = document.querySelector('#address');
+      const verdict = document.querySelector('#verdict');
+
+      const MINUTE = 60_000;
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        verdict.textContent = 'Checking…';
+        try {
+          const response = await fetch(address.value, { cache: 'no-store' });
+          if (response.status === 404) {
+            verdict.textContent = 'That beacon has nothing to point at yet.';
+            return;
+          }
+          if (!response.ok) {
+            verdict.textContent = `The beacon answered ${response.status}.`;
+            return;
+          }
+          const pointer = await response.text();
+          verdict.textContent = describe(pointer);
+        } catch (failure) {
+          verdict.textContent = `Could not reach it: ${failure.message}`;
+        }
+      });
+
+      function describe(pointer) {
+        const fields = new Map(
+          pointer
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .slice(1)
+            .map((line) => {
+              const [name, ...rest] = line.split('\t');
+              return [name, rest.join('\t')];
+            }),
+        );
+        const url = fields.get('url');
+        if (!url) {
+          return 'That answered, but it is not a Slipgate pointer.';
+        }
+        // The key is deliberately not shown: this page is as likely to be open on a shared screen
+        // as anywhere else, and the app is what needs to read it.
+        return `Points at ${url}, published ${age(fields.get('updated'))}. A key is included.`;
+      }
+
+      function age(stamp) {
+        const published = Date.parse(stamp ?? '');
+        if (Number.isNaN(published)) {
+          return 'at an unstated time';
+        }
+        const minutes = Math.round((Date.now() - published) / MINUTE);
+        if (minutes < 1) {
+          return 'just now';
+        }
+        if (minutes < 60) {
+          return `${minutes} minutes ago`;
+        }
+        const hours = Math.round(minutes / 60);
+        return hours < 48 ? `${hours} hours ago` : `${Math.round(hours / 24)} days ago`;
+      }
+    </script>
+  </body>
+</html>
