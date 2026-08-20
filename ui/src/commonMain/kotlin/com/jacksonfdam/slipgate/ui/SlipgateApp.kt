@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.jacksonfdam.slipgate.host.audio.synth.InterfaceCue
@@ -303,6 +304,10 @@ private fun InterfaceVoice(
  *
  * The gate stops stepping while the menu is open rather than playing on behind it, and the frame it
  * stopped on stays on screen: what a player left is what they come back to.
+ *
+ * It stops for the same reason when the window loses focus — the player took a call, pulled the
+ * notification shade down, switched tabs. An engine stepping into a screen nobody is looking at costs
+ * a phone its battery and the player the monsters that reached them while they were away.
  */
 @Composable
 private fun PlayingStage(
@@ -311,13 +316,14 @@ private fun PlayingStage(
     onMenu: (Boolean) -> Unit,
     onLeave: () -> Unit,
 ) {
+    val focused = LocalWindowInfo.current.isWindowFocused
     Box(modifier = Modifier.fillMaxSize()) {
         GateSurface(
             session = stage.session,
             inputProfile = stage.profile,
             crt = settings.settings.crt,
             scaling = settings.settings.scaling,
-            paused = stage.menuOpen,
+            paused = stage.menuOpen || !focused,
             modifier = Modifier.fillMaxSize(),
         )
         if (stage.menuOpen) {
