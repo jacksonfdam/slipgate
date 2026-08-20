@@ -75,8 +75,25 @@ All four built modules come from the
 Heretic, Hexen and Strife behind one platform abstraction. That shared `i_*` layer is the
 reason a single port effort yields four gates.
 
-Doom, Heretic and Strife have been run against real data; Hexen has not, because there is no
-freely licensed IWAD to run it against.
+### What has actually been run
+
+Every gate has been booted against real data, and the table says with which rather than
+claiming "supported". A platform is listed only where a gate has actually been entered on it,
+which is why `korax` names none: Hexen has run in the harness, not yet on a device.
+
+| Gate | Data it has booted and drawn | Where it has run |
+|---|---|---|
+| `mars` | Freedoom Phase 1, Doom shareware, Doom, Ultimate Doom, Doom II, Plutonia, TNT: Evilution, Chex Quest | Android phone, iPhone, iOS simulator, browser, JVM harness |
+| `corvus` | Blasphemer, Heretic: Shadow of the Serpent Riders | Android phone, iPhone, JVM harness |
+| `korax` | Hexen, with Deathkings of the Dark Citadel loaded over it | JVM harness |
+
+Doom II, Plutonia, TNT and Chex Quest matter more than the row suggests: the engine decides
+which game it is running from the filename it is handed, so a mapped IWAD has to arrive as
+`doom2.wad` or start-up goes looking for `E1M1` in a file full of `MAPxx`. The gate reads the
+flavour the launcher inspected and hands it over under the name the engine knows.
+
+The JVM harness is the one that runs on every change: two runs of the same input have to
+produce identical frames, and a recorded demo has to play to its end.
 
 ## Architecture
 
