@@ -49,6 +49,13 @@ while read -r line; do
     REPLACED_SOURCES+=("${line}")
 done < "${WORKDIR}/replaced-sources.txt"
 
+# SG_REPLACED_EXTRA adds to that list for one engine. A shared source that only one game cannot use
+# is replaced only for that game, so the other modules stay byte-identical and their recorded hashes
+# stay true — a rebuild forced on three gates to serve a fourth is a diff nobody can review. It is
+# not in replaced-sources.txt for the same reason: that file is what every build shares.
+read -r -a extra_replaced <<< "${SG_REPLACED_EXTRA:-}"
+REPLACED_SOURCES+=("${extra_replaced[@]}")
+
 is_replaced() {
     local candidate="$1"
     for replaced in "${REPLACED_SOURCES[@]}"; do
