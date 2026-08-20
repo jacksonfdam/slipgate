@@ -16,8 +16,12 @@ val slipgateAndroidMinSdk = property("slipgate.androidMinSdk") as String
 // engine needs a driver of its own before this gate can reach the web.
 val suppliedIwad = providers.gradleProperty("slipgate.iwad")
 
+// Deathkings, which is an add-on rather than a game: -Pslipgate.addon=/path/to/hexdd.wad
+val suppliedAddOn = providers.gradleProperty("slipgate.addon")
+
 tasks.withType<Test>().configureEach {
     environment("SLIPGATE_IWAD", suppliedIwad.getOrElse(""))
+    environment("SLIPGATE_ADDON", suppliedAddOn.getOrElse(""))
 }
 
 // Compose resources are not packaged for the Android target of the Android KMP library plugin, so
