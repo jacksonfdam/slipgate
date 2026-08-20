@@ -117,6 +117,7 @@ emcc \
     -I "${SOURCE_DIR}" \
     -I "${GAME_DIR}" \
     -DSLIPGATE=1 \
+    -ffile-prefix-map="${WORKDIR}"=slipgate \
     -fwasm-exceptions \
     -sSUPPORT_LONGJMP=wasm \
     -sWASM_LEGACY_EXCEPTIONS=0 \
