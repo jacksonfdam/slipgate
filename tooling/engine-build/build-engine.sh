@@ -125,6 +125,17 @@ emcc \
     -sALLOW_MEMORY_GROWTH=1 \
     -sERROR_ON_UNDEFINED_SYMBOLS=1 \
     -Wl,--wrap=M_FileCaseExists \
+    -Wl,--wrap=fopen \
+    -Wl,--wrap=fclose \
+    -Wl,--wrap=fread \
+    -Wl,--wrap=fwrite \
+    -Wl,--wrap=fseek \
+    -Wl,--wrap=ftell \
+    -Wl,--wrap=feof \
+    -Wl,--wrap=fgetc \
+    -Wl,--wrap=remove \
+    -Wl,--wrap=rename \
+    -Wl,--wrap=mkdir \
     --no-entry \
     -Oz \
     -Wno-unused-command-line-argument
