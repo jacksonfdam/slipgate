@@ -9,10 +9,13 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -59,8 +62,13 @@ public fun LauncherShell(
         BoxWithConstraints(modifier = modifier.fillMaxSize().background(ColorTokens.Void)) {
             ShellGround(section = section, focusedGateId = state.current?.id)
             val compact = maxWidth < COMPACT_BREAKPOINT
+            // The art runs to the physical edges; the controls do not. A rail under an iPhone's
+            // dynamic island is a rail the player cannot reach, and a cut-out corner takes the same
+            // bite out of a phone held sideways, so the chrome sits inside the safe area while
+            // ShellGround keeps drawing past it.
+            val chrome = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)
             if (compact) {
-                Column(modifier = Modifier.fillMaxSize()) {
+                Column(modifier = chrome) {
                     Box(modifier = Modifier.weight(1f)) {
                         SectionContent(
                             section = section,
@@ -77,7 +85,7 @@ public fun LauncherShell(
                     LauncherBottomBar(section, onSection, statusLabel)
                 }
             } else {
-                Row(modifier = Modifier.fillMaxSize()) {
+                Row(modifier = chrome) {
                     LauncherRail(section, onSection, statusLabel)
                     Box(modifier = Modifier.weight(1f)) {
                         SectionContent(
