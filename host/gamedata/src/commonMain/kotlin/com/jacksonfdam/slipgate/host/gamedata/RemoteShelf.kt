@@ -139,8 +139,15 @@ public sealed interface ShelfListing {
         public fun bootable(gate: String): List<ShelfFile> =
             files.filter { it.gate == gate && it.role == WadRole.Bootable }
 
-        /** The map packs this shelf filed under [gate]. */
-        public fun addOns(gate: String): List<ShelfFile> = files.filter { it.gate == gate && it.role == WadRole.AddOn }
+        /**
+         * The map packs this shelf offers [gate].
+         *
+         * A pack the shelf filed under a gate is offered there; one it filed under no gate is offered
+         * everywhere, because an add-on names no engine in its contents and a shelf that did not sort
+         * it has made no claim to honour. Either way the app credits it to the gate that installs it.
+         */
+        public fun addOns(gate: String): List<ShelfFile> =
+            files.filter { it.role == WadRole.AddOn && (it.gate == gate || it.gate.isEmpty()) }
 
         /** Where one of these files can be fetched from. */
         public fun urlFor(file: ShelfFile): String = url(base + file.path, key)

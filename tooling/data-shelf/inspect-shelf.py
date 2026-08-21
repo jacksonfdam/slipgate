@@ -282,6 +282,20 @@ REQUIRED = {
 }
 
 
+def gate_of(relative: Path) -> str:
+    """The gate a path files a file under, which is a claim by whoever laid the shelf out.
+
+    A game sits in its gate's own folder, so the folder is the claim. Add-ons are the case the
+    top-level folder cannot answer: `addons/mars/av.wad` was filed for the Doom gate, while
+    `addons/hexdd.wad` was filed for no gate at all — and neither claim is binding, because an
+    add-on names no engine in its contents and the app credits it to whichever gate installs it.
+    """
+    parts = relative.parts
+    if parts[0] == "addons":
+        return parts[1] if len(parts) > 2 else ""
+    return parts[0]
+
+
 def missing_for(gate: str, directory: Path, readings: dict[str, Reading]) -> list[str]:
     missing = [pattern for pattern in REQUIRED[gate] if not any(True for _ in directory.glob(pattern))]
 
@@ -330,7 +344,7 @@ def main() -> int:
         if not reading.usable:
             unusable += 1
         elif isinstance(reading, Reading):
-            entries.append(reading.entry(relative.parts[0], path, "/" + relative.as_posix()))
+            entries.append(reading.entry(gate_of(relative), path, "/" + relative.as_posix()))
             readings[relative.as_posix()] = reading
 
     print()
