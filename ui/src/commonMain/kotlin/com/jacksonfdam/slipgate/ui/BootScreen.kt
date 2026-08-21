@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,11 +17,16 @@ import androidx.compose.ui.unit.dp
 /**
  * What the shell shows when it cannot show a gate: the wordmark, the reason, and which platform said
  * so. Its own file because it is the one screen that belongs to no stage in particular.
+ *
+ * [onBack] is null while the shell is still starting up, which is the one time there is nowhere to go
+ * back to. Given one, the screen draws it: a reason with no way past it is a dead end on the two
+ * platforms that have no back gesture of their own.
  */
 @Composable
 internal fun BootScreen(
     message: String,
     platformName: String,
+    onBack: (() -> Unit)? = null,
 ) {
     Box(
         modifier = Modifier.fillMaxSize().padding(24.dp),
@@ -44,6 +50,11 @@ internal fun BootScreen(
                 text = platformName,
                 style = MaterialTheme.typography.labelLarge,
             )
+            onBack?.let { back ->
+                TextButton(onClick = back) {
+                    Text("Back to the rack")
+                }
+            }
         }
     }
 }

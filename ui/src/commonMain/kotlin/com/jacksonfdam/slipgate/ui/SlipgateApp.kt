@@ -209,7 +209,7 @@ private fun StageSurface(
         }
 
         is Stage.Stuck -> {
-            BootScreen(message = stage.message, platformName = platformName)
+            StuckStage(stage.message, platformName) { scope.launch { onStage(shell.gates.reread()) } }
         }
 
         is Stage.Choosing -> {
@@ -235,13 +235,12 @@ private fun StageSurface(
         }
 
         is Stage.NeedsData -> {
-            GameDataStage(
-                gate = stage.gate,
-                entry = stage.entry,
+            NeedsDataStage(
+                stage = stage,
                 acquisition = shell.acquisition,
                 remoteShelf = shell.remoteShelf,
                 onInstalled = { scope.launch { onStage(shell.gates.openedStage(stage.gate)) } },
-                modifier = Modifier.fillMaxSize(),
+                onBack = { scope.launch { onStage(shell.gates.reread()) } },
             )
         }
 

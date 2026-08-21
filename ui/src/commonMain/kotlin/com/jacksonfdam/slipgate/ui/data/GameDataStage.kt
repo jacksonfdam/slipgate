@@ -28,6 +28,7 @@ internal fun GameDataStage(
     acquisition: GameDataAcquisition,
     remoteShelf: RemoteShelfController,
     onInstalled: () -> Unit,
+    onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val gateId = gate.descriptor.id.value
@@ -59,6 +60,7 @@ internal fun GameDataStage(
             }
         },
         onSupply = supply,
+        onBack = onBack,
         modifier = modifier,
         // Only what the shelf filed under this gate, and only what a gate could boot from: a map
         // pack offered where the game belongs would be refused after a download rather than before.

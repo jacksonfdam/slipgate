@@ -11,6 +11,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +27,11 @@ import com.jacksonfdam.slipgate.host.runtime.DataSource
  * It offers what the gate itself declared and nothing more: a gate with no free replacement shows no
  * download button, which is how Hexen's card ends up honest instead of showing a control that could
  * never work.
+ *
+ * [onBack] is drawn rather than left to the platform, because only one platform has a gesture for it.
+ * A player who opened this screen to look at what a gate wants, and does not have it to hand, is
+ * otherwise held here — on iOS with nothing to press at all, and on Android with a back gesture that
+ * leaves the app rather than the screen.
  */
 @Composable
 internal fun GameDataScreen(
@@ -35,6 +41,7 @@ internal fun GameDataScreen(
     state: AcquisitionState,
     onDownload: (DataSource.FreeDownload) -> Unit,
     onSupply: () -> Unit,
+    onBack: () -> Unit,
     modifier: Modifier = Modifier,
     /** What the player's own shelf offers this gate, which may be nothing. */
     shelfFiles: List<ShelfFile> = emptyList(),
@@ -96,6 +103,12 @@ internal fun GameDataScreen(
         }
 
         Progress(state)
+
+        // Last, and quieter than the routes: leaving is what a player wants least often here, and the
+        // thing they need most to be able to do at all.
+        TextButton(onClick = onBack, enabled = !working) {
+            Text("Back to the rack")
+        }
     }
 }
 
