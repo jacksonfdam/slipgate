@@ -50,6 +50,19 @@ DATA_SUFFIXES = frozenset({".wad", ".iwad", ".pwad", ".pk3", ".pak", ".deh", ".b
 SHELF_NOTES = {"README.md", "NOTES.txt", "manifest.json", ".DS_Store"}
 
 
+def gate_of(relative: Path) -> str:
+    """The gate a path files a file under, or nothing when it files it under none.
+
+    `addons/mars/av.wad` was filed for the Doom gate and `addons/hexdd.wad` for no gate at all: an
+    add-on names no engine in its contents, so a shelf that did not sort one is a shelf offering it
+    to every gate.
+    """
+    parts = relative.parts
+    if parts[0] == "addons":
+        return parts[1] if len(parts) > 2 else ""
+    return parts[0]
+
+
 class ShelfHandler(SimpleHTTPRequestHandler):
     # Bound by main() before the server starts. Empty means no key, which is the LAN default.
     key = ""
@@ -158,7 +171,7 @@ class ShelfHandler(SimpleHTTPRequestHandler):
         return self.key if query[0] and hmac.compare_digest(query[0], self.key) else ""
 
     def index(self) -> bytes:
-        """The shelf as lines: `file`, the shelf it sits in, its name, its role, its size, its path.
+        """The shelf as lines: `file`, the gate it is filed for, its name, its role, its size, its path.
 
         manifest.json is the source of truth when it exists, because inspect-shelf.py read every
         file to write it. Without one the directory still answers — a shelf nobody has inspected
@@ -197,11 +210,12 @@ class ShelfHandler(SimpleHTTPRequestHandler):
             if path.suffix.lower() not in DATA_SUFFIXES:
                 continue
             relative = path.relative_to(root)
-            shelf = relative.parts[0]
-            # Without a reading, the shelf a file sits in is all there is to go on: `addons/` holds
-            # what loads over a game, which is the one role the layout itself states.
-            role = "addon" if shelf == "addons" else "game"
-            found.append((shelf, path.name, role, path.stat().st_size, "/" + relative.as_posix()))
+            # Without a reading, the layout is all there is to go on: `addons/` holds what loads over
+            # a game, which is the one role the directory itself states, and the folder under it is
+            # the gate it was filed for when there is one.
+            role = "addon" if relative.parts[0] == "addons" else "game"
+            gate = gate_of(relative)
+            found.append((gate, path.name, role, path.stat().st_size, "/" + relative.as_posix()))
         return found
 
     def text(self, status: HTTPStatus, body: bytes) -> None:

@@ -20,7 +20,10 @@ public data class ShelfPointer(
 
 /** One file a shelf is offering. */
 public data class ShelfFile(
-    /** The gate the shelf filed this under, which is a claim by whoever laid out the directory. */
+    /**
+     * The gate the shelf filed this under, which is a claim by whoever laid out the directory, and
+     * empty when it filed it under none. A game always names one; an add-on need not.
+     */
     val gate: String,
     val name: String,
     val role: WadRole,

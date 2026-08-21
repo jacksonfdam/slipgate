@@ -30,7 +30,7 @@ class RemoteShelfTest {
             assertEquals("https://tunnel.example", listing.base)
             assertEquals("abc123", listing.key)
             assertEquals("2026-08-20T18:22:41Z", listing.publishedAt)
-            assertEquals(listOf("doom.wad", "sunlust.wad"), listing.files.map { it.name })
+            assertEquals(listOf("doom.wad", "sunlust.wad", "hexdd.wad"), listing.files.map { it.name })
         }
 
     @Test
@@ -65,8 +65,19 @@ class RemoteShelfTest {
             val listing = shelf.open("https://nas.local") as ShelfListing.Open
 
             assertEquals(listOf("doom.wad"), listing.bootable("mars").map { it.name })
-            assertEquals(listOf("sunlust.wad"), listing.addOns("mars").map { it.name })
+            assertEquals(listOf("sunlust.wad", "hexdd.wad"), listing.addOns("mars").map { it.name })
             assertEquals(emptyList(), listing.bootable("korax"))
+        }
+
+    @Test
+    fun `offers a map pack the shelf sorted for a gate to that gate`() =
+        runTest {
+            val shelf = RemoteShelf(FakeDownload("https://nas.local/shelf.index" to INDEX))
+
+            val listing = shelf.open("https://nas.local") as ShelfListing.Open
+
+            assertEquals(listOf("sunlust.wad", "hexdd.wad"), listing.addOns("mars").map { it.name })
+            assertEquals(listOf("hexdd.wad"), listing.addOns("korax").map { it.name })
         }
 
     @Test
@@ -135,7 +146,8 @@ class RemoteShelfTest {
             """
             slipgate-shelf 1
             file${'\t'}mars${'\t'}doom.wad${'\t'}game${'\t'}14604584${'\t'}/mars/doom.wad
-            file${'\t'}mars${'\t'}sunlust.wad${'\t'}addon${'\t'}18324${'\t'}/addons/sunlust.wad
+            file${'\t'}mars${'\t'}sunlust.wad${'\t'}addon${'\t'}18324${'\t'}/addons/mars/sunlust.wad
+            file${'\t'}${'\t'}hexdd.wad${'\t'}addon${'\t'}4440584${'\t'}/addons/hexdd.wad
             """.trimIndent()
     }
 }
