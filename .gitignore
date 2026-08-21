@@ -47,3 +47,7 @@ xcuserdata/
 # Logs and local scratch
 *.log
 *.hprof
+
+# Python leaves these beside any script it runs; none of them belong to anybody else.
+__pycache__/
+*.pyc
