@@ -21,7 +21,7 @@ import kotlin.test.assertTrue
  */
 class ShelfAddOnsTest {
     @Test
-    fun `offers the maps a shelf filed under a gate, apart from what boots it`() =
+    fun `offers the maps a shelf filed under a gate apart from what boots it`() =
         runTest {
             val controller = RemoteShelfController(RemoteShelf(FakeDownload(INDEX_URL to INDEX)))
             controller.refresh(SHELF)
