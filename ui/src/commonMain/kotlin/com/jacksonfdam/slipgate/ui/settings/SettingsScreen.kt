@@ -11,17 +11,23 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.jacksonfdam.slipgate.host.gamedata.ShelfFile
 import com.jacksonfdam.slipgate.host.graphics.core.CrtSettings
 import com.jacksonfdam.slipgate.host.graphics.core.QualityTier
 import com.jacksonfdam.slipgate.host.graphics.core.ScalingMode
@@ -33,6 +39,40 @@ import com.jacksonfdam.slipgate.ui.design.LocalAccentRamp
 import com.jacksonfdam.slipgate.ui.design.TypeScale
 import com.jacksonfdam.slipgate.ui.design.accentRamp
 import kotlinx.coroutines.launch
+
+/**
+ * Which gate is showing its shelf, and what the player typed to narrow it.
+ *
+ * A holder rather than two `var`s in the screen because the list is emitted as the settings column's
+ * own items: the row that opens it and the rows it opens are siblings, so the state they share cannot
+ * live inside either.
+ */
+internal class ShelfBrowsing {
+    internal var gate: String? by mutableStateOf(null)
+        private set
+
+    internal var filter: String by mutableStateOf("")
+        private set
+
+    internal fun showing(gateId: String): Boolean = gate == gateId
+
+    /** Opens this gate's shelf, or closes it when it is the one already open. */
+    internal fun toggle(gateId: String) {
+        filter = ""
+        gate = if (gate == gateId) null else gateId
+    }
+
+    internal fun narrow(typed: String) {
+        filter = typed
+    }
+}
+
+/** What a gate's file row can ask the app to do. */
+public class GateFileRoutes(
+    internal val onAddMaps: (gateId: String) -> Unit = {},
+    internal val onRemoveAddOn: (gateId: String, name: String) -> Unit = { _, _ -> },
+    internal val onAddFromShelf: (gateId: String, file: ShelfFile) -> Unit = { _, _ -> },
+)
 
 /**
  * Settings, in the order the specification lists them: what the player sees first is what they change
@@ -52,10 +92,10 @@ internal fun SettingsScreen(
     installedGates: List<GateDataStatus>,
     version: String,
     modifier: Modifier = Modifier,
-    onAddMaps: (gateId: String) -> Unit = {},
-    onRemoveAddOn: (gateId: String, name: String) -> Unit = { _, _ -> },
+    routes: GateFileRoutes = GateFileRoutes(),
 ) {
     val settings = controller.settings
+    val browsing = remember { ShelfBrowsing() }
 
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(24.dp),
@@ -85,8 +125,8 @@ internal fun SettingsScreen(
             }
         }
 
-        items(installedGates) { status ->
-            GateFiles(status = status, onAddMaps = onAddMaps, onRemoveAddOn = onRemoveAddOn)
+        installedGates.forEach { status ->
+            gateFiles(status, remoteShelf.addOns(status.id), browsing, routes)
         }
 
         item {
@@ -209,6 +249,66 @@ internal data class GateDataStatus(
 )
 
 /**
+ * One gate's row, and the shelf underneath it when the player opened it.
+ *
+ * A `LazyListScope` extension rather than a composable, so the map packs are this column's own items:
+ * a shelf holding a thousand of them scrolls with the screen instead of inside a box on it, and only
+ * the rows on screen are ever composed.
+ */
+private fun LazyListScope.gateFiles(
+    status: GateDataStatus,
+    offered: List<ShelfFile>,
+    browsing: ShelfBrowsing,
+    routes: GateFileRoutes,
+) {
+    item(key = "gate-${status.id}") {
+        GateFiles(
+            status = status,
+            shelfCount = offered.size,
+            browsing = browsing.showing(status.id),
+            onAddMaps = routes.onAddMaps,
+            onRemoveAddOn = routes.onRemoveAddOn,
+            onBrowseShelf = { browsing.toggle(status.id) },
+        )
+    }
+
+    // Nothing to browse for a gate with no game under it: `-file` needs something to load over, and
+    // the row already says so where the routes would be.
+    if (!browsing.showing(status.id) || status.addOnsBlockedBecause != null) {
+        return
+    }
+
+    item(key = "filter-${status.id}") {
+        Entry(
+            label = "On my shelf",
+            explanation = "${offered.size} for this gate. Installed from here, they load like any other.",
+            value = browsing.filter,
+            placeholder = "narrow the list…",
+            onChange = browsing::narrow,
+        )
+    }
+
+    val shown = offered.filter { file -> file.name.contains(browsing.filter.trim(), ignoreCase = true) }
+    items(shown, key = { file -> "${status.id}-${file.path}" }) { file ->
+        ShelfAddOn(
+            file = file,
+            installed = file.name in status.addOns,
+            onInstall = { routes.onAddFromShelf(status.id, file) },
+        )
+    }
+    if (shown.isEmpty()) {
+        item(key = "empty-${status.id}") {
+            Text(
+                text = "Nothing on the shelf matches that.",
+                style = TypeScale.Label,
+                color = ColorTokens.Muted,
+                modifier = Modifier.padding(start = 16.dp),
+            )
+        }
+    }
+}
+
+/**
  * One gate's files: the game itself, then the maps loaded over it.
  *
  * Add-ons are only offered once the game is installed, because `-file` needs something to load over
@@ -217,8 +317,11 @@ internal data class GateDataStatus(
 @Composable
 private fun GateFiles(
     status: GateDataStatus,
+    shelfCount: Int,
+    browsing: Boolean,
     onAddMaps: (String) -> Unit,
     onRemoveAddOn: (String, String) -> Unit,
+    onBrowseShelf: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
@@ -258,16 +361,75 @@ private fun GateFiles(
             }
 
             else -> {
-                Text(
-                    text = "ADD MAPS…",
-                    style = TypeScale.Label,
-                    color = LocalAccentRamp.current.hot,
-                    modifier = Modifier.padding(start = 16.dp).clickable { onAddMaps(status.id) },
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    // The shelf goes first when there is one, because a player who stacked a shelf
+                    // put the maps there for this: picking the same file again on each device is the
+                    // thing a shelf exists to stop.
+                    if (shelfCount > 0) {
+                        Text(
+                            text = if (browsing) "HIDE MY SHELF" else "FROM MY SHELF ($shelfCount)",
+                            style = TypeScale.Label,
+                            color = LocalAccentRamp.current.hot,
+                            modifier = Modifier.clickable(onClick = onBrowseShelf),
+                        )
+                    }
+                    Text(
+                        text = if (shelfCount > 0) "CHOOSE A FILE…" else "ADD MAPS…",
+                        style = TypeScale.Label,
+                        color = if (shelfCount > 0) ColorTokens.Muted else LocalAccentRamp.current.hot,
+                        modifier = Modifier.clickable { onAddMaps(status.id) },
+                    )
+                }
             }
         }
     }
 }
+
+/**
+ * One map pack on the player's own shelf, as a line they can install.
+ *
+ * A pack already installed says so instead of offering itself again: the store would refuse the
+ * second copy, and a control that cannot work should not be drawn.
+ */
+@Composable
+private fun ShelfAddOn(
+    file: ShelfFile,
+    installed: Boolean,
+    onInstall: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(text = file.name, style = TypeScale.Data, color = ColorTokens.Muted)
+        if (installed) {
+            Text(text = "INSTALLED", style = TypeScale.Label, color = ColorTokens.Muted)
+        } else {
+            Text(
+                text = describeSize(file),
+                style = TypeScale.Label,
+                color = LocalAccentRamp.current.hot,
+                modifier = Modifier.clickable(onClick = onInstall),
+            )
+        }
+    }
+}
+
+/** A size a player can act on: kilobytes for a map pack, which is what most of them are. */
+private fun describeSize(file: ShelfFile): String {
+    val size = file.size ?: return "INSTALL"
+    return if (size < BYTES_PER_MEGABYTE) {
+        "INSTALL · ${size / BYTES_PER_KILOBYTE} KB"
+    } else {
+        "INSTALL · ${size / BYTES_PER_MEGABYTE} MB"
+    }
+}
+
+private const val BYTES_PER_KILOBYTE = 1024L
+private const val BYTES_PER_MEGABYTE = 1024L * 1024L
 
 private fun detailExplanation(controller: SettingsController): String {
     val measured = controller.measured

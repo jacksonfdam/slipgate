@@ -43,6 +43,7 @@ import com.jacksonfdam.slipgate.ui.data.AddOnShelf
 import com.jacksonfdam.slipgate.ui.data.GameDataStage
 import com.jacksonfdam.slipgate.ui.data.RemoteShelfController
 import com.jacksonfdam.slipgate.ui.data.StoredAddOnShelf
+import com.jacksonfdam.slipgate.ui.data.addFromShelf
 import com.jacksonfdam.slipgate.ui.data.rememberFilePicker
 import com.jacksonfdam.slipgate.ui.gate.GateMenu
 import com.jacksonfdam.slipgate.ui.gate.GateMenuButton
@@ -55,6 +56,7 @@ import com.jacksonfdam.slipgate.ui.launcher.LauncherState
 import com.jacksonfdam.slipgate.ui.launcher.LocalPortraitOctaves
 import com.jacksonfdam.slipgate.ui.launcher.LocalQualityTier
 import com.jacksonfdam.slipgate.ui.launcher.launcherState
+import com.jacksonfdam.slipgate.ui.settings.GateFileRoutes
 import com.jacksonfdam.slipgate.ui.settings.SettingsController
 import com.jacksonfdam.slipgate.ui.splash.SplashScreen
 import kotlinx.coroutines.async
@@ -474,17 +476,29 @@ private fun ChoosingStage(
             audio.play(if (card.isPlayable) InterfaceCue.Confirm else InterfaceCue.Blocked)
             onEnter(card)
         },
-        onAddMaps = { gateId ->
-            addingTo = gateId
-            pickMaps()
-        },
-        onRemoveAddOn = { gateId, name ->
-            scope.launch {
-                shelf.remove(gateId, name)
-                audio.play(InterfaceCue.Back)
-                onShelfChanged()
-            }
-        },
+        routes =
+            GateFileRoutes(
+                onAddMaps = { gateId ->
+                    addingTo = gateId
+                    pickMaps()
+                },
+                onRemoveAddOn = { gateId, name ->
+                    scope.launch {
+                        shelf.remove(gateId, name)
+                        audio.play(InterfaceCue.Back)
+                        onShelfChanged()
+                    }
+                },
+                // Installed through the same call the file picker uses, so a pack off a shelf is
+                // inspected exactly as hard as one chosen by hand.
+                onAddFromShelf = { gateId, file ->
+                    scope.launch {
+                        val problem = shelf.addFromShelf(remoteShelf, gateId, file)
+                        audio.play(if (problem == null) InterfaceCue.Confirm else InterfaceCue.Blocked)
+                        onShelfChanged()
+                    }
+                },
+            ),
         statusLabel = statusLabel,
         modifier = Modifier.fillMaxSize(),
     )

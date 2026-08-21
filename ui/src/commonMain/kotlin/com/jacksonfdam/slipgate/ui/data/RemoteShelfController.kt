@@ -3,6 +3,7 @@ package com.jacksonfdam.slipgate.ui.data
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.jacksonfdam.slipgate.host.gamedata.DownloadProgress
 import com.jacksonfdam.slipgate.host.gamedata.RemoteShelf
 import com.jacksonfdam.slipgate.host.gamedata.ShelfFile
 import com.jacksonfdam.slipgate.host.gamedata.ShelfListing
@@ -45,6 +46,26 @@ public class RemoteShelfController(
 
     /** What this library offers [gate] as a game to boot, or nothing at all. */
     public fun bootable(gate: String): List<ShelfFile> = listing?.bootable(gate) ?: emptyList()
+
+    /**
+     * The map packs this library filed under [gate], or nothing at all.
+     *
+     * The shelf's own folder is a staging hint rather than an attribution: an add-on names no engine
+     * in its contents, so whoever stacked the shelf decided which gate to file it under, and the app
+     * still credits it to the gate it is installed on.
+     */
+    public fun addOns(gate: String): List<ShelfFile> = listing?.addOns(gate) ?: emptyList()
+
+    /**
+     * Fetches one file from the library that answered.
+     *
+     * Throws what the download throws: the caller here is installing something a player asked for,
+     * and a failure belongs on that screen rather than in this controller's state.
+     */
+    public suspend fun fetch(
+        file: ShelfFile,
+        onProgress: DownloadProgress = { _, _ -> },
+    ): ByteArray? = listing?.let { open -> shelf.fetch(open, file, onProgress) }
 
     /**
      * Reaches the address, unless it has already been reached and nothing has changed.
