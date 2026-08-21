@@ -24,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.jacksonfdam.slipgate.ui.design.ColorTokens
@@ -137,6 +139,8 @@ internal fun Entry(
     onChange: (String) -> Unit,
     onDone: () -> Unit = {},
 ) {
+    val focus = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(text = label, style = TypeScale.Body, color = ColorTokens.Text)
         Text(text = explanation, style = TypeScale.Label, color = ColorTokens.Muted)
@@ -147,7 +151,16 @@ internal fun Entry(
             textStyle = LocalTextStyle.current.merge(TypeScale.Data).copy(color = ColorTokens.Text),
             cursorBrush = SolidColor(accentRamp.hot),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { onDone() }),
+            // Done means done: the keyboard leaves with the focus, and only then does the field's
+            // own action run — typing is over either way.
+            keyboardActions =
+                KeyboardActions(
+                    onDone = {
+                        focus.clearFocus()
+                        keyboard?.hide()
+                        onDone()
+                    },
+                ),
             modifier =
                 Modifier
                     .fillMaxWidth()
