@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.jacksonfdam.slipgate.host.gamedata.ShelfAddress
 import com.jacksonfdam.slipgate.host.gamedata.ShelfFile
 import com.jacksonfdam.slipgate.host.graphics.core.CrtSettings
 import com.jacksonfdam.slipgate.host.graphics.core.QualityTier
@@ -168,28 +169,45 @@ private fun ShelfSection(
     remoteShelf: RemoteShelfController,
 ) {
     val scope = rememberCoroutineScope()
-    val address = controller.settings.shelfAddress.orEmpty()
+    val stored = controller.settings.shelfAddress.orEmpty()
+
+    // What is on screen while it is being typed, which is not yet what is stored. An address halfway
+    // through being entered is not an address, and the one that reached a phone as a setting — a bare
+    // `https:` — crashed the app on every launch until it was deleted by hand.
+    var draft by remember(stored) { mutableStateOf(stored) }
+    val problem = ShelfAddress.problem(draft)
 
     Section(title = "Data shelf") {
         Entry(
             label = "Beacon or shelf address",
-            explanation = "Where your own files are served from. Left empty, nothing is fetched.",
-            value = address,
-            placeholder = "https://…",
+            explanation =
+                "Where your own files are served from — the shelf itself on your own network, or a " +
+                    "beacon that says where it is at the moment. Left empty, nothing is fetched.",
+            value = draft,
+            placeholder = "http://192.168.0.10:8600",
             onChange = { typed ->
-                controller.update { it.copy(shelfAddress = typed.takeIf { entered -> entered.isNotBlank() }) }
+                draft = typed
+                // Kept only once it is an address at all. Whether anything answers is a later
+                // question: a shelf that is switched off is the ordinary case, not a wrong address.
+                if (ShelfAddress.usable(typed)) {
+                    controller.update { it.copy(shelfAddress = typed.trim().takeIf { kept -> kept.isNotEmpty() }) }
+                }
             },
             // Reached on the keyboard's own done action rather than while typing: every keystroke of a
             // half-typed hostname would be a request to somewhere that does not exist.
-            onDone = { scope.launch { remoteShelf.refresh(address, force = true) } },
+            onDone = { scope.launch { remoteShelf.refresh(stored, force = true) } },
         )
-        Text(text = remoteShelf.state.describe(), style = TypeScale.Label, color = ColorTokens.Muted)
-        if (address.isNotBlank() && remoteShelf.state !is RemoteShelfState.Looking) {
+        Text(
+            text = problem ?: remoteShelf.state.describe(),
+            style = TypeScale.Label,
+            color = if (problem == null) ColorTokens.Muted else LocalAccentRamp.current.hot,
+        )
+        if (problem == null && stored.isNotBlank() && remoteShelf.state !is RemoteShelfState.Looking) {
             Text(
                 text = "CHECK AGAIN",
                 style = TypeScale.Label,
                 color = LocalAccentRamp.current.hot,
-                modifier = Modifier.clickable { scope.launch { remoteShelf.refresh(address, force = true) } },
+                modifier = Modifier.clickable { scope.launch { remoteShelf.refresh(stored, force = true) } },
             )
         }
     }
