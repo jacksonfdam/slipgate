@@ -31,6 +31,7 @@ import com.jacksonfdam.slipgate.ui.design.SlipgateWordmark
 import com.jacksonfdam.slipgate.ui.design.TypeScale
 import com.jacksonfdam.slipgate.ui.design.rememberBackdrop
 import com.jacksonfdam.slipgate.ui.settings.GateDataStatus
+import com.jacksonfdam.slipgate.ui.settings.GateFileRoutes
 import com.jacksonfdam.slipgate.ui.settings.SettingsController
 import com.jacksonfdam.slipgate.ui.settings.SettingsScreen
 
@@ -50,8 +51,7 @@ public fun LauncherShell(
     settings: SettingsController,
     remoteShelf: RemoteShelfController,
     modifier: Modifier = Modifier,
-    onAddMaps: (gateId: String) -> Unit = {},
-    onRemoveAddOn: (gateId: String, name: String) -> Unit = { _, _ -> },
+    routes: GateFileRoutes = GateFileRoutes(),
 ) {
     // Every surface under the shell draws in the focused gate's own accent: rail, chips, cards,
     // portraits. One provider, so the whole interface recolours with the selection.
@@ -70,8 +70,7 @@ public fun LauncherShell(
                             settings = settings,
                             remoteShelf = remoteShelf,
                             statusLabel = statusLabel,
-                            onAddMaps = onAddMaps,
-                            onRemoveAddOn = onRemoveAddOn,
+                            routes = routes,
                             compact = true,
                         )
                     }
@@ -89,8 +88,7 @@ public fun LauncherShell(
                             settings = settings,
                             remoteShelf = remoteShelf,
                             statusLabel = statusLabel,
-                            onAddMaps = onAddMaps,
-                            onRemoveAddOn = onRemoveAddOn,
+                            routes = routes,
                             compact = false,
                         )
                     }
@@ -157,8 +155,7 @@ private fun SectionContent(
     settings: SettingsController,
     remoteShelf: RemoteShelfController,
     statusLabel: String,
-    onAddMaps: (gateId: String) -> Unit,
-    onRemoveAddOn: (gateId: String, name: String) -> Unit,
+    routes: GateFileRoutes,
     compact: Boolean,
 ) {
     when (section) {
@@ -172,8 +169,7 @@ private fun SectionContent(
                 remoteShelf = remoteShelf,
                 installedGates = state.cards.map { card -> card.dataStatus() },
                 version = statusLabel,
-                onAddMaps = onAddMaps,
-                onRemoveAddOn = onRemoveAddOn,
+                routes = routes,
             )
         }
 
