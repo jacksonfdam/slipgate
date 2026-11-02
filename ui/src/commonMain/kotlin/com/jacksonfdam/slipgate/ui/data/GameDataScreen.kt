@@ -1,11 +1,14 @@
 package com.jacksonfdam.slipgate.ui.data
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -49,65 +52,95 @@ internal fun GameDataScreen(
 ) {
     val working = state is AcquisitionState.Working
 
-    Column(
-        modifier = modifier.fillMaxSize().padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-    ) {
-        Text(
-            text = gateTitle.uppercase(),
-            style = MaterialTheme.typography.displaySmall,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Text(
-            text = "$engine needs its game data before it can run.",
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            text = entry.displayName,
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Text(
-            text = explain(entry, engine),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.widthIn(max = EXPLANATION_WIDTH.dp),
-        )
+    // A phone held sideways is about 390 points tall, and this screen asks for more than that: the
+    // routes, what they mean, and the way back. Centred in a box that scrolls, so the screen stays
+    // middled where it fits and nothing falls off the bottom where it does not — the control that
+    // was falling off was the way back, which is the one a stuck player needs.
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 32.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = gateTitle.uppercase(),
+                style = MaterialTheme.typography.displaySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = "$engine needs its game data before it can run.",
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = entry.displayName,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = explain(entry, engine),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.widthIn(max = EXPLANATION_WIDTH.dp),
+            )
 
-        ShelfRoutes(files = shelfFiles, enabled = !working, onShelf = onShelf)
+            ShelfRoutes(files = shelfFiles, enabled = !working, onShelf = onShelf)
 
-        entry.sources.forEach { source ->
-            when (source) {
-                is DataSource.FreeDownload -> {
-                    Button(
-                        onClick = { onDownload(source) },
-                        enabled = !working,
-                        modifier = Modifier.widthIn(min = 240.dp),
-                    ) {
-                        Text("Download ${source.displayName}")
-                    }
-                }
+            DeclaredRoutes(
+                sources = entry.sources,
+                enabled = !working,
+                onDownload = onDownload,
+                onSupply = onSupply,
+            )
 
-                DataSource.UserSupplied -> {
-                    OutlinedButton(
-                        onClick = onSupply,
-                        enabled = !working,
-                        modifier = Modifier.widthIn(min = 240.dp),
-                    ) {
-                        Text("Choose my own file")
-                    }
-                }
+            Progress(state)
+
+            // Last, and quieter than the routes: leaving is what a player wants least often here, and the
+            // thing they need most to be able to do at all.
+            TextButton(onClick = onBack, enabled = !working) {
+                Text("Back to the rack")
             }
         }
+    }
+}
 
-        Progress(state)
+/**
+ * The routes the gate itself declared: a free replacement to download, a file of the player's own, or
+ * both. Drawn in the order the gate listed them, so a gate decides what it offers and this screen only
+ * draws it.
+ */
+@Composable
+private fun DeclaredRoutes(
+    sources: List<DataSource>,
+    enabled: Boolean,
+    onDownload: (DataSource.FreeDownload) -> Unit,
+    onSupply: () -> Unit,
+) {
+    sources.forEach { source ->
+        when (source) {
+            is DataSource.FreeDownload -> {
+                Button(
+                    onClick = { onDownload(source) },
+                    enabled = enabled,
+                    modifier = Modifier.widthIn(min = 240.dp),
+                ) {
+                    Text("Download ${source.displayName}")
+                }
+            }
 
-        // Last, and quieter than the routes: leaving is what a player wants least often here, and the
-        // thing they need most to be able to do at all.
-        TextButton(onClick = onBack, enabled = !working) {
-            Text("Back to the rack")
+            DataSource.UserSupplied -> {
+                OutlinedButton(
+                    onClick = onSupply,
+                    enabled = enabled,
+                    modifier = Modifier.widthIn(min = 240.dp),
+                ) {
+                    Text("Choose my own file")
+                }
+            }
         }
     }
 }
