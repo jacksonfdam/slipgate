@@ -4,7 +4,7 @@
   "type": "module",
   "description": "The Slipgate site: the beacon a home game library publishes itself to.",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.0.0"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.0"
